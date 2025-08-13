@@ -1,0 +1,134 @@
+Parfait — passons à **la rubrique : Gestion des contrats (Admin)**.
+*Format demandé : pour chaque écran → « Contenu & composants », puis « Actions disponibles sur cet écran ». Pas de tableaux de prose.*
+
+---
+
+## Écran **GC‑1 — Liste des contrats**
+
+### Contenu & composants
+
+* **Titre** : « Contrats ».
+* **Tuiles KPI** (sous le titre) : *Brouillons*, *À valider*, *Actifs*, *Résiliés*, *Clôturés*. (Cycle de vie standard.)&#x20;
+* **Barre de filtres** (horizontale) :
+
+  * **Période** (création/effet), **Statut** (*Brouillon / À valider / Actif / Résilié / Clôturé*), **Type** (nomenclature), **BU/Entité**, **Recherche** (N°/titre). (Statuts = cycle de vie.)&#x20;
+* **Liste (tableau)** — colonnes visibles :
+
+  * **N° contrat** *(ex : CT‑2025‑XXXX, masque/format conforme)*, **Titre / SPV**, **Type**, **Statut**, **Date début**, **Date fin**, **Montant fixe**, **Montant variable** (si présent), **Indexation** (Oui/Non), **Prochaine échéance** (J‑/date), **PJ obligatoire** (icône), **Dernière maj**.
+* **Bandeau d’info** (optionnel) : rappel *« La validation est requise pour l’activation d’un contrat »*.&#x20;
+* **Pagination** : 25/50/100 + compteur.
+* **RBAC** : colonnes/contrats visibles selon rôle.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Créer un contrat** (ouvre GC‑2).&#x20;
+* **Ouvrir la fiche** (GC‑3).
+* **Exporter** la liste filtrée (Excel/CSV).&#x20;
+* **Enregistrer / rappeler une vue** personnelle (filtres/colonnes).
+* **Actualiser** la liste.
+
+---
+
+## Écran **GC‑2 — Nouveau contrat (Wizard)**
+
+### Contenu & composants
+
+* **En‑tête** : « Nouveau contrat » + barre de **progression** (Étapes 1→5).
+* **Étape 1 — Informations générales**
+
+  * Champs : **N° contrat** *(masque + unicité)*, **Titre/SPV**, **Type**, **BU/Entité**, **Devise**, **Langue**. *(Contrôles de cohérence activés.)*&#x20;
+* **Étape 2 — Période & montants**
+
+  * Champs : **Date début**, **Date fin** *(> début)*, **Montant fixe** *(obligatoire)*, **Montant variable** *(optionnel, 0 accepté)*, **Périodicité de facturation**, **Plan de facturation**, **Type de paiement**.&#x20;
+* **Étape 3 — Indexation (paramètres)**
+
+  * Champs : **Formule d’indexation** *(inclut “Pas d’indexation”)*, **Date d’indexation** *(anniversaire)*, **Date indice d’origine**, **Date de révision d’indice**.&#x20;
+* **Étape 4 — Pièce jointe obligatoire**
+
+  * **Zone d’upload** (drag‑drop / parcourir) avec **formats autorisés** : PDF, DOCX, XLSX, ODT, JPG, PNG.
+  * **Rappels** visibles : *PJ obligatoire pour la validation*, **fichier non modifiable** après upload, **suppression admin uniquement**, **horodatage + auteur**.
+* **Étape 5 — Récapitulatif & soumission**
+
+  * **Résumé en lecture seule** de tous les champs saisis.
+  * **Statut initial attendu** après création : **« À valider »**.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Suivant / Précédent**, **Enregistrer le brouillon**.&#x20;
+* **Valider la création** (soumission) → statut du contrat **« À valider »**.&#x20;
+
+---
+
+## Écran **GC‑3 — Fiche contrat (Vue d’ensemble)**
+
+### Contenu & composants
+
+* **Header contrat**
+
+  * **Identité** : N° contrat, Titre/SPV, Type, **Statut** (badge).
+  * **Meta clés** : **Date début/fin**, **Montant fixe/variable** + **Devise**.
+* **Cartes récap’** (au‑dessous du header)
+
+  * **Prochaines échéances** : J‑30/J‑7/J‑1 + dates.&#x20;
+  * **Indexation (résumé)** : présence + **date d’indexation** configurée + **formule**.&#x20;
+  * **Documents** : compteur de PJ + **alerte si PJ “contrat signé” manquante**.&#x20;
+  * **Historique (dernières actions)** : derniers logs (création/validation/modifs).&#x20;
+* **Sections détaillées** (pliables)
+
+  * **Informations générales** (tous champs administratifs saisis).&#x20;
+  * **Montants & facturation** (montants, périodicité, plan).&#x20;
+  * **Indexation** (formule, dates d’indice, dernière indexation validée).&#x20;
+  * **Documents** (liste de PJ avec type, date, auteur).&#x20;
+  * **Historique complet** (timeline non modifiable, filtrable).&#x20;
+* **État visuel par cycle de vie** (badges) : *Brouillon / À valider / Actif / Résilié / Clôturé*. *(Lecture seule si Clôturé.)*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Soumettre/Valider/Rejeter** (selon rôle et statut).&#x20;
+* **Mettre à jour manuellement un montant** (ouvre le flux dédié).&#x20;
+* **Résilier** (initier demande de résiliation).&#x20;
+* **Ouvrir GED** (accéder aux PJ), **Ouvrir Historique** (vue complète).
+
+---
+
+## Écran **GC‑4 — Modale « Valider / Rejeter » un contrat**
+
+### Contenu & composants
+
+* **Résumé** : N° contrat, Titre, Type, **Champs clés** soumis.
+* **Zone décision** : **Valider** ou **Rejeter** (sélection).
+* **Champ “Motif”** (obligatoire **si Rejet**), **Commentaire** (facultatif).
+* **Rappel** (texte discret) : *« Séparation des rôles : le créateur ne peut pas valider son propre contrat »*.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Valider** (passe **Actif** et notifie), **Rejeter** (motif obligatoire, notifie), **Fermer**.&#x20;
+
+---
+
+## Écran **GC‑5 — États vides & erreurs (Gestion des contrats)**
+
+### Contenu & composants
+
+* **État vide (liste)** : message court *« Aucun contrat ne correspond à vos filtres »*.
+* **Contrôles bloquants (création)** visibles en ligne :
+
+  * **PJ manquante** (*contrat signé*), **N° déjà utilisé**, **Date fin < Date début**, **Champs obligatoires manquants**.
+* **Bannière** (échec de soumission/validation) : *« Échec technique : le contrat reste à son état actuel »*.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Réinitialiser les filtres** (liste).
+* **Corriger et relancer** la création/soumission (formulaire).
+
+---
+
+### Notes de cadrage visibles (rappel pour le designer)
+
+* **RBAC** : visibilité des modules/colonnes/contrats et des commandes selon rôle (Admin/Valideur/Opérateur).&#x20;
+* **Traçabilité** : toutes les actions (création, modifs, validations, PJ) sont **loguées** et **non modifiables**.&#x20;
+* **Validation requise** pour activation du contrat.&#x20;
+
+---
+
+Si ce format te convient, dis **« suivant »** et je passe à la **rubrique suivante** que tu souhaites (ex. *Avenants* ou *Indexations*), en gardant exactement la même structure « Contenu & composants » puis « Actions disponibles ».
