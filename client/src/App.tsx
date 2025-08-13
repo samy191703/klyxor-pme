@@ -6,6 +6,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import Contracts from "@/pages/contracts";
 import Validation from "@/pages/validation";
+import Deadlines from "@/pages/deadlines";
+import Indexations from "@/pages/indexations";
+import Amendments from "@/pages/amendments";
+import Terminations from "@/pages/terminations";
+import Documents from "@/pages/documents";
+import Imports from "@/pages/imports";
+import Security from "@/pages/security";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -14,6 +21,13 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/contracts" component={Contracts} />
       <Route path="/validation" component={Validation} />
+      <Route path="/deadlines" component={Deadlines} />
+      <Route path="/indexations" component={Indexations} />
+      <Route path="/amendments" component={Amendments} />
+      <Route path="/terminations" component={Terminations} />
+      <Route path="/documents" component={Documents} />
+      <Route path="/imports" component={Imports} />
+      <Route path="/security" component={Security} />
       <Route component={NotFound} />
     </Switch>
   );
