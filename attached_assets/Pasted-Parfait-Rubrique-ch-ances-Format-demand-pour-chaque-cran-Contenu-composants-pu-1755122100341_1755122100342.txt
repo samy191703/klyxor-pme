@@ -1,0 +1,90 @@
+Parfait. **Rubrique : Échéances**
+*(Format demandé : pour chaque écran → “Contenu & composants”, puis “Actions disponibles sur cet écran”. Pas de textes mêlés à des tableaux.)*
+
+---
+
+## Écran **EC‑1 — Échéances : Liste globale (tableau de bord)**
+
+### Contenu & composants
+
+* **Titre de page** : « Échéances ».
+* **Tuiles KPI (sous le titre)** : **À 30 j**, **À 7 j**, **À 1 j**, **En retard** (compteurs dynamiques issus du calcul quotidien).&#x20;
+* **Barre de filtres (horizontale)** :
+
+  * **Période** (intervalle de dates d’échéance).
+  * **Type d’échéance** (Fin de contrat, Date anniversaire, Fin d’avenant…).&#x20;
+  * **BU / Entité**, **Responsable**, **Statut du contrat**, **Recherche texte**.
+  * Boutons : **Réinitialiser**, **Sauver la vue**.
+* **Liste (tableau)** — colonnes visibles :
+
+  * **Contrat** (N° + intitulé), **Type d’échéance**, **Date d’échéance**, **J‑** (compteur), **BU / Entité**, **Responsable**, **Statut du contrat**, **Canal d’alerte** (icône si alerte émise), **Dernier envoi** (horodatage).
+  * Lignes **triables** et **filtrables** ; données **restreintes par droits** (RBAC).
+* **Bandeau d’information (optionnel)** : rappel « Une notification est générée **X jours avant** l’échéance (valeur paramétrable). »&#x20;
+* **Pied de liste** : **pagination** (25/50/100), compteur « x–y sur N ».
+
+### Actions disponibles sur cet écran
+
+* **Exporter** la liste (Excel/CSV) avec filtres appliqués.&#x20;
+* **Ouvrir le détail d’une échéance** (panneau latéral EC‑2).
+* **Ouvrir le contrat lié** (fiche contrat).
+* **Marquer comme lue** l’alerte associée (si visible depuis la ligne).&#x20;
+
+---
+
+## Écran **EC‑2 — Panneau latéral : Détail d’une échéance**
+
+### Contenu & composants
+
+* **En‑tête** : Type d’échéance + **J‑** (badge), **Date d’échéance** (jj‑mm‑aaaa).
+* **Bloc “Contrat lié”** : N° + intitulé, **Statut**, **Période** (Début/Fin), **BU/Entité**, **Responsable**. (Lecture seule, cohérent avec la ligne d’origine.)&#x20;
+* **Bloc “Alertes & rappels”** : liste des notifications déjà **générées** (date/heure, canaux : in‑app/email/Teams).&#x20;
+* **Bloc “Historique (échéance)”** : horodatages des recalculs J‑ (si la durée du contrat a été modifiée, la date d’alerte a été **recalculée**).&#x20;
+* **Liens rapides** : **Voir le contrat**, **Voir toutes les alertes** du contrat.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Aller à la fiche contrat**.
+* **Ouvrir le centre d’alertes** préfiltré sur ce contrat.&#x20;
+* **Fermer** le panneau.
+
+---
+
+## Écran **EC‑3 — Modale “Exporter les échéances”**
+
+### Contenu & composants
+
+* **Titre modale** : « Exporter les échéances ».
+* **Rappel des filtres actifs** (période, type, BU, responsable, statut).
+* **Sélection de colonnes** (cases à cocher) : Contrat, Type, Date d’échéance, J‑, BU/Entité, Responsable, Statut, Canal d’alerte, Dernier envoi.
+* **Format de sortie** : **Excel (.xlsx)** ou **CSV (.csv)**.
+* **Nom de fichier** (pré‑rempli) : `echeances_<AAAAMMJJ>.{xlsx|csv}`.
+* **Note** : « L’export contient **uniquement** les données visibles selon vos droits. »
+* **Pied de modale** : **Annuler**, **Générer l’export**.
+
+### Actions disponibles sur cet écran
+
+* **Générer** le fichier d’export (avec filtres/colonnes appliqués).&#x20;
+* **Annuler**.
+
+---
+
+## Écran **EC‑4 — État vide / erreurs (échéances)**
+
+### Contenu & composants
+
+* **État vide** : illustration + message « Aucune échéance dans l’intervalle ; ajustez vos filtres. ».
+* **Lien d’aide** : « Paramétrer le **délai d’alerte** dans les préférences. » (renvoi vers module alertes).&#x20;
+* **Bannière d’erreur (technique)** : « Erreur de notification : l’échéance reste visible dans la liste, un administrateur est **alerté**. »&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Réinitialiser les filtres** (retour liste).
+* **Accéder aux préférences d’alertes** (pour ajuster X jours).&#x20;
+
+---
+
+> Remarques d’implémentation (visibilité uniquement, sans “comportements” détaillés) :
+> – Les **échéances** sont **détectées quotidiennement**, visibles dans EC‑1, **exportables** (EC‑3) et **notifiées** selon préférences (centre d’alertes).
+> – Les données et colonnes affichées respectent strictement les **droits d’accès** (RBAC).&#x20;
+
+Si ce format convient, dis **« suivant »** et je décris la rubrique suivante avec la même structure (contenu & composants par écran → puis actions).
