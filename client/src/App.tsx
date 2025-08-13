@@ -12,6 +12,7 @@ import Amendments from "@/pages/amendments";
 import Terminations from "@/pages/terminations";
 import Documents from "@/pages/documents";
 import Imports from "@/pages/imports";
+import DataExport from "@/pages/data-export";
 import Security from "@/pages/security";
 import NotFound from "@/pages/not-found";
 
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/terminations" component={Terminations} />
       <Route path="/documents" component={Documents} />
       <Route path="/imports" component={Imports} />
+      <Route path="/data-export" component={DataExport} />
       <Route path="/security" component={Security} />
       <Route component={NotFound} />
     </Switch>

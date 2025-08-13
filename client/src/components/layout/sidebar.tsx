@@ -11,6 +11,7 @@ import {
   Folder,
   Database,
   Shield,
+  Download,
 } from "lucide-react";
 
 const menuItems = [
@@ -55,9 +56,14 @@ const menuItems = [
     icon: Folder,
   },
   {
-    label: "Données import/export",
+    label: "Import de données",
     href: "/imports",
     icon: Database,
+  },
+  {
+    label: "Extraction des données",
+    href: "/data-export",
+    icon: Download,
   },
   {
     label: "Sécurité & Conformité",
