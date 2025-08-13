@@ -240,7 +240,7 @@ export default function Amendments() {
       case "to_validate": return "warning";
       case "draft": return "secondary";
       case "rejected": return "destructive";
-      case "cancelled": return "default";
+      case "cancelled": return "secondary";
       default: return "secondary";
     }
   };
@@ -386,7 +386,7 @@ export default function Amendments() {
                   <Card className="cursor-pointer hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <CheckCircle className="w-6 h-6 text-success" />
+                        <CheckCircle className="w-6 h-6 text-green-600" />
                         <span className="text-2xl font-bold text-gray-900">{kpiData.validated30Days}</span>
                       </div>
                       <p className="text-sm text-gray-600">Validés (30 j)</p>
@@ -822,7 +822,7 @@ export default function Amendments() {
                   <CardContent className="p-4">
                     <h4 className="font-medium mb-2">Résumé du contrat</h4>
                     <div className="text-sm space-y-1">
-                      <div>Statut: <Badge variant="success">Actif</Badge></div>
+                      <div>Statut: <Badge variant="secondary">Actif</Badge></div>
                       <div>Dates: 01/01/2024 - 31/12/2024</div>
                       <div>Montant: 250 000 €</div>
                     </div>
