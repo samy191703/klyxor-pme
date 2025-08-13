@@ -1,0 +1,156 @@
+Super, je te propose **le “Tableau de bord (Admin) — version mise à jour”** décrit **écran par écran** avec la structure que tu préfères : **Contenu & composants** → **Actions disponibles**. J’ai calé chaque KPI et widget sur les règles de gestion (validation obligatoire, échéances, indexations, alertes, RBAC, historisation…), avec drill‑downs vers les rubriques existantes.
+
+---
+
+## Écran **DB‑1 — Tableau de bord (Accueil Admin)**
+
+### Contenu & composants
+
+* **En‑tête global** :
+
+  * **Recherche** globale (contrats / ID / mots‑clés).
+  * **Icône “Cloche”** notifications (badge non lues + panneau des 10 dernières, lien « Tout voir »). Les **alertes critiques** doivent être consultées et sont conservées **1 an**.&#x20;
+  * **Profil & rôle actif** (influence la visibilité des modules, RBAC).&#x20;
+
+* **Barre de filtres (horizontale)** :
+  **Période** (mois en cours / 30 jours / personnalisé), **Entité/BU**, **Type de contrat**, **État** (*Brouillon, À valider, Actif, Résilié, Clôturé*), **Valideur**, **Canal d’alerte** (in‑app/email/Teams). Les contenus visibles **respectent les droits**.
+
+* **Zone KPI (tuiles 3×3)** — chaque tuile affiche **N** + **trend** (J‑7 / M‑1) et un **lien de drill‑down** :
+
+  1. **Contrats à valider** (statut « à valider »). *Aucun contrat n’est actif sans validation.* → ouvre la file de validation.
+  2. **Avenants à valider** (file des avenants). *Seuls les avenants validés impactent le contrat.*&#x20;
+  3. **Résiliations à valider** (demandes en attente + SLA). **Motif obligatoire**.&#x20;
+  4. **Indexations à valider** (calculs soumis) + **Revalorisations auto détectées** (aujourd’hui).
+  5. **Échéances ≤ 30 jours** (fin de contrat, dates anniversaires, fin d’avenant).&#x20;
+  6. **Alertes critiques non lues** (workflow > 24 h, refus, erreurs d’envoi…).&#x20;
+  7. **Erreurs d’intégration (SAP)** détectées (ex. statuts non poussés).
+  8. **Contrats “à valider” sans PJ** (blocage conformité — PJ obligatoire).
+  9. **Mises à jour manuelles en attente** (modif. montant exceptionnelles).&#x20;
+
+* **Widgets (zone centrale, 2 colonnes)** :
+
+  * **W1 — File de validation (toutes natures)** : tableau unifié des éléments à décision (**Type** : Contrat / Avenant / Indexation / Résiliation / Montant, **Contrat**, **Demandeur**, **Valideur assigné**, **Échéance SLA**, **Âge**, **Dernière action**). Les décisions ne s’appliquent qu’après **validation** et sont **tracées**.
+  * **W2 — Échéances à venir (30 j)** : liste triable + mini‑calendrier, badges **J‑30/J‑7/J‑1**. Export possible.&#x20;
+  * **W3 — Indexations : synthèse** :
+    *À traiter ce mois*, *Validées (30 j)*, *Suspendues* (erreur calcul/indice). Sous‑cartes : **Derniers indices récupérés** (*dernière valeur connue définitive*) et **Rapports d’indexation récents** (PDF/Excel).
+  * **W4 — Flux d’alertes** : timeline des événements clés (échéances, refus, workflow > 24 h, erreurs d’envoi), statut de lecture et de transmission.&#x20;
+  * **W5 — Répartition par état** (donut) : *Brouillon / À valider / Actif / Résilié / Clôturé*, avec clic de filtrage.&#x20;
+  * **W6 — Dernières actions (24 h)** : fil d’**historisation** (horodatage, utilisateur, action, avant/après). Non modifiable.&#x20;
+  * **W7 — Conformité documentaire** : liste des **contrats bloqués par PJ manquante** (type accepté, auteur upload, horodatage).
+
+* **Pied d’écran** :
+  **Raccourcis** vers **Exports** (retrouver/retélécharger) et **Paramétrages** (seuils alertes, SLA), avec rappel **RBAC**.
+
+### Actions disponibles sur cet écran
+
+* **Appliquer/Enregistrer un jeu de filtres** (présets Admin).
+* **Drill‑down par tuile** vers la liste correspondante (ex. *Contrats à valider* → module Validation). **La validation est obligatoire avant toute mise à jour d’état/valeur.**
+* **Ouvrir le détail** d’une ligne (side‑panel du module concerné) avec actions métier (valider/rejeter). Toutes les décisions sont **journaliées**.&#x20;
+* **Marquer comme lue / Relancer l’envoi** côté alertes (si droit).&#x20;
+* **Ouvrir un rapport d’indexation** (PDF/Excel) depuis W3.&#x20;
+* **Exporter** les échéances/queues de décision en **Excel/CSV**.
+
+---
+
+## Widget **W1 — File de validation (focus)**
+
+### Contenu & composants
+
+* **Table unifiée** avec badges de **type** et **statut** (*À valider / Rejeté / Validé*), **Contrat**, **Champs impactés** (extrait), **Demandeur**, **Valideur**, **Âge**, **SLA**.
+* **Rappel interface** : *Aucune modification bloquante n’est appliquée sans validation ; rejet **motivé**.*&#x20;
+
+### Actions disponibles
+
+* **Valider / Rejeter** (motif obligatoire si rejet) en ligne ou via panneau.&#x20;
+* **Transférer** la validation (routage) si autorisé.&#x20;
+
+---
+
+## Widget **W2 — Échéances à venir**
+
+### Contenu & composants
+
+* **Liste** triable + **mini‑calendrier**, tags : *Fin de contrat*, *Anniversaire*, *Fin d’avenant*.
+* **Badges** J‑30/J‑7/J‑1 et **canal prévu** (email/Teams).&#x20;
+
+### Actions disponibles
+
+* **Exporter** la vue.&#x20;
+* **Ouvrir** la fiche contrat.
+
+---
+
+## Widget **W3 — Indexations : synthèse**
+
+### Contenu & composants
+
+* **Cartes KPI** : *À valider (mois)*, *Validées (30 j)*, *Suspendues*.
+* **Sous‑bloc “Derniers indices”** : tableau minimal (*Indice*, *Dernière valeur connue définitive*, *Date*).&#x20;
+* **Sous‑bloc “Rapports d’indexation”** : liste des rapports PDF/Excel générés après validation.&#x20;
+
+### Actions disponibles
+
+* **Accéder** à la liste des indexations à valider.&#x20;
+* **Télécharger** un rapport.&#x20;
+
+---
+
+## Widget **W4 — Flux d’alertes**
+
+### Contenu & composants
+
+* **Timeline** (horodatage, type, gravité, message court, contrat, **statut d’envoi** in‑app/email/Teams, **statut de lecture**).&#x20;
+
+### Actions disponibles
+
+* **Marquer comme lue / non lue**, **Relancer l’envoi** (si échec), **Ouvrir le contexte** (contrat/indexation/workflow).&#x20;
+
+---
+
+## Widget **W5 — Répartition par état**
+
+### Contenu & composants
+
+* **Camembert** : *Brouillon / À valider / Actif / Résilié / Clôturé*. Les **actions disponibles** dans l’outil varient selon l’état.&#x20;
+
+### Actions disponibles
+
+* **Cliquer** un segment → filtre la page sur l’état choisi.&#x20;
+
+---
+
+## Widget **W6 — Dernières actions (24 h)**
+
+### Contenu & composants
+
+* **Fil d’audit** : *Date/heure, Utilisateur, Action, Champs, Avant/Après, Trace‑ID*. **Non modifiable**.&#x20;
+
+### Actions disponibles
+
+* **Filtrer** (type d’action / utilisateur), **Ouvrir** la fiche contrat.&#x20;
+
+---
+
+## Widget **W7 — Conformité documentaire**
+
+### Contenu & composants
+
+* **Liste** des **contrats “à valider” sans PJ** (*type requis*, **formats autorisés**), auteur de l’upload attendu. **Une PJ est obligatoire pour valider**.
+
+### Actions disponibles
+
+* **Ajouter une pièce jointe** (ouvre l’onglet Documents de la fiche), **Rafraîchir** l’état.&#x20;
+
+---
+
+### Notes de conception (rappels non‑comportementaux)
+
+* **Validation obligatoire** (contrats, avenants, indexations, MAJ montants, résiliations) avant tout impact.
+* **RBAC partout** : visibilité des KPI, widgets, colonnes et actions selon rôles.&#x20;
+* **Historisation intégrale & non modifiable** : toute action est loguée et consultable.&#x20;
+* **Indexations** : détection automatique, indices **dernière valeur connue définitive**, rapports à chaque validation.
+* **Échéances** : détection quotidienne + alertes J‑30/J‑7/J‑1, export possible.&#x20;
+
+---
+
+Si tu veux, je peux **générer ce tableau de bord en .DOCX** (sections, KPI, widgets, définitions, liens vers les rubriques) pour le remettre tel quel au designer (Figma/XD). Dis‑moi « **export docx** » et je te fournis le fichier téléchargeable.
