@@ -25,8 +25,11 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Contract } from "@shared/schema";
+import { AIHelpBubble } from "@/components/ai-help/ai-help-bubble";
+import { useAIHelp } from "@/components/ai-help/context-provider";
 
 export default function Contracts() {
+  const { setPage } = useAIHelp();
   const [activeTab, setActiveTab] = useState("list");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -189,6 +192,21 @@ export default function Contracts() {
         
         <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="contracts-main">
           <div className="max-w-7xl mx-auto">
+            {/* Page Title with AI Help */}
+            <div className="mb-6 relative">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 hidden lg:block">Gestion des contrats</h1>
+              <AIHelpBubble
+                title="Besoin d'aide avec les contrats ?"
+                triggerClassName="absolute -top-2 -right-2 lg:top-0 lg:right-0"
+                contextData={{
+                  page: 'contracts',
+                  totalContracts: contracts.length,
+                  toValidate: kpis.toValidate,
+                  activeContracts: kpis.active
+                }}
+              />
+            </div>
+
             {/* GC-1: Liste des contrats */}
             {!showWizard ? (
               <Tabs value={activeTab} onValueChange={setActiveTab}>

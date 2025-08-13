@@ -15,6 +15,7 @@ import Imports from "@/pages/imports";
 import DataExport from "@/pages/data-export";
 import Security from "@/pages/security";
 import NotFound from "@/pages/not-found";
+import { AIHelpProvider } from "@/components/ai-help/context-provider";
 
 function Router() {
   return (
@@ -39,8 +40,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <AIHelpProvider initialPage="dashboard">
+          <Toaster />
+          <Router />
+        </AIHelpProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

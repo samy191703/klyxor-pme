@@ -28,6 +28,8 @@ import {
   ChevronRight, Eye, Check, X, Send, MoreVertical, Plus
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { AIHelpBubble } from "@/components/ai-help/ai-help-bubble";
+import { useAIHelp } from "@/components/ai-help/context-provider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -121,6 +123,7 @@ interface Notification {
 
 export default function Dashboard() {
   const [location] = useLocation();
+  const { setPage } = useAIHelp();
   const [periodFilter, setPeriodFilter] = useState("current_month");
   const [entityFilter, setEntityFilter] = useState("all");
   const [contractTypeFilter, setContractTypeFilter] = useState("all");
@@ -487,8 +490,18 @@ export default function Dashboard() {
         <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="dashboard-main">
           <div className="max-w-[1600px] mx-auto">
             {/* Page Title */}
-            <div className="mb-4 lg:mb-6">
+            <div className="mb-4 lg:mb-6 relative">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Tableau de bord</h1>
+              <AIHelpBubble
+                title="Besoin d'aide avec le tableau de bord ?"
+                triggerClassName="absolute -top-2 -right-2 lg:top-0 lg:right-0"
+                contextData={{
+                  page: 'dashboard',
+                  contractsToValidate: kpiData.contractsToValidate,
+                  deadlinesCount: kpiData.deadlinesIn30Days,
+                  criticalAlerts: kpiData.criticalAlerts
+                }}
+              />
             </div>
 
             {/* Filters Bar */}

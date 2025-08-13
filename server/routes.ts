@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import aiHelpRouter from "./routes/ai-help";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get KPIs
@@ -169,6 +170,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch indexations" });
     }
   });
+
+  // AI Help routes
+  app.use('/api/ai-help', aiHelpRouter);
 
   const httpServer = createServer(app);
   return httpServer;
