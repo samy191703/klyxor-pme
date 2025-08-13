@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import Sidebar from "@/components/layout/sidebar";
-import Header from "@/components/layout/header";
+import MobileNav from "@/components/layout/mobile-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,9 +180,14 @@ export default function Contracts() {
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 lg:hidden">
+          <div className="flex items-center justify-between">
+            <MobileNav />
+            <h1 className="text-lg font-semibold">Gestion des contrats</h1>
+          </div>
+        </header>
         
-        <main className="flex-1 overflow-y-auto p-6" data-testid="contracts-main">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="contracts-main">
           <div className="max-w-7xl mx-auto">
             {/* GC-1: Liste des contrats */}
             {!showWizard ? (
@@ -194,12 +199,12 @@ export default function Contracts() {
 
                 <TabsContent value="list" className="space-y-6">
                   {/* Titre */}
-                  <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900">Contrats</h1>
+                  <div className="mb-4 lg:mb-6">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Contrats</h1>
                   </div>
 
                   {/* Tuiles KPI */}
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4 mb-4 lg:mb-6">
                     <Card>
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-2">

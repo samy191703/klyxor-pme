@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import Sidebar from "@/components/layout/sidebar";
-import Header from "@/components/layout/header";
+import MobileNav from "@/components/layout/mobile-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -209,9 +209,14 @@ export default function Indexations() {
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 lg:hidden">
+          <div className="flex items-center justify-between">
+            <MobileNav />
+            <h1 className="text-lg font-semibold">Indexations & rapports</h1>
+          </div>
+        </header>
         
-        <main className="flex-1 overflow-y-auto p-6" data-testid="indexations-main">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="indexations-main">
           <div className="max-w-7xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-6">

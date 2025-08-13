@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
-import Header from "@/components/layout/header";
+import MobileNav from "@/components/layout/mobile-nav";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -385,15 +385,18 @@ export default function Dashboard() {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Custom Header with Search and Notifications */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
+          <div className="flex items-center justify-between gap-4">
+            {/* Mobile Menu */}
+            <MobileNav />
+            
             {/* Global Search */}
             <div className="flex-1 max-w-xl">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   type="text"
-                  placeholder="Recherche globale (contrats / ID / mots-clés)..."
+                  placeholder="Recherche..."
                   value={globalSearch}
                   onChange={(e) => setGlobalSearch(e.target.value)}
                   className="pl-10 w-full"
@@ -402,7 +405,7 @@ export default function Dashboard() {
             </div>
 
             {/* Notifications and Profile */}
-            <div className="flex items-center gap-4 ml-6">
+            <div className="flex items-center gap-2 sm:gap-4">
               {/* Notifications */}
               <Sheet open={showNotifications} onOpenChange={setShowNotifications}>
                 <SheetTrigger asChild>
@@ -461,7 +464,7 @@ export default function Dashboard() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="flex items-center gap-2">
                     <User className="w-5 h-5" />
-                    <span className="text-sm">Admin</span>
+                    <span className="hidden sm:inline text-sm">Admin</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -481,17 +484,17 @@ export default function Dashboard() {
           </div>
         </header>
         
-        <main className="flex-1 overflow-y-auto p-6" data-testid="dashboard-main">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="dashboard-main">
           <div className="max-w-[1600px] mx-auto">
             {/* Page Title */}
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">Tableau de bord (Accueil Admin)</h1>
+            <div className="mb-4 lg:mb-6">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Tableau de bord</h1>
             </div>
 
             {/* Filters Bar */}
-            <Card className="mb-6">
-              <CardContent className="p-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Card className="mb-4 lg:mb-6">
+              <CardContent className="p-3 lg:p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 lg:gap-3">
                   <Select value={periodFilter} onValueChange={setPeriodFilter}>
                     <SelectTrigger>
                       <SelectValue placeholder="Période" />
@@ -581,7 +584,7 @@ export default function Dashboard() {
             </Card>
 
             {/* KPI Grid (3x3) - DB-1 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-4 lg:mb-6">
               {/* KPI 1: Contrats à valider */}
               <Card className="cursor-pointer hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
@@ -728,7 +731,7 @@ export default function Dashboard() {
             </div>
 
             {/* Widgets Grid (2 columns) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
               {/* W1 - File de validation unifiée */}
               <Card className="lg:col-span-2">
                 <CardHeader>
@@ -738,8 +741,8 @@ export default function Dashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <Table>
+                  <div className="overflow-x-auto -mx-3 lg:mx-0">
+                    <Table className="min-w-[800px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Type</TableHead>

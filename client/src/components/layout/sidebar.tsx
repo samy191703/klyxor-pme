@@ -76,7 +76,7 @@ export default function Sidebar() {
   const [location] = useLocation();
 
   return (
-    <div className="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col" data-testid="sidebar">
+    <div className="hidden lg:flex w-64 bg-white shadow-lg border-r border-gray-200 flex-col" data-testid="sidebar">
       {/* Logo/Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
