@@ -53,17 +53,33 @@ export const validationRequests = pgTable("validation_requests", {
 export const indexations = pgTable("indexations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   contractId: varchar("contract_id").notNull(),
+  contractNumber: text("contract_number").notNull(),
+  contractTitle: text("contract_title").notNull(),
+  indexationDate: timestamp("indexation_date").notNull(),
+  frequency: text("frequency").notNull(), // Annuelle, Trimestrielle, Semestrielle, Mensuelle
+  formula: text("formula").notNull(), // ICC, ILC, IRL, BT01, FM0A, Personnalisée
+  indexKey: text("index_key").notNull(), // BT01, FM0A, etc.
+  source: text("source").notNull(), // INSEE, Eurostat, Banque de France
+  businessUnit: text("business_unit").notNull(),
+  responsible: text("responsible"),
   periodFrom: timestamp("period_from").notNull(),
   periodTo: timestamp("period_to").notNull(),
-  formula: text("formula").notNull(),
+  originalIndexDate: timestamp("original_index_date"),
+  revisionIndexDate: timestamp("revision_index_date"),
   indices: jsonb("indices").notNull(), // array of {code, valueN1, valueN, source, date}
   oldAmount: decimal("old_amount", { precision: 15, scale: 2 }).notNull(),
   newAmount: decimal("new_amount", { precision: 15, scale: 2 }).notNull(),
+  previousAmount: decimal("previous_amount", { precision: 15, scale: 2 }),
+  proposedAmount: decimal("proposed_amount", { precision: 15, scale: 2 }),
   deltaAmount: decimal("delta_amount", { precision: 15, scale: 2 }).notNull(),
   deltaPercentage: decimal("delta_percentage", { precision: 5, scale: 2 }).notNull(),
-  status: text("status").notNull().default("pending"), // pending, validated, rejected
+  status: text("status").notNull().default("to_calculate"), // to_calculate, pending, validated, rejected, error, waiting_index
+  assignedValidator: text("assigned_validator"),
   validatedBy: varchar("validated_by"),
+  validatedAt: timestamp("validated_at"),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
 // Deadlines table
