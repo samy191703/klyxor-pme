@@ -355,7 +355,7 @@ export default function Documents() {
 
             {/* GD-3: Modale "Ajouter un document" */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Ajouter un document</DialogTitle>
                 </DialogHeader>
@@ -444,7 +444,7 @@ export default function Documents() {
 
             {/* GD-4: Panneau latéral "Détails du document" */}
             <Sheet open={showDetailsPanel} onOpenChange={setShowDetailsPanel}>
-              <SheetContent className="w-[400px] sm:w-[540px]">
+              <SheetContent className="w-full sm:max-w-[90vw] md:max-w-[540px] lg:max-w-[600px] overflow-y-auto">
                 {selectedDocument && (
                   <>
                     <SheetHeader>
@@ -513,7 +513,7 @@ export default function Documents() {
 
             {/* GD-5: Prévisualisation du document */}
             <Dialog open={showPreview} onOpenChange={setShowPreview}>
-              <DialogContent className="max-w-4xl h-[80vh]">
+              <DialogContent className="w-[95vw] max-w-4xl h-[80vh] overflow-y-auto">
                 {selectedDocument && (
                   <>
                     <DialogHeader>

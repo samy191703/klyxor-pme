@@ -888,7 +888,7 @@ export default function Contracts() {
 
             {/* GC-3: Fiche contrat (Sheet) */}
             <Sheet open={showContractDetails} onOpenChange={setShowContractDetails}>
-              <SheetContent className="w-[800px] overflow-y-auto">
+              <SheetContent className="w-full sm:max-w-[90vw] md:max-w-[600px] lg:max-w-[800px] overflow-y-auto">
                 {selectedContract && (
                   <>
                     <SheetHeader>
@@ -914,7 +914,7 @@ export default function Contracts() {
 
                     <div className="mt-6 space-y-6">
                       {/* Cartes récap' */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Card>
                           <CardHeader className="pb-2">
                             <CardTitle className="text-sm">Prochaines échéances</CardTitle>
@@ -1013,7 +1013,7 @@ export default function Contracts() {
 
             {/* GC-4: Modale Valider/Rejeter */}
             <Dialog open={showValidationModal} onOpenChange={setShowValidationModal}>
-              <DialogContent>
+              <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Valider / Rejeter le contrat</DialogTitle>
                 </DialogHeader>

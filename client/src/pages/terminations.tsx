@@ -957,7 +957,7 @@ export default function Terminations() {
 
       {/* RE-3 - New Termination Dialog (Assistant) */}
       <Dialog open={showNewTerminationDialog} onOpenChange={setShowNewTerminationDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nouvelle résiliation</DialogTitle>
             <Progress value={(currentStep / 3) * 100} className="mt-2" />
@@ -1147,7 +1147,7 @@ export default function Terminations() {
 
       {/* RE-2 - Termination Detail Panel */}
       <Sheet open={showDetailPanel} onOpenChange={setShowDetailPanel}>
-        <SheetContent className="w-[600px] overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-[90vw] md:max-w-[600px] lg:max-w-[700px] overflow-y-auto">
           {selectedTermination && (
             <>
               <SheetHeader>
@@ -1334,7 +1334,7 @@ export default function Terminations() {
 
       {/* RE-4 - Validation Modal */}
       <Dialog open={showValidationModal} onOpenChange={setShowValidationModal}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {validationDecision === 'validate' ? 'Valider' : 'Rejeter'} la résiliation

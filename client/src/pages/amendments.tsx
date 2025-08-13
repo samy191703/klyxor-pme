@@ -803,7 +803,7 @@ export default function Amendments() {
 
       {/* AV-2 - New Amendment Dialog (Assistant pas-à-pas) */}
       <Dialog open={showNewAmendmentDialog} onOpenChange={setShowNewAmendmentDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nouvel avenant</DialogTitle>
             <Progress value={(currentStep / 4) * 100} className="mt-2" />
@@ -1017,7 +1017,7 @@ export default function Amendments() {
 
       {/* AV-3 - Amendment Detail Panel */}
       <Sheet open={showDetailPanel} onOpenChange={setShowDetailPanel}>
-        <SheetContent className="w-[600px] overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-[90vw] md:max-w-[600px] lg:max-w-[700px] overflow-y-auto">
           {selectedAmendment && (
             <>
               <SheetHeader>
@@ -1203,7 +1203,7 @@ export default function Amendments() {
 
       {/* AV-4 - Validation Modal */}
       <Dialog open={showValidationModal} onOpenChange={setShowValidationModal}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {validationDecision === 'validate' ? 'Valider' : 'Rejeter'} l'avenant

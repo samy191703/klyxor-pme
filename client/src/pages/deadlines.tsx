@@ -446,7 +446,7 @@ export default function Deadlines() {
 
             {/* EC-2: Panneau latéral - Détail d'une échéance */}
             <Sheet open={showDetailsPanel} onOpenChange={setShowDetailsPanel}>
-              <SheetContent className="w-[500px]">
+              <SheetContent className="w-full sm:max-w-[90vw] md:max-w-[500px] lg:max-w-[600px] overflow-y-auto">
                 {selectedDeadline && (
                   <>
                     <SheetHeader>
@@ -561,7 +561,7 @@ export default function Deadlines() {
 
             {/* EC-3: Modale "Exporter les échéances" */}
             <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
-              <DialogContent className="sm:max-w-[500px]">
+              <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Exporter les échéances</DialogTitle>
                 </DialogHeader>

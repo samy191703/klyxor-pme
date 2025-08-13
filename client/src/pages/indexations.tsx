@@ -982,7 +982,7 @@ export default function Indexations() {
 
             {/* IX-2: Détail d'une indexation (Sheet) */}
             <Sheet open={showIndexationDetails} onOpenChange={setShowIndexationDetails}>
-              <SheetContent className="w-[600px] overflow-y-auto">
+              <SheetContent className="w-full sm:max-w-[90vw] md:max-w-[600px] lg:max-w-[700px] overflow-y-auto">
                 {selectedIndexation && (
                   <>
                     <SheetHeader>
@@ -1159,7 +1159,7 @@ export default function Indexations() {
 
             {/* IX-3: Modale Recalculer */}
             <Dialog open={showRecalculateModal} onOpenChange={setShowRecalculateModal}>
-              <DialogContent>
+              <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Recalculer l'indexation</DialogTitle>
                 </DialogHeader>
@@ -1210,7 +1210,7 @@ export default function Indexations() {
 
             {/* IX-4: Modale Valider/Rejeter */}
             <Dialog open={showValidationModal} onOpenChange={setShowValidationModal}>
-              <DialogContent>
+              <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Valider / Rejeter l'indexation</DialogTitle>
                 </DialogHeader>

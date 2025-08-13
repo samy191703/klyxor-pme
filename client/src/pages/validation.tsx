@@ -804,7 +804,7 @@ export default function Validation() {
 
             {/* WF-2: Panneau latéral - Détail d'une demande */}
             <Sheet open={showDetailsPanel} onOpenChange={setShowDetailsPanel}>
-              <SheetContent className="w-[600px] overflow-y-auto">
+              <SheetContent className="w-full sm:max-w-[90vw] md:max-w-[600px] lg:max-w-[700px] overflow-y-auto">
                 {selectedRequest && (
                   <>
                     <SheetHeader>
