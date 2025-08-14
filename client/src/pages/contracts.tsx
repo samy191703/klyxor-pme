@@ -121,7 +121,17 @@ export default function Contracts() {
   };
 
   const businessUnits = [...new Set(contracts.map(c => c.businessUnit))];
-  const contractTypes = ["Achat", "Vente", "Service", "Maintenance", "Licence", "Location"];
+  const contractTypes = [
+    "Fourniture Électricité",
+    "Fourniture Gaz",
+    "Production Renouvelable",
+    "Maintenance Infrastructure",
+    "Services Énergétiques",
+    "Trading Énergie",
+    "Distribution Réseau",
+    "Contrat PPA",
+    "Smart Grid"
+  ];
 
   const handleCreateContract = () => {
     setShowWizard(true);

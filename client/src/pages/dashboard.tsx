@@ -192,16 +192,16 @@ export default function Dashboard() {
     }
   ];
 
-  // Mock validation queue data
+  // ENGIE validation queue data
   const validationQueue: ValidationItem[] = [
     {
       id: "val-1",
       type: 'contract',
-      contractNumber: "CNT-2024-001",
-      contractTitle: "Maintenance informatique",
-      impactedFields: "Montant, Durée",
-      requestedBy: "Marie Dupont",
-      assignedValidator: "Jean Martin",
+      contractNumber: "ENG-2024-001",
+      contractTitle: "Fourniture électricité site Lyon Confluence",
+      impactedFields: "Puissance, Tarif",
+      requestedBy: "Marie Leclerc",
+      assignedValidator: "Pierre Durand",
       slaDue: new Date(Date.now() + 3600000),
       age: 18,
       lastAction: "Soumis à validation",
@@ -210,11 +210,11 @@ export default function Dashboard() {
     {
       id: "val-2",
       type: 'amendment',
-      contractNumber: "CNT-2024-002",
-      contractTitle: "Location bureaux",
-      impactedFields: "Date de fin",
-      requestedBy: "Pierre Durand",
-      assignedValidator: "Sophie Bernard",
+      contractNumber: "ENG-2023-045",
+      contractTitle: "Extension parc éolien +10MW",
+      impactedFields: "Capacité production",
+      requestedBy: "Thomas Dubois",
+      assignedValidator: "Sophie Martin",
       slaDue: new Date(Date.now() + 7200000),
       age: 12,
       lastAction: "En cours de révision",
@@ -223,23 +223,23 @@ export default function Dashboard() {
     {
       id: "val-3",
       type: 'indexation',
-      contractNumber: "CNT-2024-003",
-      contractTitle: "Services de nettoyage",
-      impactedFields: "Montant indexé",
+      contractNumber: "ENG-2023-089",
+      contractTitle: "Trading gaz naturel - Hub PEG",
+      impactedFields: "Prix indexé",
       requestedBy: "Système",
-      assignedValidator: "Jean Martin",
+      assignedValidator: "Jean Duval",
       slaDue: new Date(Date.now() + 86400000),
       age: 2,
       status: 'pending'
     }
   ];
 
-  // Mock deadlines data
+  // ENGIE deadlines data
   const upcomingDeadlines: DeadlineItem[] = [
     {
       id: "ddl-1",
-      contractNumber: "CNT-2024-005",
-      contractTitle: "Fournitures de bureau",
+      contractNumber: "ENG-2023-089",
+      contractTitle: "Trading gaz naturel - Hub PEG",
       type: 'contract_end',
       date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       daysRemaining: 7,
@@ -247,8 +247,8 @@ export default function Dashboard() {
     },
     {
       id: "ddl-2",
-      contractNumber: "CNT-2024-008",
-      contractTitle: "Transport logistique",
+      contractNumber: "ENG-2024-012",
+      contractTitle: "Contrat PPA solaire 25MW",
       type: 'anniversary',
       date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       daysRemaining: 15,
@@ -256,8 +256,8 @@ export default function Dashboard() {
     },
     {
       id: "ddl-3",
-      contractNumber: "CNT-2024-012",
-      contractTitle: "Consulting RH",
+      contractNumber: "ENG-2023-045",
+      contractTitle: "Maintenance parc éolien",
       type: 'amendment_end',
       date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       daysRemaining: 30,
@@ -265,15 +265,15 @@ export default function Dashboard() {
     }
   ];
 
-  // Mock alerts data
+  // ENGIE alerts data
   const alertsFeed: Alert[] = [
     {
       id: "alert-1",
       timestamp: new Date(Date.now() - 1800000),
       type: 'workflow',
       severity: 'critical',
-      message: "Workflow de validation en attente depuis plus de 24h",
-      contractNumber: "CNT-2024-001",
+      message: "Validation contrat électricité en attente depuis 24h",
+      contractNumber: "ENG-2024-001",
       sendStatus: 'sent',
       readStatus: false,
       channel: 'in-app'
@@ -283,8 +283,8 @@ export default function Dashboard() {
       timestamp: new Date(Date.now() - 3600000),
       type: 'deadline',
       severity: 'warning',
-      message: "Échéance dans 7 jours pour CNT-2024-005",
-      contractNumber: "CNT-2024-005",
+      message: "Renouvellement contrat gaz dans 7 jours",
+      contractNumber: "ENG-2023-089",
       sendStatus: 'sent',
       readStatus: true,
       channel: 'email'
@@ -294,7 +294,7 @@ export default function Dashboard() {
       timestamp: new Date(Date.now() - 7200000),
       type: 'integration',
       severity: 'critical',
-      message: "Erreur de synchronisation SAP",
+      message: "Erreur synchronisation système GEMS",
       sendStatus: 'failed',
       readStatus: false,
       channel: 'teams'
@@ -375,7 +375,7 @@ export default function Dashboard() {
 
   const getDeadlineBadge = (days: number) => {
     if (days <= 1) return <Badge variant="destructive">J-{days}</Badge>;
-    if (days <= 7) return <Badge variant="warning">J-{days}</Badge>;
+    if (days <= 7) return <Badge variant="secondary" className="bg-orange-100 text-orange-700">J-{days}</Badge>;
     if (days <= 30) return <Badge variant="secondary">J-{days}</Badge>;
     return null;
   };
@@ -493,7 +493,6 @@ export default function Dashboard() {
             <div className="mb-4 lg:mb-6 relative">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Tableau de bord</h1>
               <AIHelpBubble
-                title="Besoin d'aide avec le tableau de bord ?"
                 triggerClassName="absolute -top-2 -right-2 lg:top-0 lg:right-0"
                 contextData={{
                   page: 'dashboard',
@@ -525,8 +524,10 @@ export default function Dashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Toutes</SelectItem>
-                      <SelectItem value="bu_france">BU France</SelectItem>
-                      <SelectItem value="bu_international">BU International</SelectItem>
+                      <SelectItem value="solutions_france">ENGIE Solutions France</SelectItem>
+                      <SelectItem value="engie_green">ENGIE Green</SelectItem>
+                      <SelectItem value="gem">ENGIE Global Energy Management</SelectItem>
+                      <SelectItem value="engie_flex">ENGIE Flex</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -536,9 +537,11 @@ export default function Dashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous</SelectItem>
-                      <SelectItem value="purchase">Achat</SelectItem>
-                      <SelectItem value="sale">Vente</SelectItem>
-                      <SelectItem value="service">Service</SelectItem>
+                      <SelectItem value="electricity">Fourniture Électricité</SelectItem>
+                      <SelectItem value="gas">Fourniture Gaz</SelectItem>
+                      <SelectItem value="renewable">Production Renouvelable</SelectItem>
+                      <SelectItem value="maintenance">Maintenance Infrastructure</SelectItem>
+                      <SelectItem value="trading">Trading Énergie</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -1024,7 +1027,9 @@ export default function Dashboard() {
                                 <p className="text-xs text-gray-500 mt-1">Contrat : {alert.contractNumber}</p>
                               )}
                               <div className="flex items-center gap-3 mt-2">
-                                <Badge variant={alert.sendStatus === 'sent' ? 'success' : alert.sendStatus === 'failed' ? 'destructive' : 'secondary'} className="text-xs">
+                                <Badge 
+                                  variant={alert.sendStatus === 'failed' ? 'destructive' : 'secondary'} 
+                                  className={alert.sendStatus === 'sent' ? 'bg-green-100 text-green-700 text-xs' : 'text-xs'}>
                                   {alert.channel}
                                 </Badge>
                                 {!alert.readStatus && (
