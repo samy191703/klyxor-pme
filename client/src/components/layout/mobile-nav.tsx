@@ -94,13 +94,16 @@ export default function MobileNav() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-[280px] sm:w-[350px] p-0">
-        <SheetHeader className="p-6 border-b">
+        <SheetHeader className="p-6 border-b bg-gradient-to-r from-green-50 to-blue-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <FileText className="w-4 h-4 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-sm">kOR</span>
               </div>
-              <SheetTitle className="text-xl font-bold">CLM Admin</SheetTitle>
+              <div>
+                <SheetTitle className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">klyxOR</SheetTitle>
+                <p className="text-xs text-gray-600">Contract Management • ENGIE</p>
+              </div>
             </div>
             <Button
               variant="ghost"
