@@ -602,32 +602,32 @@ export default function Dashboard() {
             {/* KPI Grid (3x3) - DB-1 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-4 lg:mb-6">
               {/* KPI 1: Contrats à valider */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-[#04324c]">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <FileText className="w-8 h-8 text-blue-500" />
+                    <FileText className="w-8 h-8 text-[#04324c]" />
                     <div className="flex items-center gap-1">
                       {getTrendIcon(kpiData.trends.contractsToValidate)}
                       <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.contractsToValidate)}%</span>
                     </div>
                   </div>
-                  <div className="text-2xl font-bold">{kpiData.contractsToValidate}</div>
+                  <div className="text-2xl font-bold text-[#04324c]">{kpiData.contractsToValidate}</div>
                   <p className="text-sm text-gray-600">Contrats à valider</p>
                   <p className="text-xs text-gray-400 mt-1">Aucun contrat n'est actif sans validation</p>
                 </CardContent>
               </Card>
 
               {/* KPI 2: Avenants à valider */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-[#d5b352]">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <Edit className="w-8 h-8 text-purple-500" />
+                    <Edit className="w-8 h-8 text-[#d5b352]" />
                     <div className="flex items-center gap-1">
                       {getTrendIcon(kpiData.trends.amendmentsToValidate)}
                       <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.amendmentsToValidate)}%</span>
                     </div>
                   </div>
-                  <div className="text-2xl font-bold">{kpiData.amendmentsToValidate}</div>
+                  <div className="text-2xl font-bold text-[#d5b352]">{kpiData.amendmentsToValidate}</div>
                   <p className="text-sm text-gray-600">Avenants à valider</p>
                   <p className="text-xs text-gray-400 mt-1">Seuls les avenants validés impactent le contrat</p>
                 </CardContent>
@@ -650,16 +650,16 @@ export default function Dashboard() {
               </Card>
 
               {/* KPI 4: Indexations à valider */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-[#04324c]">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <TrendingUp className="w-8 h-8 text-green-500" />
+                    <TrendingUp className="w-8 h-8 text-[#04324c]" />
                     <div className="flex items-center gap-1">
                       {getTrendIcon(kpiData.trends.indexationsToValidate)}
                       <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.indexationsToValidate)}%</span>
                     </div>
                   </div>
-                  <div className="text-2xl font-bold">{kpiData.indexationsToValidate}</div>
+                  <div className="text-2xl font-bold text-[#04324c]">{kpiData.indexationsToValidate}</div>
                   <p className="text-sm text-gray-600">Indexations à valider</p>
                   <p className="text-xs text-gray-400 mt-1">+ Revalorisations auto détectées</p>
                 </CardContent>

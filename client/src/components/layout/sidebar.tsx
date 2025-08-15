@@ -78,13 +78,13 @@ export default function Sidebar() {
   return (
     <div className="hidden lg:flex w-64 bg-white shadow-lg border-r border-gray-200 flex-col" data-testid="sidebar">
       {/* Logo/Header */}
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+      <div className="p-6 border-b border-gray-200 bg-gradient-to-br from-[#04324c]/5 via-[#d5b352]/10 to-[#04324c]/5">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-[#04324c] rounded-lg flex items-center justify-center shadow-lg">
-            <span className="text-[#eff0ed] font-bold text-sm">kOR</span>
+          <div className="w-10 h-10 bg-gradient-to-br from-[#04324c] to-[#002a47] rounded-lg flex items-center justify-center shadow-lg border-2 border-[#d5b352]">
+            <span className="text-[#d5b352] font-bold text-sm">kOR</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#04324c]">klyxOR</h1>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-[#04324c] to-[#d5b352] bg-clip-text text-transparent">klyxOR</h1>
             <p className="text-xs text-[#002a47]">Contract Management • ENGIE</p>
           </div>
         </div>
@@ -103,8 +103,8 @@ export default function Sidebar() {
               className={cn(
                 "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
                 isActive
-                  ? "bg-[#04324c]/10 text-[#04324c] border border-[#04324c]/20 font-semibold"
-                  : "text-gray-700 hover:bg-[#04324c]/5"
+                  ? "bg-gradient-to-r from-[#04324c]/10 to-[#d5b352]/10 text-[#04324c] border-l-4 border-l-[#d5b352] font-semibold"
+                  : "text-gray-700 hover:bg-gradient-to-r hover:from-[#04324c]/5 hover:to-[#d5b352]/5"
               )}
               data-testid={`nav-${item.href.replace('/', '') || 'dashboard'}`}
             >
