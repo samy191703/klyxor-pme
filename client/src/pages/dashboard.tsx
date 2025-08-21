@@ -192,12 +192,12 @@ export default function Dashboard() {
     }
   ];
 
-  // ENGIE validation queue data
+  // klyxOR validation queue data
   const validationQueue: ValidationItem[] = [
     {
       id: "val-1",
       type: 'contract',
-      contractNumber: "ENG-2024-001",
+      contractNumber: "KLX-2024-001",
       contractTitle: "Fourniture électricité site Lyon Confluence",
       impactedFields: "Puissance, Tarif",
       requestedBy: "Marie Leclerc",
@@ -210,7 +210,7 @@ export default function Dashboard() {
     {
       id: "val-2",
       type: 'amendment',
-      contractNumber: "ENG-2023-045",
+      contractNumber: "KLX-2023-045",
       contractTitle: "Extension parc éolien +10MW",
       impactedFields: "Capacité production",
       requestedBy: "Thomas Dubois",
@@ -223,7 +223,7 @@ export default function Dashboard() {
     {
       id: "val-3",
       type: 'indexation',
-      contractNumber: "ENG-2023-089",
+      contractNumber: "KLX-2023-089",
       contractTitle: "Trading gaz naturel - Hub PEG",
       impactedFields: "Prix indexé",
       requestedBy: "Système",
@@ -234,11 +234,11 @@ export default function Dashboard() {
     }
   ];
 
-  // ENGIE deadlines data
+  // klyxOR deadlines data
   const upcomingDeadlines: DeadlineItem[] = [
     {
       id: "ddl-1",
-      contractNumber: "ENG-2023-089",
+      contractNumber: "KLX-2023-089",
       contractTitle: "Trading gaz naturel - Hub PEG",
       type: 'contract_end',
       date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -247,7 +247,7 @@ export default function Dashboard() {
     },
     {
       id: "ddl-2",
-      contractNumber: "ENG-2024-012",
+      contractNumber: "KLX-2024-012",
       contractTitle: "Contrat PPA solaire 25MW",
       type: 'anniversary',
       date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
@@ -256,7 +256,7 @@ export default function Dashboard() {
     },
     {
       id: "ddl-3",
-      contractNumber: "ENG-2023-045",
+      contractNumber: "KLX-2023-045",
       contractTitle: "Maintenance parc éolien",
       type: 'amendment_end',
       date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -265,7 +265,7 @@ export default function Dashboard() {
     }
   ];
 
-  // ENGIE alerts data
+  // klyxOR alerts data
   const alertsFeed: Alert[] = [
     {
       id: "alert-1",
@@ -273,7 +273,7 @@ export default function Dashboard() {
       type: 'workflow',
       severity: 'critical',
       message: "Validation contrat électricité en attente depuis 24h",
-      contractNumber: "ENG-2024-001",
+      contractNumber: "KLX-2024-001",
       sendStatus: 'sent',
       readStatus: false,
       channel: 'in-app'
@@ -284,7 +284,7 @@ export default function Dashboard() {
       type: 'deadline',
       severity: 'warning',
       message: "Renouvellement contrat gaz dans 7 jours",
-      contractNumber: "ENG-2023-089",
+      contractNumber: "KLX-2023-089",
       sendStatus: 'sent',
       readStatus: true,
       channel: 'email'
@@ -294,7 +294,7 @@ export default function Dashboard() {
       timestamp: new Date(Date.now() - 7200000),
       type: 'integration',
       severity: 'critical',
-      message: "Erreur synchronisation système GEMS",
+      message: "Erreur synchronisation système KLMS",
       sendStatus: 'failed',
       readStatus: false,
       channel: 'teams'
@@ -524,10 +524,10 @@ export default function Dashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Toutes</SelectItem>
-                      <SelectItem value="solutions_france">ENGIE Solutions France</SelectItem>
-                      <SelectItem value="engie_green">ENGIE Green</SelectItem>
-                      <SelectItem value="gem">ENGIE Global Energy Management</SelectItem>
-                      <SelectItem value="engie_flex">ENGIE Flex</SelectItem>
+                      <SelectItem value="solutions_france">klyxOR Solutions France</SelectItem>
+                      <SelectItem value="klyxor_green">klyxOR Green</SelectItem>
+                      <SelectItem value="gem">klyxOR Global Energy Management</SelectItem>
+                      <SelectItem value="klyxor_flex">klyxOR Flex</SelectItem>
                     </SelectContent>
                   </Select>
 

@@ -96,26 +96,26 @@ export class MemStorage implements IStorage {
   }
 
   private seedData() {
-    // Seed admin user - ENGIE
+    // Seed admin user - klyxOR
     const adminUser: User = {
       id: "admin-1",
       username: "admin",
       password: "admin",
       name: "Pierre Durand",
       role: "admin",
-      email: "pierre.durand@engie.com",
+      email: "pierre.durand@klyxor.com",
     };
     this.users.set(adminUser.id, adminUser);
 
-    // Seed ENGIE energy contracts
+    // Seed klyxOR energy contracts
     const contracts: Contract[] = [
       {
         id: "cnt-1",
-        number: "ENG-2024-001",
+        number: "KLX-2024-001",
         title: "Fourniture électricité site Lyon Confluence",
         status: "pending_validation",
         type: "Fourniture Électricité",
-        businessUnit: "ENGIE Solutions France",
+        businessUnit: "klyxOR Solutions France",
         amount: "1250000.00",
         currency: "EUR",
         startDate: new Date("2024-01-01"),
@@ -130,11 +130,11 @@ export class MemStorage implements IStorage {
       },
       {
         id: "cnt-2",
-        number: "ENG-2023-045",
+        number: "KLX-2023-045",
         title: "Maintenance parc éolien Hauts-de-France",
         status: "active",
         type: "Maintenance Infrastructure",
-        businessUnit: "ENGIE Green",
+        businessUnit: "klyxOR Green",
         amount: "450000.00",
         currency: "EUR",
         startDate: new Date("2023-02-01"),
@@ -149,11 +149,11 @@ export class MemStorage implements IStorage {
       },
       {
         id: "cnt-3",
-        number: "ENG-2024-012",
+        number: "KLX-2024-012",
         title: "Contrat PPA solaire 25MW - Occitanie",
         status: "active",
         type: "Contrat PPA",
-        businessUnit: "ENGIE Green",
+        businessUnit: "klyxOR Green",
         amount: "8500000.00",
         currency: "EUR",
         startDate: new Date("2024-01-01"),
@@ -168,11 +168,11 @@ export class MemStorage implements IStorage {
       },
       {
         id: "cnt-4",
-        number: "ENG-2023-089",
+        number: "KLX-2023-089",
         title: "Trading gaz naturel - Hub PEG Nord",
         status: "active",
         type: "Trading Énergie",
-        businessUnit: "ENGIE Global Energy Management",
+        businessUnit: "klyxOR Global Energy Management",
         amount: "15000000.00",
         currency: "EUR",
         startDate: new Date("2023-07-01"),
@@ -189,13 +189,13 @@ export class MemStorage implements IStorage {
 
     contracts.forEach(contract => this.contracts.set(contract.id, contract));
 
-    // Seed ENGIE validation requests
+    // Seed klyxOR validation requests
     const validationRequests: ValidationRequest[] = [
       {
         id: "val-1",
         type: "contract",
         referenceId: "cnt-1",
-        reference: "ENG-2024-001",
+        reference: "KLX-2024-001",
         subject: "Fourniture électricité site Lyon Confluence",
         requestedBy: "Marie Leclerc",
         assignedTo: "Pierre Durand",
@@ -221,7 +221,7 @@ export class MemStorage implements IStorage {
         id: "val-3",
         type: "amendment",
         referenceId: "avt-1",
-        reference: "AVT-2024-007",
+        reference: "AVK-2024-007",
         subject: "Extension capacité parc éolien +10MW",
         requestedBy: "Thomas Dubois",
         assignedTo: "Pierre Durand",
@@ -234,19 +234,19 @@ export class MemStorage implements IStorage {
 
     validationRequests.forEach(req => this.validationRequests.set(req.id, req));
 
-    // Seed ENGIE indexations
+    // Seed klyxOR indexations
     const indexations: Indexation[] = [
       {
         id: "idx-1",
         contractId: "cnt-2",
-        contractNumber: "ENG-2023-045",
+        contractNumber: "KLX-2023-045",
         contractTitle: "Maintenance parc éolien Hauts-de-France",
         indexationDate: new Date("2024-01-01"),
         frequency: "Trimestrielle",
         formula: "IPEA",
         indexKey: "IPEA-E",
         source: "INSEE",
-        businessUnit: "ENGIE Green",
+        businessUnit: "klyxOR Green",
         responsible: "Marie Dupont",
         periodFrom: new Date("2023-01-01"),
         periodTo: new Date("2023-12-31"),

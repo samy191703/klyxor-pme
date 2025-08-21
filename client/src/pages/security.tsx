@@ -135,7 +135,7 @@ export default function Security() {
       user: "Pierre Durand",
       action: "Modification",
       object: "Avenant",
-      objectId: "AVT-2024-008",
+      objectId: "AVK-2024-008",
       fields: "Montant annuel",
       before: "100 000 €",
       after: "110 000 €",
@@ -207,7 +207,7 @@ export default function Security() {
       date: new Date("2024-02-14T16:00:00"),
       user: "Sophie Bernard",
       dataType: "Document",
-      object: "Avenant AVT-2024-005",
+      object: "Avenant AVK-2024-005",
       action: "Téléchargement",
       channel: "UI"
     }
@@ -288,8 +288,8 @@ export default function Security() {
       timestamp: new Date("2024-02-14T14:00:00"),
       type: "Rejet de validation",
       severity: "info",
-      message: "Avenant AVT-2024-012 rejeté par le valideur",
-      object: "AVT-2024-012",
+      message: "Avenant AVK-2024-012 rejeté par le valideur",
+      object: "AVK-2024-012",
       channel: "In-app",
       sendStatus: "sent",
       read: true
