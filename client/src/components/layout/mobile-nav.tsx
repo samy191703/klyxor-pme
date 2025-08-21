@@ -102,7 +102,7 @@ export default function MobileNav() {
               </div>
               <div>
                 <SheetTitle className="text-xl font-bold bg-gradient-to-r from-[#04324c] to-[#d5b352] bg-clip-text text-transparent">klyxOR</SheetTitle>
-                <p className="text-xs text-[#002a47]">Contract Management • ENGIE</p>
+                <p className="text-xs text-[#002a47]">Contract Management • klyxOR</p>
               </div>
             </div>
             <Button

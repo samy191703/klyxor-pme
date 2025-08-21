@@ -85,7 +85,7 @@ export default function Sidebar() {
           </div>
           <div>
             <h1 className="text-xl font-bold bg-gradient-to-r from-[#04324c] to-[#d5b352] bg-clip-text text-transparent">klyxOR</h1>
-            <p className="text-xs text-[#002a47]">Contract Management • ENGIE</p>
+            <p className="text-xs text-[#002a47]">Contract Management • klyxOR</p>
           </div>
         </div>
       </div>
