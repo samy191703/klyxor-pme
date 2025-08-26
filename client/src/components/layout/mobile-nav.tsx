@@ -16,7 +16,12 @@ import {
   Database,
   Shield,
   Download,
-  X
+  X,
+  CreditCard,
+  FileCheck,
+  DollarSign,
+  Ban,
+  Receipt
 } from "lucide-react";
 
 const menuItems = [
@@ -75,6 +80,33 @@ const menuItems = [
     href: "/security",
     icon: Shield,
   },
+  // Section Facturation
+  {
+    label: "Facturation",
+    href: "#",
+    icon: CreditCard,
+    isSection: true,
+  },
+  {
+    label: "Plans de facturation",
+    href: "/billing-plans",
+    icon: FileCheck,
+  },
+  {
+    label: "Flux de paiement",
+    href: "/payment-flows",
+    icon: DollarSign,
+  },
+  {
+    label: "Blocages de paiement",
+    href: "/payment-blocks",
+    icon: Ban,
+  },
+  {
+    label: "Preuves de paiement",
+    href: "/payment-proofs",
+    icon: Receipt,
+  },
 ];
 
 export default function MobileNav() {
@@ -122,6 +154,17 @@ export default function MobileNav() {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location === item.href;
+            
+            if (item.isSection) {
+              return (
+                <div key={item.label} className="mt-6 mb-2 px-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </div>
+                </div>
+              );
+            }
             
             return (
               <Link

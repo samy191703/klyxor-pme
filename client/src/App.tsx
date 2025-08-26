@@ -14,6 +14,10 @@ import Documents from "@/pages/documents";
 import Imports from "@/pages/imports";
 import DataExport from "@/pages/data-export";
 import Security from "@/pages/security";
+import BillingPlans from "@/pages/billing-plans";
+import PaymentFlows from "@/pages/payment-flows";
+import PaymentBlocks from "@/pages/payment-blocks";
+import PaymentProofs from "@/pages/payment-proofs";
 import NotFound from "@/pages/not-found";
 import { AIHelpProvider } from "@/components/ai-help/context-provider";
 
@@ -31,6 +35,10 @@ function Router() {
       <Route path="/imports" component={Imports} />
       <Route path="/data-export" component={DataExport} />
       <Route path="/security" component={Security} />
+      <Route path="/billing-plans" component={BillingPlans} />
+      <Route path="/payment-flows" component={PaymentFlows} />
+      <Route path="/payment-blocks" component={PaymentBlocks} />
+      <Route path="/payment-proofs" component={PaymentProofs} />
       <Route component={NotFound} />
     </Switch>
   );
