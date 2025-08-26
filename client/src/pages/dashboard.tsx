@@ -126,11 +126,11 @@ export default function Dashboard() {
   const { setPage } = useAIHelp();
   const [currentRole, setCurrentRole] = useState<"admin" | "manager">("admin");
   const [periodFilter, setPeriodFilter] = useState("current_month");
-  const [entityFilter, setEntityFilter] = useState("all");
-  const [contractTypeFilter, setContractTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [validatorFilter, setValidatorFilter] = useState("all");
-  const [alertChannelFilter, setAlertChannelFilter] = useState("all");
+  const [entityFilter, setEntityFilter] = useState("solutions_france");
+  const [contractTypeFilter, setContractTypeFilter] = useState("electricity");
+  const [statusFilter, setStatusFilter] = useState("active");
+  const [validatorFilter, setValidatorFilter] = useState("jean_martin");
+  const [alertChannelFilter, setAlertChannelFilter] = useState("in-app");
   const [globalSearch, setGlobalSearch] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedValidationItem, setSelectedValidationItem] = useState<ValidationItem | null>(null);
