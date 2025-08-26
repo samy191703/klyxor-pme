@@ -94,15 +94,17 @@ export default function MobileNav() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-[280px] sm:w-[350px] p-0">
-        <SheetHeader className="p-6 border-b bg-gradient-to-br from-[#04324c]/5 via-[#d5b352]/10 to-[#04324c]/5">
+        <SheetHeader className="p-6 border-b bg-gradient-to-br from-[var(--klyxor-bleu-nuit)]/5 via-[var(--klyxor-or)]/10 to-[var(--klyxor-bleu-nuit)]/5">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#04324c] to-[#002a47] rounded-lg flex items-center justify-center shadow-lg border-2 border-[#d5b352]">
-                <span className="text-[#d5b352] font-bold text-sm">kOR</span>
-              </div>
+              <img 
+                src="/klyxor-logo.jpeg" 
+                alt="klyxOR Logo"
+                className="w-12 h-12 object-contain rounded-lg shadow-lg"
+              />
               <div>
-                <SheetTitle className="text-xl font-bold bg-gradient-to-r from-[#04324c] to-[#d5b352] bg-clip-text text-transparent">klyxOR</SheetTitle>
-                <p className="text-xs text-[#002a47]">Contract Management • klyxOR</p>
+                <SheetTitle className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">klyxOR</SheetTitle>
+                <p className="text-xs text-[var(--klyxor-bleu-nuit)]/70">Contract Management</p>
               </div>
             </div>
             <Button
@@ -129,8 +131,8 @@ export default function MobileNav() {
                 className={cn(
                   "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
                   isActive
-                    ? "bg-gradient-to-r from-[#04324c]/10 to-[#d5b352]/10 text-[#04324c] border-l-4 border-l-[#d5b352] font-semibold"
-                    : "text-gray-700 hover:bg-gradient-to-r hover:from-[#04324c]/5 hover:to-[#d5b352]/5"
+                    ? "bg-gradient-to-r from-[var(--klyxor-bleu-nuit)]/10 to-[var(--klyxor-or)]/10 text-[var(--klyxor-bleu-nuit)] border-l-4 border-l-[var(--klyxor-or)] font-semibold"
+                    : "text-gray-700 hover:bg-gradient-to-r hover:from-[var(--klyxor-bleu-nuit)]/5 hover:to-[var(--klyxor-or)]/5"
                 )}
                 data-testid={`mobile-nav-${item.href.replace('/', '') || 'dashboard'}`}
               >
