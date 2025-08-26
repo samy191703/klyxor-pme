@@ -89,15 +89,10 @@ const menuItems: MenuItem[] = [
 export default function MobileNavWithSubmenu() {
   const [open, setOpen] = useState(false);
   const [location] = useLocation();
-  const [expandedSections, setExpandedSections] = useState<string[]>([]);
-
-  const toggleSection = (label: string) => {
-    setExpandedSections(prev =>
-      prev.includes(label)
-        ? prev.filter(l => l !== label)
-        : [...prev, label]
-    );
-  };
+  // Toutes les sections sont toujours ouvertes
+  const expandedSections = menuItems
+    .filter(item => item.children && item.children.length > 0)
+    .map(item => item.label);
 
   const isActiveSection = (item: MenuItem): boolean => {
     if (item.href === location) return true;
@@ -117,11 +112,9 @@ export default function MobileNavWithSubmenu() {
     if (hasChildren) {
       return (
         <div key={item.label} className="mb-1">
-          <button
-            onClick={() => toggleSection(item.label)}
+          <div
             className={cn(
               "w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-              "hover:bg-gray-100 active:bg-gray-200",
               isSectionActive && "bg-[var(--klyxor-or)]/10 text-[var(--klyxor-bleu-nuit)]",
               level > 0 && "ml-4"
             )}
@@ -130,14 +123,11 @@ export default function MobileNavWithSubmenu() {
               <Icon className="w-4 h-4" />
               <span>{item.label}</span>
             </div>
-            {isExpanded ? (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
+            <ChevronDown className="w-4 h-4 text-gray-400" />
+          </div>
           
-          {isExpanded && item.children && (
+          {/* Toujours afficher les sous-menus */}
+          {item.children && (
             <div className="mt-1 space-y-1">
               {item.children.map(child => renderMenuItem(child, level + 1))}
             </div>
