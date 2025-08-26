@@ -1,6 +1,6 @@
 import { useState } from "react";
-import Sidebar from "@/components/layout/sidebar";
-import MobileNav from "@/components/layout/mobile-nav";
+import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
+import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -259,12 +259,12 @@ export default function DataExport() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+      <SidebarWithSubmenu />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 lg:hidden">
           <div className="flex items-center justify-between">
-            <MobileNav />
+            <MobileNavWithSubmenu />
             <h1 className="text-lg font-semibold">Extraction des données</h1>
           </div>
         </header>
