@@ -132,7 +132,7 @@ export default function BillingPlans() {
           <MobileNavWithSubmenu />
           <img 
             src="/klyxor-logo.jpeg" 
-            alt="klyxOR Logo"
+            alt="KLYXOR Logo"
             className="w-10 h-10 object-contain rounded-lg shadow"
           />
         </div>

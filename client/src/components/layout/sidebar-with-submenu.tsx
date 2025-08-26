@@ -160,11 +160,11 @@ export default function SidebarWithSubmenu() {
         <div className="flex items-center space-x-3">
           <img 
             src="/klyxor-logo.jpeg" 
-            alt="klyxOR Logo"
+            alt="KLYXOR Logo"
             className="w-12 h-12 object-contain rounded-lg shadow-lg"
           />
           <div>
-            <h1 className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">klyxOR</h1>
+            <h1 className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">KLYXOR</h1>
             <p className="text-xs text-[var(--klyxor-bleu-nuit)]/70">Contract Management</p>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function SidebarWithSubmenu() {
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-[var(--klyxor-bleu-nuit)]">Admin</p>
-            <p className="text-xs text-gray-500">admin@klyxor.fr</p>
+            <p className="text-xs text-gray-500">admin@KLYXOR.fr</p>
           </div>
         </div>
       </div>

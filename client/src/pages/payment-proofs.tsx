@@ -60,10 +60,10 @@ export default function PaymentProofs() {
       amount: 30000,
       currency: "EUR",
       method: "Virement SEPA",
-      beneficiary: "klyxOR Solutions France",
+      beneficiary: "KLYXOR Solutions France",
       proofAvailable: true,
       lastSent: "2024-12-06 10:30",
-      sentTo: ["comptabilite@klyxor.fr", "finance@klyxor.fr"],
+      sentTo: ["comptabilite@KLYXOR.fr", "finance@KLYXOR.fr"],
       contractId: "KLX-2024-012",
       contractName: "PPA Solaire Marseille"
     },
@@ -76,10 +76,10 @@ export default function PaymentProofs() {
       amount: 45000,
       currency: "EUR",
       method: "Prélèvement automatique",
-      beneficiary: "klyxOR Green",
+      beneficiary: "KLYXOR Green",
       proofAvailable: true,
       lastSent: "2024-11-16 14:15",
-      sentTo: ["tresorerie@klyxor.fr"],
+      sentTo: ["tresorerie@KLYXOR.fr"],
       contractId: "KLX-2024-089",
       contractName: "Fourniture Gaz Site Lyon"
     },
@@ -92,7 +92,7 @@ export default function PaymentProofs() {
       amount: 20000,
       currency: "EUR",
       method: "Virement SEPA",
-      beneficiary: "klyxOR Solutions France",
+      beneficiary: "KLYXOR Solutions France",
       proofAvailable: false,
       contractId: "KLX-2024-034",
       contractName: "Maintenance Éolienne Normandie"
@@ -110,7 +110,7 @@ export default function PaymentProofs() {
     {
       paymentId: "PAY-2025-0145",
       invoice: "FAC-2024-9876",
-      recipients: ["comptabilite@klyxor.fr", "finance@klyxor.fr"],
+      recipients: ["comptabilite@KLYXOR.fr", "finance@KLYXOR.fr"],
       status: "success",
       timestamp: "2024-12-06 10:30",
       channel: "Email"
@@ -118,7 +118,7 @@ export default function PaymentProofs() {
     {
       paymentId: "PAY-2025-0089",
       invoice: "FAC-2024-8765",
-      recipients: ["tresorerie@klyxor.fr"],
+      recipients: ["tresorerie@KLYXOR.fr"],
       status: "success",
       timestamp: "2024-11-16 14:15",
       channel: "Email"
@@ -146,7 +146,7 @@ export default function PaymentProofs() {
           <MobileNavWithSubmenu />
           <img 
             src="/klyxor-logo.jpeg" 
-            alt="klyxOR Logo"
+            alt="KLYXOR Logo"
             className="w-10 h-10 object-contain rounded-lg shadow"
           />
         </div>
@@ -210,8 +210,8 @@ export default function PaymentProofs() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les clients</SelectItem>
-                <SelectItem value="klyxor_solutions">klyxOR Solutions France</SelectItem>
-                <SelectItem value="klyxor_green">klyxOR Green</SelectItem>
+                <SelectItem value="klyxor_solutions">KLYXOR Solutions France</SelectItem>
+                <SelectItem value="klyxor_green">KLYXOR Green</SelectItem>
               </SelectContent>
             </Select>
 

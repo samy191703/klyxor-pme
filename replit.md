@@ -1,6 +1,6 @@
 # Overview
 
-klyxOR is an advanced Contract Lifecycle Management (CLM) application specifically tailored for ENGIE, the global energy company. Built with a full-stack architecture using React (frontend) and Express.js (backend), this system manages energy contracts, validation workflows, indexations, deadlines, and various business processes critical to energy sector operations. The application features comprehensive dashboard with KPI tracking, contract management interfaces for energy trading and renewable projects, and validation workflows optimized for ENGIE's business units.
+KLYXOR is an advanced Contract Lifecycle Management (CLM) application specifically tailored for ENGIE, the global energy company. Built with a full-stack architecture using React (frontend) and Express.js (backend), this system manages energy contracts, validation workflows, indexations, deadlines, and various business processes critical to energy sector operations. The application features comprehensive dashboard with KPI tracking, contract management interfaces for energy trading and renewable projects, and validation workflows optimized for ENGIE's business units.
 
 # User Preferences
 
@@ -37,7 +37,7 @@ Preferred communication style: Simple, everyday language.
 - **Asset Organization**: Dedicated directories for components, utilities, and assets
 
 ## Key Features
-- **Application Name**: klyxOR - ENGIE's Contract Management System
+- **Application Name**: KLYXOR - ENGIE's Contract Management System
 - **Dashboard**: KPI tracking for energy contracts, renewable projects, and trading operations
 - **Contract Management**: Specialized for electricity, gas, renewable energy (PPA), and infrastructure maintenance contracts
 - **Energy-Specific Workflows**: Validation for power purchase agreements, grid connections, and energy trading

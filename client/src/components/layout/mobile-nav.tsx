@@ -131,11 +131,11 @@ export default function MobileNav() {
             <div className="flex items-center space-x-3">
               <img 
                 src="/klyxor-logo.jpeg" 
-                alt="klyxOR Logo"
+                alt="KLYXOR Logo"
                 className="w-12 h-12 object-contain rounded-lg shadow-lg"
               />
               <div>
-                <SheetTitle className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">klyxOR</SheetTitle>
+                <SheetTitle className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">KLYXOR</SheetTitle>
                 <p className="text-xs text-[var(--klyxor-bleu-nuit)]/70">Contract Management</p>
               </div>
             </div>

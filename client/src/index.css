@@ -4,7 +4,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
 :root {
-  /* klyxOR Charte Graphique Colors */
+  /* KLYXOR Charte Graphique Colors */
   --klyxor-bleu-nuit: #0F2A43;
   --klyxor-or: #C9A646;
   --klyxor-blanc: #FFFFFF;
@@ -34,7 +34,7 @@
   --chart-4: #C9A646;
   --chart-5: hsl(44 50% 65%);
   
-  /* klyxOR specific colors */
+  /* KLYXOR specific colors */
   --primary: #0F2A43;
   --secondary: #C9A646;
   --success: hsl(124 55% 24%);

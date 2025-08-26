@@ -114,11 +114,11 @@ export default function Sidebar() {
         <div className="flex items-center space-x-3">
           <img 
             src="/klyxor-logo.jpeg" 
-            alt="klyxOR Logo"
+            alt="KLYXOR Logo"
             className="w-12 h-12 object-contain rounded-lg shadow-lg"
           />
           <div>
-            <h1 className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">klyxOR</h1>
+            <h1 className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">KLYXOR</h1>
             <p className="text-xs text-[var(--klyxor-bleu-nuit)]/70">Contract Management</p>
           </div>
         </div>
