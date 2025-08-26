@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clm-admin
+  namespace: NAMESPACE_PLACEHOLDER
+  labels:
+    app: clm-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clm-admin
+  template:
+    metadata:
+      labels:
+        app: clm-admin
+    spec:
+      containers:
+        - name: clm-admin
+          image: IMAGE_PLACEHOLDER
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          env:
+            - name: NODE_ENV
+              value: production
+          envFrom:
+            - configMapRef:
+                name: clm-admin-config
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "150m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"

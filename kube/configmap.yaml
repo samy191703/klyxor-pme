@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clm-admin-config
+  namespace: clm
+data:
+  ENVIRONMENT: "DEV"

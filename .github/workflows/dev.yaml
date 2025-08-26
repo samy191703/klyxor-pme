@@ -1,0 +1,77 @@
+name: CI/CD CLM admin
+
+on:
+  push:
+    branches:
+      - dev
+
+env:
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build:
+    name: Build and Push to Registry
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG .
+          docker push ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+
+  deploy:
+    needs: build
+    name: Deploy to Cluster
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update kube deployment
+        run: |
+          sed -i "s|IMAGE_PLACEHOLDER|${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG|g" kube/deployment.yaml
+          sed -i "s|ACM_ARN_PLACEHOLDER|${{ secrets.ACM_ARN }}|g" kube/ingress.yaml
+          sed -i "s|HOST_PLACEHOLDER|admin.klyxor.com|g" kube/ingress.yaml
+          sed -i "s|NAMESPACE_PLACEHOLDER|clm|g" kube/ingress.yaml
+          sed -i "s|NAMESPACE_PLACEHOLDER|clm|g" kube/service.yaml
+          sed -i "s|NAMESPACE_PLACEHOLDER|clm|g" kube/deployment.yaml
+
+      - name: Update EKS kube config
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name tms-cluster
+
+      - name: Inject environment variable & secret
+        run: |
+          kubectl apply -f kube/configmap.yaml
+
+      - name: Deploy to EKS Cluster
+        run: |
+          kubectl apply -f kube/deployment.yaml
+          kubectl apply -f kube/service.yaml
+          kubectl apply -f kube/ingress.yaml
+
+      - name: Verify Deployment
+        run: kubectl get pods -n clm

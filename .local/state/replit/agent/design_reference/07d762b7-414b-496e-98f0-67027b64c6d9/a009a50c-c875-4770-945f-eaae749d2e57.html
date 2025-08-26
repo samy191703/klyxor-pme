@@ -1,0 +1,717 @@
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interface Administrateur CLM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1565C0',
+                        secondary: '#37474F',
+                        success: '#2E7D32',
+                        warning: '#F57C00',
+                        error: '#C62828',
+                        info: '#0277BD'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- @COMPONENT: MainLayout -->
+    <div class="flex h-screen">
+        <!-- @COMPONENT: Sidebar -->
+        <div class="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
+            <!-- Logo/Header -->
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-file-contract text-white text-sm"></i>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-900">CLM Admin</h1>
+                </div>
+            </div>
+            
+            <!-- Navigation Menu -->
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 bg-blue-50 text-primary rounded-lg border border-blue-100">
+                    <i class="fas fa-tachometer-alt w-5"></i>
+                    <span class="font-medium">Tableau de bord</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                    <i class="fas fa-file-contract w-5"></i>
+                    <span>Gestion des contrats</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                    <i class="fas fa-workflow w-5"></i>
+                    <span>Workflows de validation</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                    <i class="fas fa-calendar-alt w-5"></i>
+                    <span>Échéances & rappels</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                    <i class="fas fa-chart-line w-5"></i>
+                    <span>Indexations & rapports</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                    <i class="fas fa-edit w-5"></i>
+                    <span>Avenants</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                    <i class="fas fa-times-circle w-5"></i>
+                    <span>Résiliations</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                    <i class="fas fa-folder w-5"></i>
+                    <span>Documents & GED</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                    <i class="fas fa-database w-5"></i>
+                    <span>Données import/export</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg">
+                    <i class="fas fa-shield-alt w-5"></i>
+                    <span>Sécurité & Conformité</span>
+                </a>
+            </nav>
+        </div>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- @COMPONENT: TopHeader -->
+            <header class="bg-white border-b border-gray-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <!-- Global Search -->
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" placeholder="Rechercher contrats, numéros..." 
+                                   class="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        
+                        <!-- Environment Selector -->
+                        <select class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary">
+                            <option>Production</option>
+                            <option>Staging</option>
+                            <option>Dev</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- Help -->
+                        <button class="p-2 text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-question-circle text-xl"></i>
+                        </button>
+                        
+                        <!-- Notifications -->
+                        <div class="relative">
+                            <button class="p-2 text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-bell text-xl"></i>
+                            </button>
+                            <span class="absolute -top-1 -right-1 w-5 h-5 bg-error text-white text-xs rounded-full flex items-center justify-center">5</span>
+                        </div>
+                        
+                        <!-- User Profile -->
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-gray-600"></i>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700" data-bind="user.name">Admin User</span>
+                            <i class="fas fa-chevron-down text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <!-- @END_COMPONENT: TopHeader -->
+
+            <!-- Main Content -->
+            <div class="flex-1 flex overflow-hidden">
+                <!-- @COMPONENT: DashboardContent -->
+                <main class="flex-1 overflow-y-auto p-6">
+                    <div class="max-w-7xl mx-auto">
+                        <!-- Page Title -->
+                        <div class="mb-8">
+                            <h1 class="text-3xl font-bold text-gray-900 mb-2">Tableau de bord</h1>
+                            <p class="text-gray-600">Aperçu des éléments nécessitant votre attention</p>
+                        </div>
+
+                        <!-- KPI Cards Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <!-- Contrats à valider -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-file-contract text-warning text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-warning" data-bind="kpi.contractsToValidate">23</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Contrats à valider</h3>
+                                <p class="text-sm text-gray-600">Contrats en attente de validation</p>
+                            </div>
+
+                            <!-- Indexations à valider -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-info/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-chart-line text-info text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-info" data-bind="kpi.indexationsToValidate">7</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Indexations à valider</h3>
+                                <p class="text-sm text-gray-600">Calculs automatiques à approuver</p>
+                            </div>
+
+                            <!-- Échéances J-30 -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-calendar-exclamation text-warning text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-warning" data-bind="kpi.dueDatesJ30">12</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Échéances J-30</h3>
+                                <p class="text-sm text-gray-600">Contrats arrivant à échéance</p>
+                            </div>
+
+                            <!-- Workflows en attente > 24h -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-error/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-clock text-error text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-error" data-bind="kpi.delayedWorkflows">4</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Workflows > 24h</h3>
+                                <p class="text-sm text-gray-600">Étapes en retard</p>
+                            </div>
+
+                            <!-- Résiliations en attente -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-error/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-times-circle text-error text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-error" data-bind="kpi.pendingTerminations">3</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Résiliations en attente</h3>
+                                <p class="text-sm text-gray-600">Demandes non validées</p>
+                            </div>
+
+                            <!-- Avenants à valider -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-edit text-warning text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-warning" data-bind="kpi.amendmentsToValidate">8</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Avenants à valider</h3>
+                                <p class="text-sm text-gray-600">Modifications en attente</p>
+                            </div>
+
+                            <!-- Documents manquants -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-error/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-file-excel text-error text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-error" data-bind="kpi.missingDocuments">5</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Documents manquants</h3>
+                                <p class="text-sm text-gray-600">Pièces jointes obligatoires</p>
+                            </div>
+
+                            <!-- Imports en erreur -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-error/10 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-exclamation-triangle text-error text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-error" data-bind="kpi.importErrors">2</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Imports en erreur</h3>
+                                <p class="text-sm text-gray-600">Imports ayant échoué</p>
+                            </div>
+                        </div>
+
+                        <!-- Work Queues Tabs -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                            <!-- Tab Headers -->
+                            <div class="border-b border-gray-200">
+                                <nav class="flex space-x-8 px-6 py-4">
+                                    <button class="border-b-2 border-primary text-primary font-medium pb-2 tab-button" data-tab="validate">
+                                        À valider
+                                        <span class="ml-2 px-2 py-1 bg-warning text-white text-xs rounded-full">15</span>
+                                    </button>
+                                    <button class="text-gray-500 hover:text-gray-700 pb-2 tab-button" data-tab="deadlines">
+                                        Échéances
+                                        <span class="ml-2 px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-full">12</span>
+                                    </button>
+                                    <button class="text-gray-500 hover:text-gray-700 pb-2 tab-button" data-tab="alerts">
+                                        Alertes
+                                        <span class="ml-2 px-2 py-1 bg-error text-white text-xs rounded-full">5</span>
+                                    </button>
+                                    <button class="text-gray-500 hover:text-gray-700 pb-2 tab-button" data-tab="imports">
+                                        Imports
+                                    </button>
+                                </nav>
+                            </div>
+
+                            <!-- Tab Content -->
+                            <div class="p-6">
+                                <!-- À valider Tab -->
+                                <div id="validate-tab" class="tab-content">
+                                    <div class="mb-4 flex items-center justify-between">
+                                        <h3 class="text-lg font-semibold text-gray-900">Éléments à valider</h3>
+                                        <div class="flex items-center space-x-2">
+                                            <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                                <option>Tous les types</option>
+                                                <option>Contrats</option>
+                                                <option>Indexations</option>
+                                                <option>Avenants</option>
+                                                <option>Résiliations</option>
+                                            </select>
+                                            <button class="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-blue-700">
+                                                <i class="fas fa-filter mr-2"></i>Filtrer
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-sm">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Type</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Référence</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Objet</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Âge</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Demandeur</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Valideur</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-200">
+                                                <!-- @MAP: validationItems.map(item => ( -->
+                                                <tr class="hover:bg-gray-50" data-mock="true">
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">Contrat</span>
+                                                    </td>
+                                                    <td class="px-4 py-3 font-medium text-gray-900">CNT-2024-001</td>
+                                                    <td class="px-4 py-3 text-gray-700">Contrat de prestation informatique</td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">3 jours</span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-700">Jean Dupont</td>
+                                                    <td class="px-4 py-3 text-gray-700">Marie Martin</td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex items-center space-x-2">
+                                                            <button class="p-1 text-gray-400 hover:text-gray-600" data-event="click:viewItem">
+                                                                <i class="fas fa-eye"></i>
+                                                            </button>
+                                                            <button class="p-1 text-success hover:text-green-700" data-event="click:approveItem">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                            <button class="p-1 text-error hover:text-red-700" data-event="click:rejectItem">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
+                                                            <button class="p-1 text-primary hover:text-blue-700" data-event="click:redirectItem">
+                                                                <i class="fas fa-share"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr class="hover:bg-gray-50" data-mock="true">
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">Indexation</span>
+                                                    </td>
+                                                    <td class="px-4 py-3 font-medium text-gray-900">IDX-2024-012</td>
+                                                    <td class="px-4 py-3 text-gray-700">Indexation automatique Q1 2024</td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">1 jour</span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-700">Système Auto</td>
+                                                    <td class="px-4 py-3 text-gray-700">Pierre Durand</td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex items-center space-x-2">
+                                                            <button class="p-1 text-gray-400 hover:text-gray-600">
+                                                                <i class="fas fa-eye"></i>
+                                                            </button>
+                                                            <button class="p-1 text-success hover:text-green-700">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                            <button class="p-1 text-error hover:text-red-700">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <!-- @END_MAP )) -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Pagination -->
+                                    <div class="flex items-center justify-between mt-6">
+                                        <div class="text-sm text-gray-700">
+                                            Affichage de 1 à 10 sur 15 éléments
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <button class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
+                                                Précédent
+                                            </button>
+                                            <button class="px-3 py-2 bg-primary text-white rounded-lg text-sm">1</button>
+                                            <button class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">2</button>
+                                            <button class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+                                                Suivant
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Échéances Tab -->
+                                <div id="deadlines-tab" class="tab-content hidden">
+                                    <div class="mb-4 flex items-center justify-between">
+                                        <h3 class="text-lg font-semibold text-gray-900">Prochaines échéances</h3>
+                                        <div class="flex items-center space-x-2">
+                                            <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                                <option>Toutes les périodes</option>
+                                                <option>J-30</option>
+                                                <option>J-7</option>
+                                                <option>J-1</option>
+                                            </select>
+                                            <button class="px-4 py-2 bg-success text-white rounded-lg text-sm hover:bg-green-700">
+                                                <i class="fas fa-download mr-2"></i>Export CSV
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-sm">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Contrat</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Type</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Date échéance</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">J-</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Business Unit</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-200">
+                                                <tr class="hover:bg-gray-50" data-mock="true">
+                                                    <td class="px-4 py-3 font-medium text-gray-900">CNT-2023-045</td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">Fin contrat</span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-700">15/02/2024</td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">J-7</span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-700">IT Services</td>
+                                                    <td class="px-4 py-3">
+                                                        <button class="p-1 text-primary hover:text-blue-700">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Alertes Tab -->
+                                <div id="alerts-tab" class="tab-content hidden">
+                                    <div class="mb-4 flex items-center justify-between">
+                                        <h3 class="text-lg font-semibold text-gray-900">Centre d'alertes</h3>
+                                        <div class="flex items-center space-x-2">
+                                            <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                                <option>Toutes les alertes</option>
+                                                <option>Critiques</option>
+                                                <option>Avertissements</option>
+                                                <option>Informations</option>
+                                            </select>
+                                            <button class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700">
+                                                <i class="fas fa-check mr-2"></i>Marquer comme lu
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-4">
+                                        <div class="flex items-start space-x-3 p-4 bg-red-50 border border-red-200 rounded-lg" data-mock="true">
+                                            <div class="w-2 h-2 bg-error rounded-full mt-2"></div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center justify-between">
+                                                    <h4 class="font-medium text-gray-900">Erreur SAP - Import contrats</h4>
+                                                    <span class="text-xs text-gray-500">Il y a 2 heures</span>
+                                                </div>
+                                                <p class="text-sm text-gray-600 mt-1">Échec de synchronisation avec SAP pour 5 contrats</p>
+                                                <button class="text-xs text-primary hover:text-blue-700 mt-2">Voir le détail</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-start space-x-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg" data-mock="true">
+                                            <div class="w-2 h-2 bg-warning rounded-full mt-2"></div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center justify-between">
+                                                    <h4 class="font-medium text-gray-900">Workflow bloqué > 24h</h4>
+                                                    <span class="text-xs text-gray-500">Il y a 1 jour</span>
+                                                </div>
+                                                <p class="text-sm text-gray-600 mt-1">Contrat CNT-2024-008 en attente de validation depuis 26h</p>
+                                                <button class="text-xs text-primary hover:text-blue-700 mt-2">Escalader</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Imports Tab -->
+                                <div id="imports-tab" class="tab-content hidden">
+                                    <div class="mb-4 flex items-center justify-between">
+                                        <h3 class="text-lg font-semibold text-gray-900">Historique des imports</h3>
+                                        <button class="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-blue-700">
+                                            <i class="fas fa-upload mr-2"></i>Nouvel import
+                                        </button>
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-sm">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Date</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Auteur</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Fichier</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Statut</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Lignes OK/KO</th>
+                                                    <th class="px-4 py-3 text-left font-medium text-gray-700">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-200">
+                                                <tr class="hover:bg-gray-50" data-mock="true">
+                                                    <td class="px-4 py-3 text-gray-700">08/02/2024 14:30</td>
+                                                    <td class="px-4 py-3 text-gray-700">Admin User</td>
+                                                    <td class="px-4 py-3 font-medium text-gray-900">contrats_q1_2024.xlsx</td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">Erreur</span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-700">45 / 5</td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex items-center space-x-2">
+                                                            <button class="p-1 text-primary hover:text-blue-700">
+                                                                <i class="fas fa-file-alt"></i>
+                                                            </button>
+                                                            <button class="p-1 text-warning hover:text-orange-700">
+                                                                <i class="fas fa-redo"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+                <!-- @END_COMPONENT: DashboardContent -->
+
+                <!-- @COMPONENT: ActivityPanel -->
+                <aside class="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900">Flux d'activité</h2>
+                        <button class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Activity Item -->
+                        <div class="flex items-start space-x-3" data-mock="true">
+                            <div class="w-8 h-8 bg-success/10 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-check text-success text-sm"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm text-gray-900">
+                                    <span class="font-medium">Marie Martin</span> a validé le contrat
+                                    <span class="font-medium">CNT-2024-003</span>
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">Il y a 5 minutes</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3" data-mock="true">
+                            <div class="w-8 h-8 bg-warning/10 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-clock text-warning text-sm"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm text-gray-900">
+                                    Échéance J-7 pour le contrat
+                                    <span class="font-medium">CNT-2023-045</span>
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">Il y a 15 minutes</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3" data-mock="true">
+                            <div class="w-8 h-8 bg-error/10 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-times text-error text-sm"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm text-gray-900">
+                                    <span class="font-medium">Pierre Durand</span> a rejeté l'indexation
+                                    <span class="font-medium">IDX-2024-008</span>
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">Il y a 1 heure</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3" data-mock="true">
+                            <div class="w-8 h-8 bg-info/10 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-upload text-info text-sm"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm text-gray-900">
+                                    Nouvel import de données démarré
+                                    <span class="font-medium">contrats_janvier.xlsx</span>
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">Il y a 2 heures</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="mt-8 pt-6 border-t border-gray-200">
+                        <h3 class="text-sm font-medium text-gray-900 mb-4">Statistiques rapides</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Contrats actifs</span>
+                                <span class="text-sm font-medium text-gray-900" data-bind="stats.activeContracts">1,247</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Montant total</span>
+                                <span class="text-sm font-medium text-gray-900" data-bind="stats.totalAmount">€2.4M</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Taux de validation</span>
+                                <span class="text-sm font-medium text-success" data-bind="stats.validationRate">94.2%</span>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+                <!-- @END_COMPONENT: ActivityPanel -->
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: MainLayout -->
+
+    <!-- Modal for Rejection Reason -->
+    <div id="rejection-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-96 max-w-90% mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Motif de rejet</h3>
+            <textarea 
+                placeholder="Veuillez indiquer le motif du rejet..."
+                class="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                data-implementation="Required field for rejection"></textarea>
+            <div class="flex items-center justify-end space-x-3 mt-4">
+                <button class="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50" 
+                        data-event="click:cancelRejection">
+                    Annuler
+                </button>
+                <button class="px-4 py-2 bg-error text-white rounded-lg hover:bg-red-700" 
+                        data-event="click:confirmRejection">
+                    Confirmer le rejet
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching functionality
+        (function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.dataset.tab;
+                    
+                    // Remove active states
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('border-primary', 'text-primary');
+                        btn.classList.add('text-gray-500');
+                    });
+                    
+                    // Add active state to clicked button
+                    button.classList.add('border-primary', 'text-primary');
+                    button.classList.remove('text-gray-500');
+                    
+                    // Hide all tab contents
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    
+                    // Show target tab content
+                    const targetContent = document.getElementById(`${targetTab}-tab`);
+                    if (targetContent) {
+                        targetContent.classList.remove('hidden');
+                    }
+                });
+            });
+
+            // Modal functionality for rejection
+            const rejectButtons = document.querySelectorAll('[data-event="click:rejectItem"]');
+            const modal = document.getElementById('rejection-modal');
+            const cancelButton = document.querySelector('[data-event="click:cancelRejection"]');
+            const confirmButton = document.querySelector('[data-event="click:confirmRejection"]');
+
+            rejectButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    modal.classList.remove('hidden');
+                });
+            });
+
+            if (cancelButton) {
+                cancelButton.addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                });
+            }
+
+            if (confirmButton) {
+                confirmButton.addEventListener('click', () => {
+                    // TODO: Implement rejection logic with reason
+                    modal.classList.add('hidden');
+                    
+                    // Show toast notification (simulated)
+                    console.log('Item rejected with reason');
+                });
+            }
+
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+
+            // TODO: Implement business logic for:
+            // - KPI card click navigation
+            // - Item approval/rejection actions
+            // - Export functionality
+            // - Real-time data updates
+            // - Role-based permission checks
+            // - Audit trail logging
+        })();
+    </script>
+</body>
+</html>
