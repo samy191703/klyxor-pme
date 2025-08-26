@@ -42,7 +42,7 @@ const menuItems: MenuItem[] = [
     icon: LayoutDashboard,
   },
   {
-    label: "Construction",
+    label: "Contrats",
     icon: FileText,
     children: [
       { label: "Gestion des contrats", href: "/contracts", icon: FileText },
@@ -51,7 +51,7 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-    label: "Maintenance",
+    label: "Validation & Contrôle",
     icon: GitBranch,
     children: [
       { label: "Workflows de validation", href: "/validation", icon: GitBranch },
@@ -60,17 +60,11 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-    label: "Énergies",
-    icon: TrendingUp,
+    label: "Facturation",
+    icon: CreditCard,
     children: [
       { label: "Plans de facturation", href: "/billing-plans", icon: FileCheck },
       { label: "Flux de paiement", href: "/payment-flows", icon: DollarSign },
-    ],
-  },
-  {
-    label: "Finances",
-    icon: CreditCard,
-    children: [
       { label: "Blocages de paiement", href: "/payment-blocks", icon: Ban },
       { label: "Preuves de paiement", href: "/payment-proofs", icon: Receipt },
     ],
@@ -126,9 +120,9 @@ export default function SidebarWithSubmenu() {
           <button
             onClick={() => toggleSection(item.label)}
             className={cn(
-              "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200",
-              "hover:bg-[var(--klyxor-or)]/10 border border-transparent hover:border-[var(--klyxor-or)]/20",
-              isSectionActive && "bg-[var(--klyxor-or)]/15 text-[var(--klyxor-bleu-nuit)] border-[var(--klyxor-or)]/30",
+              "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              "hover:bg-gray-100",
+              isSectionActive && "bg-[var(--klyxor-or)]/10 text-[var(--klyxor-bleu-nuit)]",
               level > 0 && "ml-4"
             )}
           >
@@ -176,18 +170,18 @@ export default function SidebarWithSubmenu() {
         <div className="flex items-center space-x-3">
           <img 
             src="/klyxor-logo.jpeg" 
-            alt="KLYXOR Logo"
+            alt="klyxOR Logo"
             className="w-12 h-12 object-contain rounded-lg shadow-lg"
           />
           <div>
-            <h1 className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">KLYXOR</h1>
+            <h1 className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">klyxOR</h1>
             <p className="text-xs text-[var(--klyxor-bleu-nuit)]/70">Contract Management</p>
           </div>
         </div>
       </div>
       
       {/* Navigation Menu */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {menuItems.map(item => renderMenuItem(item))}
       </nav>
 

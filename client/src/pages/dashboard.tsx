@@ -25,7 +25,7 @@ import {
   Clock, Shield, Database, Link, Timer, Mail, MessageSquare,
   CheckCircle, AlertTriangle, Info, ArrowUp, ArrowDown,
   FileDown, Archive, Activity, PieChart, History, Paperclip,
-  ChevronRight, Eye, Check, X, Send, MoreVertical, Plus, Users
+  ChevronRight, Eye, Check, X, Send, MoreVertical, Plus
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { AIHelpBubble } from "@/components/ai-help/ai-help-bubble";
@@ -124,13 +124,12 @@ interface Notification {
 export default function Dashboard() {
   const [location] = useLocation();
   const { setPage } = useAIHelp();
-  const [currentRole, setCurrentRole] = useState<"admin" | "manager">("admin");
   const [periodFilter, setPeriodFilter] = useState("current_month");
-  const [entityFilter, setEntityFilter] = useState("solutions_france");
-  const [contractTypeFilter, setContractTypeFilter] = useState("electricity");
-  const [statusFilter, setStatusFilter] = useState("active");
-  const [validatorFilter, setValidatorFilter] = useState("jean_martin");
-  const [alertChannelFilter, setAlertChannelFilter] = useState("in-app");
+  const [entityFilter, setEntityFilter] = useState("all");
+  const [contractTypeFilter, setContractTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [validatorFilter, setValidatorFilter] = useState("all");
+  const [alertChannelFilter, setAlertChannelFilter] = useState("all");
   const [globalSearch, setGlobalSearch] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedValidationItem, setSelectedValidationItem] = useState<ValidationItem | null>(null);
@@ -468,23 +467,16 @@ export default function Dashboard() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="flex items-center gap-2">
                     <User className="w-5 h-5" />
-                    <span className="hidden sm:inline text-sm">{currentRole === "admin" ? "Administrateur" : "Gestionnaire"}</span>
+                    <span className="hidden sm:inline text-sm">Admin</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Profil & rôle actif</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setCurrentRole("admin")}>
+                  <DropdownMenuItem>
                     <Shield className="w-4 h-4 mr-2" />
-                    {currentRole === "admin" && <Check className="w-3 h-3 mr-1" />}
-                    Vue Administrateur
+                    Rôle : Administrateur
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setCurrentRole("manager")}>
-                    <Users className="w-4 h-4 mr-2" />
-                    {currentRole === "manager" && <Check className="w-3 h-3 mr-1" />}
-                    Vue Gestionnaire
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem>
                     <Settings className="w-4 h-4 mr-2" />
                     Paramètres
@@ -704,23 +696,21 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* KPI 7: Erreurs d'intégration SAP - Admin seulement */}
-              {currentRole === "admin" && (
-                <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <Database className="w-8 h-8 text-orange-500" />
-                      <div className="flex items-center gap-1">
-                        {getTrendIcon(kpiData.trends.integrationErrors)}
-                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.integrationErrors)}%</span>
-                      </div>
+              {/* KPI 7: Erreurs d'intégration SAP */}
+              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Database className="w-8 h-8 text-orange-500" />
+                    <div className="flex items-center gap-1">
+                      {getTrendIcon(kpiData.trends.integrationErrors)}
+                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.integrationErrors)}%</span>
                     </div>
-                    <div className="text-2xl font-bold">{kpiData.integrationErrors}</div>
-                    <p className="text-sm text-gray-600">Erreurs d'intégration (SAP)</p>
-                    <p className="text-xs text-gray-400 mt-1">Statuts non poussés</p>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                  <div className="text-2xl font-bold">{kpiData.integrationErrors}</div>
+                  <p className="text-sm text-gray-600">Erreurs d'intégration (SAP)</p>
+                  <p className="text-xs text-gray-400 mt-1">Statuts non poussés</p>
+                </CardContent>
+              </Card>
 
               {/* KPI 8: Contrats sans PJ */}
               <Card className="cursor-pointer hover:shadow-md transition-shadow">
@@ -738,52 +728,21 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* KPI 9: Mises à jour manuelles - Admin seulement */}
-              {currentRole === "admin" && (
-                <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <RefreshCw className="w-8 h-8 text-indigo-500" />
-                      <div className="flex items-center gap-1">
-                        {getTrendIcon(kpiData.trends.manualUpdates)}
-                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.manualUpdates)}%</span>
-                      </div>
+              {/* KPI 9: Mises à jour manuelles */}
+              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <RefreshCw className="w-8 h-8 text-indigo-500" />
+                    <div className="flex items-center gap-1">
+                      {getTrendIcon(kpiData.trends.manualUpdates)}
+                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.manualUpdates)}%</span>
                     </div>
-                    <div className="text-2xl font-bold">{kpiData.manualUpdates}</div>
-                    <p className="text-sm text-gray-600">Mises à jour manuelles en attente</p>
-                    <p className="text-xs text-gray-400 mt-1">Modif. montants exceptionnelles</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* KPI additionnelles pour Gestionnaire */}
-              {currentRole === "manager" && (
-                <>
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-green-500">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <DollarSign className="w-8 h-8 text-green-500" />
-                        <Badge variant="secondary" className="bg-green-100 text-green-700">Nouveau</Badge>
-                      </div>
-                      <div className="text-2xl font-bold">28</div>
-                      <p className="text-sm text-gray-600">Factures à traiter</p>
-                      <p className="text-xs text-gray-400 mt-1">Facturation mensuelle</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <PieChart className="w-8 h-8 text-blue-500" />
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">Nouveau</Badge>
-                      </div>
-                      <div className="text-2xl font-bold">15</div>
-                      <p className="text-sm text-gray-600">Paiements en attente</p>
-                      <p className="text-xs text-gray-400 mt-1">Validation requise</p>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
+                  </div>
+                  <div className="text-2xl font-bold">{kpiData.manualUpdates}</div>
+                  <p className="text-sm text-gray-600">Mises à jour manuelles en attente</p>
+                  <p className="text-xs text-gray-400 mt-1">Modif. montants exceptionnelles</p>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Widgets Grid (2 columns) */}
