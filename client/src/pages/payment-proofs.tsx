@@ -1,4 +1,6 @@
 import { useState } from "react";
+import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
+import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +45,7 @@ interface PaymentProof {
 }
 
 export default function PaymentProofs() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedProof, setSelectedProof] = useState<PaymentProof | null>(null);
   const [showSendHistory, setShowSendHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -132,7 +135,25 @@ export default function PaymentProofs() {
   ];
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <SidebarWithSubmenu />
+      
+      {/* Main content */}
+      <div className="flex-1 flex flex-col">
+        {/* Mobile header */}
+        <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b">
+          <MobileNavWithSubmenu />
+          <img 
+            src="/klyxor-logo.jpeg" 
+            alt="klyxOR Logo"
+            className="w-10 h-10 object-contain rounded-lg shadow"
+          />
+        </div>
+        
+        {/* Page content */}
+        <div className="flex-1 overflow-auto">
+          <div className="container mx-auto py-6 px-4 lg:px-8 xl:px-12 space-y-6 max-w-[1600px]">
       {/* En-tête */}
       <div className="flex justify-between items-center">
         <div>
@@ -454,7 +475,7 @@ export default function PaymentProofs() {
 
       {/* Modal historique des envois */}
       {showSendHistory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
           <Card className="w-full max-w-5xl mx-4 max-h-[80vh] overflow-auto">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Historique des envois automatiques</CardTitle>
@@ -542,6 +563,9 @@ export default function PaymentProofs() {
           </Card>
         </div>
       )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

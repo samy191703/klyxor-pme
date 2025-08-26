@@ -1,4 +1,6 @@
 import { useState } from "react";
+import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
+import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,7 @@ interface PaymentFlow {
 }
 
 export default function PaymentFlows() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedFlow, setSelectedFlow] = useState<PaymentFlow | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -116,7 +119,25 @@ export default function PaymentFlows() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <SidebarWithSubmenu />
+      
+      {/* Main content */}
+      <div className="flex-1 flex flex-col">
+        {/* Mobile header */}
+        <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b">
+          <MobileNavWithSubmenu />
+          <img 
+            src="/klyxor-logo.jpeg" 
+            alt="klyxOR Logo"
+            className="w-10 h-10 object-contain rounded-lg shadow"
+          />
+        </div>
+        
+        {/* Page content */}
+        <div className="flex-1 overflow-auto">
+          <div className="container mx-auto py-6 px-4 lg:px-8 xl:px-12 space-y-6 max-w-[1600px]">
       {/* En-tête */}
       <div className="flex justify-between items-center">
         <div>
@@ -395,6 +416,9 @@ export default function PaymentFlows() {
           )}
         </SheetContent>
       </Sheet>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
