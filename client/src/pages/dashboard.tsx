@@ -126,7 +126,7 @@ export default function Dashboard() {
   const { setPage } = useAIHelp();
   const [currentRole, setCurrentRole] = useState<"admin" | "manager">("admin");
   const [periodFilter, setPeriodFilter] = useState("current_month");
-  const [entityFilter, setEntityFilter] = useState("construction");
+  const [entityFilter, setEntityFilter] = useState("solutions_france");
   const [contractTypeFilter, setContractTypeFilter] = useState("electricity");
   const [statusFilter, setStatusFilter] = useState("active");
   const [validatorFilter, setValidatorFilter] = useState("jean_martin");
@@ -527,13 +527,14 @@ export default function Dashboard() {
 
                   <Select value={entityFilter} onValueChange={setEntityFilter}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Secteur" />
+                      <SelectValue placeholder="Entité/BU" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="construction">Construction</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                      <SelectItem value="energies">Énergies</SelectItem>
-                      <SelectItem value="finances">Finances</SelectItem>
+                      <SelectItem value="all">Toutes</SelectItem>
+                      <SelectItem value="solutions_france">klyxOR Solutions France</SelectItem>
+                      <SelectItem value="klyxor_green">klyxOR Green</SelectItem>
+                      <SelectItem value="gem">klyxOR Global Energy Management</SelectItem>
+                      <SelectItem value="klyxor_flex">klyxOR Flex</SelectItem>
                     </SelectContent>
                   </Select>
 
