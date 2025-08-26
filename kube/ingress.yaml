@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: clm-admin-ingress
+  name: clm-front-admin-ingress
   namespace: NAMESPACE_PLACEHOLDER
   annotations:
     alb.ingress.kubernetes.io/group.name: clm
@@ -20,6 +20,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: clm-admin
+                name: clm-front-admin
                 port:
                   number: 80

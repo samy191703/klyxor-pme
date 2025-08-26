@@ -1,4 +1,4 @@
-name: CI/CD CLM admin
+name: CI/CD CLM Front for Admin
 
 on:
   push:
