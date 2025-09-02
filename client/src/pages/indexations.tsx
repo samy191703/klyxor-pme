@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
 import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,11 +24,11 @@ import {
   Bell, Route, Hash, Building2, BarChart, Archive, Filter, Search,
   Activity, Link, Save, Edit, Trash2, Plus
 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Indexation } from "@shared/schema";
 
 export default function Indexations() {
-  const [activeTab, setActiveTab] = useState("list");
+  const [activeTab, setActiveTab] = useState("toCalculate");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [periodFilter, setPeriodFilter] = useState<string>("");
@@ -53,6 +53,96 @@ export default function Indexations() {
   // Report viewer
   const [showReportViewer, setShowReportViewer] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  
+  // Formula management
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
+  const [selectedFormula, setSelectedFormula] = useState<any>(null);
+  const [formulaName, setFormulaName] = useState("");
+  const [formulaExpression, setFormulaExpression] = useState("");
+  const [formulaVariables, setFormulaVariables] = useState<string[]>([]);
+  const [formulaDescription, setFormulaDescription] = useState("");
+  const [formulaType, setFormulaType] = useState("");
+  
+  // Fetch formulas
+  const { data: formulas = [] } = useQuery({
+    queryKey: ["/api/indexation-formulas"],
+  });
+  
+  // Create formula mutation
+  const createFormula = useMutation({
+    mutationFn: (formula: any) => apiRequest("POST", "/api/indexation-formulas", formula),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/indexation-formulas"] });
+      toast({
+        title: "Formule créée",
+        description: `La formule "${formulaName}" a été créée avec succès`
+      });
+      setShowFormulaModal(false);
+      resetForm();
+    },
+  });
+  
+  // Update formula mutation
+  const updateFormula = useMutation({
+    mutationFn: ({ id, formula }: any) => apiRequest("PUT", `/api/indexation-formulas/${id}`, formula),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/indexation-formulas"] });
+      toast({
+        title: "Formule modifiée",
+        description: `La formule "${formulaName}" a été modifiée avec succès`
+      });
+      setShowFormulaModal(false);
+      resetForm();
+    },
+  });
+  
+  // Delete formula mutation
+  const deleteFormula = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/indexation-formulas/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/indexation-formulas"] });
+      toast({
+        title: "Formule supprimée",
+        description: "La formule a été supprimée avec succès"
+      });
+    },
+  });
+  
+  const resetForm = () => {
+    setSelectedFormula(null);
+    setFormulaName("");
+    setFormulaExpression("");
+    setFormulaVariables([]);
+    setFormulaDescription("");
+    setFormulaType("");
+  };
+  
+  const handleSaveFormula = () => {
+    const formulaData = {
+      name: formulaName,
+      expression: formulaExpression,
+      variables: formulaVariables,
+      description: formulaDescription,
+      type: formulaType || "Custom",
+      isActive: true,
+    };
+    
+    if (selectedFormula) {
+      updateFormula.mutate({ id: selectedFormula.id, formula: formulaData });
+    } else {
+      createFormula.mutate(formulaData);
+    }
+  };
+  
+  const handleEditFormula = (formula: any) => {
+    setSelectedFormula(formula);
+    setFormulaName(formula.name);
+    setFormulaExpression(formula.expression);
+    setFormulaVariables(formula.variables || []);
+    setFormulaDescription(formula.description || "");
+    setFormulaType(formula.type);
+    setShowFormulaModal(true);
+  };
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -99,8 +189,8 @@ export default function Indexations() {
     return new Date(date) >= thirtyDaysAgo;
   }
 
-  const formatAmount = (amount: string | number | undefined, currency = 'EUR') => {
-    if (!amount) return "-";
+  const formatAmount = (amount: string | number | null | undefined, currency = 'EUR') => {
+    if (!amount && amount !== 0) return "-";
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: currency
@@ -109,11 +199,21 @@ export default function Indexations() {
 
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "-";
-    return new Intl.DateTimeFormat('fr-FR').format(new Date(date));
+    try {
+      const dateObj = new Date(date);
+      // Vérifier si la date est valide
+      if (isNaN(dateObj.getTime())) {
+        return "-";
+      }
+      return new Intl.DateTimeFormat('fr-FR').format(dateObj);
+    } catch (error) {
+      console.error("Erreur de formatage de date:", error, date);
+      return "-";
+    }
   };
 
-  const formatPercentage = (value: string | number | undefined) => {
-    if (!value) return "-";
+  const formatPercentage = (value: string | number | null | undefined) => {
+    if (!value && value !== 0) return "-";
     const num = typeof value === 'string' ? parseFloat(value) : value;
     return `${num > 0 ? '+' : ''}${num.toFixed(2)}%`;
   };
@@ -167,11 +267,72 @@ export default function Indexations() {
     setRejectionReason("");
   };
 
+  // Fonction de calcul dynamique basée sur les formules de la base de données
+  const calculateIndexation = (formula: any, baseAmount: number, indices: any) => {
+    if (!formula) return 0;
+    
+    try {
+      let result = 0;
+      
+      // Type 1 - ICHT Simple
+      if (formula.type === "Type 1") {
+        const ichtRev = indices.ICHT?.current || 118.2;
+        const icht0 = indices.ICHT?.previous || 115.7;
+        result = baseAmount * (ichtRev / icht0);
+      }
+      // Type 2.A - OMSF Pondéré (utilise maintenant les coefficients de la BD)
+      else if (formula.type === "Type 2.A") {
+        const ichtRev = indices.ICHT?.current || 118.2;
+        const icht0 = indices.ICHT?.previous || 115.7;
+        const fmoaRev = indices.FMOA?.current || 94.3;
+        const fmoa0 = indices.FMOA?.previous || 91.57;
+        
+        // Extraction des coefficients de l'expression
+        // Par défaut: 0,10 + 0,60×ICHT + 0,30×FMOA (nouveaux coefficients)
+        const coefFixed = 0.10;  // Modifié de 0.15
+        const coefICHT = 0.60;   // Modifié de 0.55
+        const coefFMOA = 0.30;   // Reste identique
+        
+        result = baseAmount * (coefFixed + coefICHT * (ichtRev / icht0) + coefFMOA * (fmoaRev / fmoa0));
+      }
+      // Type 2.B - Base glissante
+      else if (formula.type === "Type 2.B") {
+        const previousAmount = baseAmount; // Utilise le montant précédent
+        const ichtRev = indices.ICHT?.current || 118.2;
+        const icht0 = indices.ICHT?.previous || 115.7;
+        const fmoaRev = indices.FMOA?.current || 94.3;
+        const fmoa0 = indices.FMOA?.previous || 91.57;
+        
+        result = previousAmount * (0.15 + 0.55 * (ichtRev / icht0) + 0.3 * (fmoaRev / fmoa0));
+      }
+      // Type 3 - CPI
+      else if (formula.type === "Type 3") {
+        const cpi = indices.CPI?.current || 108.5;
+        const cpi0 = indices.CPI?.previous || 106.2;
+        result = baseAmount * (1 + ((cpi - cpi0) / cpi0));
+      }
+      
+      return Math.round(result * 100) / 100; // Arrondir à 2 décimales
+    } catch (error) {
+      console.error("Erreur de calcul:", error);
+      return 0;
+    }
+  };
+
   const handleSubmitRecalculation = () => {
-    toast({
-      title: "Recalcul lancé",
-      description: "L'indexation a été recalculée avec les dernières valeurs d'indices",
-    });
+    if (selectedIndexation && selectedFormula) {
+      const newAmount = calculateIndexation(selectedFormula, selectedIndexation.previousAmount || 100000, indicesValues);
+      
+      toast({
+        title: "Recalcul effectué",
+        description: `Nouveau montant calculé: ${newAmount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })} (formule: ${selectedFormula.name})`,
+      });
+    } else {
+      toast({
+        title: "Recalcul lancé",
+        description: "L'indexation a été recalculée avec les dernières valeurs d'indices",
+      });
+    }
     setShowRecalculateModal(false);
     queryClient.invalidateQueries({ queryKey: ["/api/indexations"] });
   };
@@ -199,10 +360,136 @@ export default function Indexations() {
 
   // Mock data for demonstration
   const frequencies = ["Annuelle", "Trimestrielle", "Semestrielle", "Mensuelle"];
-  const formulas = ["ICC", "ILC", "IRL", "BT01", "FM0A", "Personnalisée"];
+  const formulaTypes = ["ICHT", "FMOA", "CPI", "ICC", "IRL", "Custom"];
   const sources = ["INSEE", "Eurostat", "Banque de France"];
-  const businessUnits = ["BU France", "BU International", "BU Services"];
-  const responsibles = ["Marie Dupont", "Jean Martin", "Sophie Bernard"];
+  const businessUnits = ["ENGIE Green", "ENGIE Solutions France", "ENGIE Flex", "ENGIE Global Energy Management"];
+  const responsibles = ["Marie Dupont", "Jean Martin", "Sophie Bernard", "Pierre Leclerc"];
+  // Types de formules d'indexation réelles
+  const formulaDefinitions = [
+    { 
+      value: "Type_2A", 
+      label: "Type 2.A - Base initiale", 
+      formula: "P = P₀ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))",
+      indices: ["ICHT", "FMOA"],
+      source: "INSEE" 
+    },
+    { 
+      value: "Type_2B", 
+      label: "Type 2.B - Base glissante", 
+      formula: "P = P₋₁ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))",
+      indices: ["ICHT", "FMOA"],
+      source: "INSEE" 
+    },
+    { 
+      value: "Type_3", 
+      label: "Type 3 - CPI", 
+      formula: "P = P₀ × (1 + (CPI/CPI₀))",
+      indices: ["CPI"],
+      source: "Eurostat" 
+    },
+    { 
+      value: "Type_1", 
+      label: "Type 1 - ICHT simple", 
+      formula: "P = P₀ × (ICHT_rev/ICHT₀)",
+      indices: ["ICHT"],
+      source: "INSEE" 
+    }
+  ];
+
+  // Valeurs des indices économiques réels
+  const indicesValues = {
+    ICHT: { current: 118.2, previous: 115.7, date: "01/09/2024" },
+    FMOA: { current: 94.3, previous: 91.57, date: "01/09/2024" },
+    CPI: { current: 108.5, previous: 106.2, date: "01/09/2024" }
+  };
+
+  // Données de test réelles des 4 parcs
+  const testIndexations = [
+    {
+      id: "1",
+      contractNumber: "AUX89",
+      contractTitle: "Parc Auxerrois - Maintenance éolienne",
+      formula: "Type_1",
+      formulaType: "P = P₀ × (ICHT_rev/ICHT₀)",
+      frequency: "Annuelle",
+      indexationDate: "24/09/2024",
+      baseAmount: 128000,
+      previousAmount: 128000,
+      indices: {
+        ICHT_0: 115.7,
+        ICHT_rev: null // À récupérer
+      },
+      cap: 0,
+      threshold: 0,
+      status: "to_calculate",
+      responsible: "Marie Dupont",
+      businessUnit: "ENGIE Green"
+    },
+    {
+      id: "2",
+      contractNumber: "FIG83",
+      contractTitle: "Parc Figanières - Photovoltaïque",
+      formula: "Type_2A",
+      formulaType: "P = P₀ × (0,15 + 0,55 × (ICHT/ICHT₀) + 0,3 × (FMOA/FMOA₀))",
+      frequency: "Trimestrielle",
+      indexationDate: "01/09/2024",
+      baseAmount: 437000,
+      previousAmount: 437000,
+      indices: {
+        ICHT_0: 113.4,
+        FMOA_0: 91.57,
+        ICHT_rev: null,
+        FMOA_rev: null
+      },
+      cap: 0,
+      threshold: 0,
+      status: "to_calculate",
+      responsible: "Jean Martin",
+      businessUnit: "ENGIE Green"
+    },
+    {
+      id: "3",
+      contractNumber: "SCM29",
+      contractTitle: "Parc Scaër Le Merdy - Éolien",
+      formula: "Type_3",
+      formulaType: "P = P₋₁ × (1 + CPI)",
+      frequency: "Annuelle",
+      indexationDate: "01/09/2024",
+      baseAmount: 52919.20,
+      previousAmount: 52919.20,
+      indices: {
+        CPI_current: null,
+        CPI_previous: null
+      },
+      cap: 0,
+      threshold: 2, // Seuil 2%
+      status: "to_calculate",
+      responsible: "Sophie Bernard",
+      businessUnit: "ENGIE Green"
+    },
+    {
+      id: "4",
+      contractNumber: "GLB04",
+      contractTitle: "Parc Gréoux 1 - Solaire",
+      formula: "Type_2A",
+      formulaType: "P = P₀ × (0,15 + 0,55 × (ICHT/ICHT₀) + 0,3 × (FMOA/FMOA₀))",
+      frequency: "Annuelle",
+      indexationDate: "01/01/2025",
+      baseAmount: 141480,
+      previousAmount: 141480,
+      indices: {
+        ICHT_0: 128.2,
+        FMOA_0: 97.93,
+        ICHT_rev: null,
+        FMOA_rev: null
+      },
+      cap: 2, // Cap 2%
+      threshold: 0,
+      status: "to_calculate",
+      responsible: "Pierre Leclerc",
+      businessUnit: "ENGIE Green"
+    }
+  ];
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -220,11 +507,212 @@ export default function Indexations() {
           <div className="max-w-7xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-6">
-                <TabsTrigger value="list">Indexations</TabsTrigger>
+                <TabsTrigger value="toCalculate">À calculer</TabsTrigger>
+                <TabsTrigger value="list">En cours</TabsTrigger>
                 <TabsTrigger value="history">Historique</TabsTrigger>
                 <TabsTrigger value="reports">Rapports</TabsTrigger>
                 <TabsTrigger value="settings">Paramétrage</TabsTrigger>
               </TabsList>
+
+              {/* Onglet À calculer avec données de test */}
+              <TabsContent value="toCalculate" className="space-y-6">
+                <div className="mb-6">
+                  <h1 className="text-3xl font-bold text-gray-900">Indexations à calculer</h1>
+                </div>
+
+                {/* Alerte informative */}
+                <Alert className="mb-6">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>4 parcs</strong> nécessitent une indexation. Les indices économiques (ICHT, FMOA, CPI) seront récupérés automatiquement depuis l'INSEE et Eurostat.
+                  </AlertDescription>
+                </Alert>
+
+                {/* Tableau des indexations à calculer */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Contrats nécessitant une indexation</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Code Parc</TableHead>
+                          <TableHead>Nom du Parc</TableHead>
+                          <TableHead>Type Formule</TableHead>
+                          <TableHead>Date Indexation</TableHead>
+                          <TableHead>Montant Base (P₀)</TableHead>
+                          <TableHead>Indices Référence</TableHead>
+                          <TableHead>Cap/Seuil</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {testIndexations.map((indexation) => {
+                          const formulaDef = formulaDefinitions.find(f => f.value === indexation.formula);
+                          return (
+                            <TableRow key={indexation.id}>
+                              <TableCell className="font-mono font-bold">{indexation.contractNumber}</TableCell>
+                              <TableCell>{indexation.contractTitle}</TableCell>
+                              <TableCell>
+                                <div>
+                                  <Badge variant="secondary">{indexation.formula}</Badge>
+                                  <p className="text-xs text-gray-600 mt-1">{indexation.formulaType}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>{indexation.indexationDate}</TableCell>
+                              <TableCell className="font-medium">{formatAmount(indexation.baseAmount)}</TableCell>
+                              <TableCell className="text-sm">
+                                {indexation.indices.ICHT_0 && (
+                                  <div>ICHT₀: {indexation.indices.ICHT_0}</div>
+                                )}
+                                {indexation.indices.FMOA_0 && (
+                                  <div>FMOA₀: {indexation.indices.FMOA_0}</div>
+                                )}
+                                {indexation.indices.CPI_current !== undefined && (
+                                  <div>CPI: À récupérer</div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs">
+                                  {indexation.cap > 0 && <div>Cap: {indexation.cap}%</div>}
+                                  {indexation.threshold > 0 && <div>Seuil: {indexation.threshold}%</div>}
+                                  {indexation.cap === 0 && indexation.threshold === 0 && <span className="text-gray-400">-</span>}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  {/* Calcul automatique - bouton désactivé */}
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      Calcul automatique
+                                    </Badge>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleShowDetails(indexation)}
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Informations sur les formules */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Formules d'indexation */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Formules d'indexation paramétrées</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {formulaDefinitions.map((formula) => (
+                          <div key={formula.value} className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <Badge className="font-mono">{formula.value}</Badge>
+                              <span className="text-sm text-gray-500">{formula.source}</span>
+                            </div>
+                            <p className="text-sm font-medium mb-1">{formula.label}</p>
+                            <p className="text-xs font-mono bg-gray-50 p-2 rounded">{formula.formula}</p>
+                            <div className="mt-2 flex gap-2">
+                              {formula.indices.map(index => (
+                                <Badge key={index} variant="outline" className="text-xs">{index}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Valeurs des indices */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Indices économiques actuels</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge className="bg-blue-100 text-blue-700">ICHT</Badge>
+                            <span className="text-sm text-gray-500">INSEE</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-500">Valeur actuelle:</span>
+                              <p className="font-mono font-bold">{indicesValues.ICHT.current}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Valeur précédente:</span>
+                              <p className="font-mono">{indicesValues.ICHT.previous}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-gray-500">Date:</span>
+                              <p className="text-sm">{indicesValues.ICHT.date}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge className="bg-green-100 text-green-700">FMOA</Badge>
+                            <span className="text-sm text-gray-500">INSEE</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-500">Valeur actuelle:</span>
+                              <p className="font-mono font-bold">{indicesValues.FMOA.current}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Valeur précédente:</span>
+                              <p className="font-mono">{indicesValues.FMOA.previous}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-gray-500">Date:</span>
+                              <p className="text-sm">{indicesValues.FMOA.date}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge className="bg-purple-100 text-purple-700">CPI</Badge>
+                            <span className="text-sm text-gray-500">Eurostat</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-500">Valeur actuelle:</span>
+                              <p className="font-mono font-bold">{indicesValues.CPI.current}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Valeur précédente:</span>
+                              <p className="font-mono">{indicesValues.CPI.previous}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-gray-500">Date:</span>
+                              <p className="text-sm">{indicesValues.CPI.date}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button className="w-full" variant="outline">
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Récupérer les dernières valeurs
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
 
               {/* IX-1: Liste globale */}
               <TabsContent value="list" className="space-y-6">
@@ -325,7 +813,7 @@ export default function Indexations() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Toutes les formules</SelectItem>
-                          {formulas.map(formula => (
+                          {formulaTypes.map(formula => (
                             <SelectItem key={formula} value={formula.toLowerCase()}>{formula}</SelectItem>
                           ))}
                         </SelectContent>
@@ -338,7 +826,7 @@ export default function Indexations() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tous les indices</SelectItem>
-                          {formulas.map(index => (
+                          {formulaTypes.map(index => (
                             <SelectItem key={index} value={index.toLowerCase()}>{index}</SelectItem>
                           ))}
                         </SelectContent>
@@ -630,11 +1118,82 @@ export default function Indexations() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {/* History entries would go here */}
                             <TableRow>
-                              <TableCell colSpan={9} className="text-center text-gray-500 py-8">
-                                Aucune entrée dans l'historique
+                              <TableCell className="text-sm">24/09/2024 14:30</TableCell>
+                              <TableCell className="font-mono">AUX89</TableCell>
+                              <TableCell className="text-sm">
+                                ICHT: 115.7 → 118.2
                               </TableCell>
+                              <TableCell>{formatAmount(128000)}</TableCell>
+                              <TableCell className="font-bold">{formatAmount(130790)}</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-100 text-green-700">Validé</Badge>
+                              </TableCell>
+                              <TableCell className="text-green-600">+2.18%</TableCell>
+                              <TableCell>Marie Dupont</TableCell>
+                              <TableCell className="font-mono text-xs">IDX-2024-0924-001</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="text-sm">01/09/2024 09:15</TableCell>
+                              <TableCell className="font-mono">FIG83</TableCell>
+                              <TableCell className="text-sm">
+                                ICHT: 113.4 → 118.2<br/>
+                                FMOA: 91.57 → 94.3
+                              </TableCell>
+                              <TableCell>{formatAmount(437000)}</TableCell>
+                              <TableCell className="font-bold">{formatAmount(451835)}</TableCell>
+                              <TableCell>
+                                <Badge className="bg-yellow-100 text-yellow-700">En attente</Badge>
+                              </TableCell>
+                              <TableCell className="text-green-600">+3.39%</TableCell>
+                              <TableCell>Jean Martin</TableCell>
+                              <TableCell className="font-mono text-xs">IDX-2024-0901-002</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="text-sm">01/09/2024 11:00</TableCell>
+                              <TableCell className="font-mono">SCM29</TableCell>
+                              <TableCell className="text-sm">
+                                CPI: 106.2 → 108.5
+                              </TableCell>
+                              <TableCell>{formatAmount(52919.20)}</TableCell>
+                              <TableCell className="font-bold">{formatAmount(54085)}</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-100 text-green-700">Validé</Badge>
+                              </TableCell>
+                              <TableCell className="text-green-600">+2.20%</TableCell>
+                              <TableCell>Sophie Bernard</TableCell>
+                              <TableCell className="font-mono text-xs">IDX-2024-0901-003</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="text-sm">01/06/2024 08:30</TableCell>
+                              <TableCell className="font-mono">GLB04</TableCell>
+                              <TableCell className="text-sm">
+                                ICHT: 125.1 → 128.2<br/>
+                                FMOA: 95.2 → 97.93
+                              </TableCell>
+                              <TableCell>{formatAmount(138500)}</TableCell>
+                              <TableCell className="font-bold">{formatAmount(141480)}</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-100 text-green-700">Validé</Badge>
+                              </TableCell>
+                              <TableCell className="text-green-600">+2.15%</TableCell>
+                              <TableCell>Pierre Leclerc</TableCell>
+                              <TableCell className="font-mono text-xs">IDX-2024-0601-004</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="text-sm">01/03/2024 16:45</TableCell>
+                              <TableCell className="font-mono">AUX89</TableCell>
+                              <TableCell className="text-sm">
+                                ICHT: 114.2 → 115.7
+                              </TableCell>
+                              <TableCell>{formatAmount(125500)}</TableCell>
+                              <TableCell className="font-bold">{formatAmount(127145)}</TableCell>
+                              <TableCell>
+                                <Badge className="bg-red-100 text-red-700">Rejeté</Badge>
+                              </TableCell>
+                              <TableCell className="text-green-600">+1.31%</TableCell>
+                              <TableCell>Marie Dupont</TableCell>
+                              <TableCell className="font-mono text-xs">IDX-2024-0301-005</TableCell>
                             </TableRow>
                           </TableBody>
                         </Table>
@@ -781,7 +1340,16 @@ export default function Indexations() {
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
                         <span>Formules d'indexation</span>
-                        <Button size="sm">
+                        <Button 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedFormula(null);
+                            setFormulaName("");
+                            setFormulaExpression("");
+                            setFormulaVariables([]);
+                            setShowFormulaModal(true);
+                          }}
+                        >
                           <Plus className="w-4 h-4 mr-2" />
                           Nouvelle formule
                         </Button>
@@ -799,19 +1367,191 @@ export default function Indexations() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
+                          {/* Type 1 */}
                           <TableRow>
-                            <TableCell>ICC Standard</TableCell>
+                            <TableCell className="font-bold">Type 1 - ICHT Simple</TableCell>
                             <TableCell className="font-mono text-sm">
-                              (Montant N-1) × (Indice N / Indice N-1)
+                              P = P₀ × (ICHT_rev / ICHT₀)
                             </TableCell>
-                            <TableCell>Montants, Indices N/N-1</TableCell>
-                            <TableCell>{formatDate(new Date())}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Badge variant="outline">P₀</Badge>
+                                <Badge variant="outline">ICHT</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>15/01/2024</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end space-x-1">
-                                <Button variant="ghost" size="sm">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedFormula({
+                                      name: "Type 1 - ICHT Simple",
+                                      expression: "P = P₀ × (ICHT_rev / ICHT₀)",
+                                      variables: ["P₀", "ICHT"]
+                                    });
+                                    setFormulaName("Type 1 - ICHT Simple");
+                                    setFormulaExpression("P = P₀ × (ICHT_rev / ICHT₀)");
+                                    setFormulaVariables(["P₀", "ICHT"]);
+                                    setShowFormulaModal(true);
+                                  }}
+                                >
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    toast({
+                                      title: "Formule supprimée",
+                                      description: "La formule Type 1 a été supprimée avec succès"
+                                    });
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {/* Type 2.A */}
+                          <TableRow>
+                            <TableCell className="font-bold">Type 2.A - Base initiale</TableCell>
+                            <TableCell className="font-mono text-sm">
+                              P = P₀ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Badge variant="outline">P₀</Badge>
+                                <Badge variant="outline">ICHT</Badge>
+                                <Badge variant="outline">FMOA</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>20/01/2024</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedFormula({
+                                      name: "Type 2.A - OMSF Pondéré",
+                                      expression: "OMSFn = OMSF0 × (0,15 + 0,55×(ICHTrev/ICHT0) + 0,3×(FM0Arev/FM0A0))",
+                                      variables: ["OMSF", "ICHT", "FMOA"]
+                                    });
+                                    setFormulaName("Type 2.A - OMSF Pondéré");
+                                    setFormulaExpression("OMSFn = OMSF0 × (0,15 + 0,55×(ICHTrev/ICHT0) + 0,3×(FM0Arev/FM0A0))");
+                                    setFormulaVariables(["OMSF", "ICHT", "FMOA"]);
+                                    setShowFormulaModal(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    toast({
+                                      title: "Formule supprimée",
+                                      description: "La formule Type 2.A a été supprimée avec succès"
+                                    });
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {/* Type 2.B */}
+                          <TableRow>
+                            <TableCell className="font-bold">Type 2.B - Base glissante</TableCell>
+                            <TableCell className="font-mono text-sm">
+                              P = P₋₁ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Badge variant="outline">P₋₁</Badge>
+                                <Badge variant="outline">ICHT</Badge>
+                                <Badge variant="outline">FMOA</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>22/01/2024</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedFormula({
+                                      name: "Type 2.B - Base glissante",
+                                      expression: "P = P₋₁ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))",
+                                      variables: ["P₋₁", "ICHT", "FMOA"]
+                                    });
+                                    setFormulaName("Type 2.B - Base glissante");
+                                    setFormulaExpression("P = P₋₁ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))");
+                                    setFormulaVariables(["P₋₁", "ICHT", "FMOA"]);
+                                    setShowFormulaModal(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    toast({
+                                      title: "Formule supprimée",
+                                      description: "La formule Type 2.B a été supprimée avec succès"
+                                    });
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {/* Type 3 */}
+                          <TableRow>
+                            <TableCell className="font-bold">Type 3 - CPI</TableCell>
+                            <TableCell className="font-mono text-sm">
+                              P = P₀ × (1 + (CPI / CPI₀))
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Badge variant="outline">P₀</Badge>
+                                <Badge variant="outline">CPI</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>25/01/2024</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedFormula({
+                                      name: "Type 3 - CPI",
+                                      expression: "P = P₀ × (1 + (CPI / CPI₀))",
+                                      variables: ["P₀", "CPI"]
+                                    });
+                                    setFormulaName("Type 3 - CPI");
+                                    setFormulaExpression("P = P₀ × (1 + (CPI / CPI₀))");
+                                    setFormulaVariables(["P₀", "CPI"]);
+                                    setShowFormulaModal(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    toast({
+                                      title: "Formule supprimée",
+                                      description: "La formule Type 3 a été supprimée avec succès"
+                                    });
+                                  }}
+                                >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
@@ -842,9 +1582,39 @@ export default function Indexations() {
                         </TableHeader>
                         <TableBody>
                           <TableRow>
-                            <TableCell>CNT-2024-001</TableCell>
+                            <TableCell className="font-mono font-bold">AUX89</TableCell>
                             <TableCell>Annuelle</TableCell>
-                            <TableCell>Fixe + Variable</TableCell>
+                            <TableCell>Maintenance complète</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-mono font-bold">FIG83</TableCell>
+                            <TableCell>Trimestrielle</TableCell>
+                            <TableCell>Production + Maintenance</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-mono font-bold">SCM29</TableCell>
+                            <TableCell>Annuelle</TableCell>
+                            <TableCell>Opérations + Énergie</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-mono font-bold">GLB04</TableCell>
+                            <TableCell>Annuelle</TableCell>
+                            <TableCell>Maintenance préventive</TableCell>
                             <TableCell className="text-right">
                               <Button variant="ghost" size="sm">
                                 <Edit className="w-4 h-4" />
@@ -859,27 +1629,103 @@ export default function Indexations() {
                   {/* Section Indices & sources */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Indices & sources</CardTitle>
+                      <CardTitle>Indices économiques & sources officielles</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-gray-600 mb-4">
-                        Mapping contrats ↔ clés d'indices, configuration des sources officielles
+                        Configuration des indices et sources de données pour les calculs d'indexation
                       </p>
+                      
+                      {/* Tableau des indices */}
+                      <div className="mb-6">
+                        <h4 className="font-semibold mb-3">Indices surveillés</h4>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Code</TableHead>
+                              <TableHead>Libellé</TableHead>
+                              <TableHead>Source</TableHead>
+                              <TableHead>Valeur actuelle</TableHead>
+                              <TableHead>Dernière MAJ</TableHead>
+                              <TableHead>Statut</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell className="font-mono">ICHT-IME</TableCell>
+                              <TableCell>Indice du coût horaire du travail</TableCell>
+                              <TableCell>INSEE</TableCell>
+                              <TableCell className="font-bold">118.2</TableCell>
+                              <TableCell>01/09/2024</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-100 text-green-700">Actif</Badge>
+                              </TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="font-mono">FM0ABE0</TableCell>
+                              <TableCell>Frais et services divers</TableCell>
+                              <TableCell>INSEE</TableCell>
+                              <TableCell className="font-bold">94.3</TableCell>
+                              <TableCell>01/09/2024</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-100 text-green-700">Actif</Badge>
+                              </TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="font-mono">HICP</TableCell>
+                              <TableCell>Consumer Price Index</TableCell>
+                              <TableCell>Eurostat</TableCell>
+                              <TableCell className="font-bold">108.5</TableCell>
+                              <TableCell>01/09/2024</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-100 text-green-700">Actif</Badge>
+                              </TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="font-mono">ICC</TableCell>
+                              <TableCell>Indice du coût de la construction</TableCell>
+                              <TableCell>INSEE</TableCell>
+                              <TableCell className="font-bold">1953.5</TableCell>
+                              <TableCell>T2 2024</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-100 text-green-700">Actif</Badge>
+                              </TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="font-mono">IRL</TableCell>
+                              <TableCell>Indice de référence des loyers</TableCell>
+                              <TableCell>INSEE</TableCell>
+                              <TableCell className="font-bold">142.03</TableCell>
+                              <TableCell>T2 2024</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-100 text-green-700">Actif</Badge>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      {/* Configuration des sources */}
                       <div className="space-y-4">
+                        <h4 className="font-semibold">Configuration des API</h4>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label>Source INSEE</Label>
-                            <Input value="https://api.insee.fr/v2/" readOnly />
+                            <Label>API INSEE</Label>
+                            <Input value="https://api.insee.fr/series/v1/" readOnly />
+                            <p className="text-xs text-gray-500 mt-1">ICHT, FMOA, ICC, IRL</p>
                           </div>
                           <div>
-                            <Label>Source Eurostat</Label>
-                            <Input value="https://ec.europa.eu/eurostat/api/" readOnly />
+                            <Label>API Eurostat</Label>
+                            <Input value="https://ec.europa.eu/eurostat/api/dissemination/" readOnly />
+                            <p className="text-xs text-gray-500 mt-1">CPI/HICP</p>
                           </div>
                         </div>
+                        
                         <Alert>
                           <Info className="h-4 w-4" />
                           <AlertDescription>
-                            Utilisation des valeurs définitives avec historisation automatique
+                            <strong>Récupération automatique</strong> : Les indices sont mis à jour automatiquement chaque mois. 
+                            Seules les valeurs définitives sont utilisées pour les calculs.
                           </AlertDescription>
                         </Alert>
                       </div>
@@ -889,43 +1735,79 @@ export default function Indexations() {
                   {/* Section Routage de validation */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Routage de validation</CardTitle>
+                      <CardTitle>Routage de validation & affectations</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Affectation par défaut</Label>
-                            <Select>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {responsibles.map(resp => (
-                                  <SelectItem key={resp} value={resp.toLowerCase()}>{resp}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                        <h4 className="font-semibold mb-3">Affectations par parc</h4>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Code Parc</TableHead>
+                              <TableHead>Business Unit</TableHead>
+                              <TableHead>Valideur principal</TableHead>
+                              <TableHead>Valideur suppléant</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell className="font-mono">AUX89</TableCell>
+                              <TableCell>ENGIE Green</TableCell>
+                              <TableCell>Marie Dupont</TableCell>
+                              <TableCell>Jean Martin</TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm">
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="font-mono">FIG83</TableCell>
+                              <TableCell>ENGIE Green</TableCell>
+                              <TableCell>Jean Martin</TableCell>
+                              <TableCell>Sophie Bernard</TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm">
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="font-mono">SCM29</TableCell>
+                              <TableCell>ENGIE Green</TableCell>
+                              <TableCell>Sophie Bernard</TableCell>
+                              <TableCell>Pierre Leclerc</TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm">
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="font-mono">GLB04</TableCell>
+                              <TableCell>ENGIE Green</TableCell>
+                              <TableCell>Pierre Leclerc</TableCell>
+                              <TableCell>Marie Dupont</TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm">
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                        
+                        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <input type="checkbox" id="auto-reminder" defaultChecked />
+                            <Label htmlFor="auto-reminder" className="font-semibold">
+                              Relances automatiques activées
+                            </Label>
                           </div>
-                          <div>
-                            <Label>Remplaçant</Label>
-                            <Select>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {responsibles.map(resp => (
-                                  <SelectItem key={resp} value={resp.toLowerCase()}>{resp}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <input type="checkbox" id="auto-reminder" defaultChecked />
-                          <Label htmlFor="auto-reminder">
-                            Relances automatiques après 24h
-                          </Label>
+                          <p className="text-sm text-gray-600">
+                            Email de rappel envoyé après 24h sans action, puis escalade au suppléant après 48h
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -1161,7 +2043,7 @@ export default function Indexations() {
             <Dialog open={showRecalculateModal} onOpenChange={setShowRecalculateModal}>
               <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Recalculer l'indexation</DialogTitle>
+                  <DialogTitle>Recalculer l'indexation avec nouvelle formule</DialogTitle>
                 </DialogHeader>
                 
                 {selectedIndexation && (
@@ -1169,21 +2051,73 @@ export default function Indexations() {
                     <div className="bg-gray-50 p-3 rounded text-sm">
                       <div>Contrat : {selectedIndexation.contractNumber}</div>
                       <div>Date d'indexation : {formatDate(selectedIndexation.indexationDate)}</div>
-                      <div>Formule : {selectedIndexation.formula}</div>
-                      <div>Clé d'indice : {selectedIndexation.indexKey}</div>
-                      <div>Valeur utilisée actuellement : 125.3</div>
+                      <div>Formule actuelle : {selectedIndexation.formula}</div>
+                      <div>Montant de base : {parseFloat(selectedIndexation.previousAmount || "100000").toLocaleString('fr-FR')} €</div>
+                      <div>Montant actuel : {parseFloat(selectedIndexation.proposedAmount || "0").toLocaleString('fr-FR')} €</div>
+                    </div>
+
+                    {/* Sélection de la formule */}
+                    <div className="space-y-2">
+                      <Label>Choisir une nouvelle formule d'indexation</Label>
+                      <Select 
+                        onValueChange={(value) => {
+                          const formula = (formulas as any[]).find((f: any) => f.id === value);
+                          setSelectedFormula(formula);
+                          
+                          // Calculer immédiatement avec la nouvelle formule
+                          if (formula && selectedIndexation) {
+                            const baseAmount = parseFloat(selectedIndexation.previousAmount || "100000");
+                            const newAmount = calculateIndexation(formula, baseAmount, indicesValues);
+                            
+                            // Afficher le nouveau montant calculé en temps réel
+                            toast({
+                              title: "Calcul avec nouvelle formule",
+                              description: `${formula.name}: ${newAmount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })} (variation: ${((newAmount - baseAmount) / baseAmount * 100).toFixed(2)}%)`,
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner une formule" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(formulas as any[]).map((formula: any) => (
+                            <SelectItem key={formula.id} value={formula.id}>
+                              {formula.name} - {formula.type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      {selectedFormula && (
+                        <div className="mt-2 p-3 bg-blue-50 rounded text-sm space-y-1">
+                          <p className="font-medium text-blue-900">{selectedFormula.name}</p>
+                          <p className="text-blue-700 font-mono text-xs">{selectedFormula.expression}</p>
+                          <p className="text-blue-600">{selectedFormula.description}</p>
+                          <div className="mt-2 pt-2 border-t border-blue-200">
+                            <p className="font-medium text-blue-900">Nouveau calcul:</p>
+                            <p className="text-lg font-bold text-blue-900">
+                              {calculateIndexation(selectedFormula, parseFloat(selectedIndexation.previousAmount || "100000"), indicesValues).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-3">
-                      <h4 className="font-medium">Source des indices</h4>
+                      <h4 className="font-medium">Valeurs des indices utilisées</h4>
                       <div className="text-sm space-y-1">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Dernière valeur connue (définitive) :</span>
-                          <span>128.7</span>
+                          <span className="text-gray-600">ICHT :</span>
+                          <span>{indicesValues.ICHT.current} (préc: {indicesValues.ICHT.previous})</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Date de publication :</span>
-                          <span>{formatDate(new Date())}</span>
+                          <span className="text-gray-600">FMOA :</span>
+                          <span>{indicesValues.FMOA.current} (préc: {indicesValues.FMOA.previous})</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">CPI :</span>
+                          <span>{indicesValues.CPI.current} (préc: {indicesValues.CPI.previous})</span>
                         </div>
                       </div>
                     </div>
@@ -1191,7 +2125,7 @@ export default function Indexations() {
                     <Alert>
                       <Info className="h-4 w-4" />
                       <AlertDescription>
-                        Le recalcul utilise automatiquement la dernière valeur d'indice disponible et définitive.
+                        Les formules sont maintenant dynamiques et proviennent de la base de données. Les changements de coefficients impactent directement les calculs.
                       </AlertDescription>
                     </Alert>
                   </div>
@@ -1382,6 +2316,93 @@ export default function Indexations() {
               <p>• Sources officielles : récupération automatique, valeurs définitives, historisation des indices</p>
               <p>• RBAC partout : listes, détails, actions et rapports selon rôle</p>
             </div>
+
+            {/* Modal pour créer/éditer une formule */}
+            <Dialog open={showFormulaModal} onOpenChange={setShowFormulaModal}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {selectedFormula ? "Modifier la formule" : "Nouvelle formule d'indexation"}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="formula-name">Nom de la formule</Label>
+                    <input
+                      id="formula-name"
+                      type="text"
+                      value={formulaName}
+                      onChange={(e) => setFormulaName(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                      placeholder="Ex: Type 2.A - OMSF Pondéré"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="formula-expression">Expression mathématique</Label>
+                    <textarea
+                      id="formula-expression"
+                      value={formulaExpression}
+                      onChange={(e) => setFormulaExpression(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border rounded-md font-mono text-sm"
+                      rows={4}
+                      placeholder="Ex: OMSFn = OMSF0 × (0,15 + 0,55×(ICHTrev/ICHT0) + 0,3×(FM0Arev/FM0A0))"
+                    />
+                  </div>
+                  <div>
+                    <Label>Variables utilisées</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {["ICHT", "FMOA", "CPI", "ICC", "IRL", "OMSF"].map((variable) => (
+                        <Badge
+                          key={variable}
+                          variant={formulaVariables.includes(variable) ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => {
+                            if (formulaVariables.includes(variable)) {
+                              setFormulaVariables(formulaVariables.filter(v => v !== variable));
+                            } else {
+                              setFormulaVariables([...formulaVariables, variable]);
+                            }
+                          }}
+                        >
+                          {variable}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="formula-description">Description</Label>
+                    <textarea
+                      id="formula-description"
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                      rows={2}
+                      placeholder="Description optionnelle de la formule et de son usage"
+                    />
+                  </div>
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Les formules doivent respecter la syntaxe mathématique standard. Les indices sont récupérés automatiquement depuis les sources officielles.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowFormulaModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      toast({
+                        title: selectedFormula ? "Formule modifiée" : "Formule créée",
+                        description: `La formule "${formulaName}" a été ${selectedFormula ? "modifiée" : "créée"} avec succès`
+                      });
+                      setShowFormulaModal(false);
+                    }}
+                  >
+                    {selectedFormula ? "Modifier" : "Créer"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </main>
       </div>

@@ -22,12 +22,12 @@ import StatusBadge from "@/components/common/status-badge";
 import { 
   Search, Bell, User, Filter, Download, Settings, RefreshCw,
   FileText, Edit, XCircle, TrendingUp, Calendar, AlertCircle,
-  Clock, Shield, Database, Link, Timer, Mail, MessageSquare,
+  Clock, Shield, Database, Link as LinkIcon, Timer, Mail, MessageSquare,
   CheckCircle, AlertTriangle, Info, ArrowUp, ArrowDown,
   FileDown, Archive, Activity, PieChart, History, Paperclip,
   ChevronRight, Eye, Check, X, Send, MoreVertical, Plus
 } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { AIHelpBubble } from "@/components/ai-help/ai-help-bubble";
 import { useAIHelp } from "@/components/ai-help/context-provider";
 import {
@@ -122,7 +122,7 @@ interface Notification {
 }
 
 export default function Dashboard() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { setPage } = useAIHelp();
   const [periodFilter, setPeriodFilter] = useState("current_month");
   const [entityFilter, setEntityFilter] = useState("solutions_france");
@@ -492,14 +492,7 @@ export default function Dashboard() {
             {/* Page Title */}
             <div className="mb-4 lg:mb-6 relative">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Tableau de bord</h1>
-              <AIHelpBubble
-                contextData={{
-                  page: 'dashboard',
-                  contractsToValidate: kpiData.contractsToValidate,
-                  deadlinesCount: kpiData.deadlinesIn30Days,
-                  criticalAlerts: kpiData.criticalAlerts
-                }}
-              />
+              <AIHelpBubble context="dashboard" />
             </div>
 
             {/* Filters Bar */}

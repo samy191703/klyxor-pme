@@ -1,4 +1,14 @@
 import {
+  users,
+  contracts,
+  validationRequests,
+  indexations,
+  indexationFormulas,
+  deadlines,
+  alerts,
+  activityLogs,
+  importLogs,
+  amendments,
   type User,
   type InsertUser,
   type Contract,
@@ -7,6 +17,8 @@ import {
   type InsertValidationRequest,
   type Indexation,
   type InsertIndexation,
+  type IndexationFormula,
+  type InsertIndexationFormula,
   type Deadline,
   type InsertDeadline,
   type Alert,
@@ -15,8 +27,11 @@ import {
   type InsertActivityLog,
   type ImportLog,
   type InsertImportLog,
+  type Amendment,
+  type InsertAmendment,
 } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, desc, and, lte, gt, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -29,6 +44,14 @@ export interface IStorage {
   getContract(id: string): Promise<Contract | undefined>;
   createContract(contract: InsertContract): Promise<Contract>;
   updateContract(id: string, contract: Partial<Contract>): Promise<Contract | undefined>;
+  
+  // Amendments
+  getAmendments(): Promise<Amendment[]>;
+  getAmendmentsByContractId(contractId: string): Promise<Amendment[]>;
+  getAmendment(id: string): Promise<Amendment | undefined>;
+  createAmendment(amendment: InsertAmendment): Promise<Amendment>;
+  updateAmendment(id: string, amendment: Partial<Amendment>): Promise<Amendment | undefined>;
+  deleteAmendment(id: string): Promise<boolean>;
 
   // Validation Requests
   getValidationRequests(): Promise<ValidationRequest[]>;
@@ -57,6 +80,13 @@ export interface IStorage {
   // Import Logs
   getImportLogs(): Promise<ImportLog[]>;
 
+  // Indexation Formulas
+  getIndexationFormulas(): Promise<IndexationFormula[]>;
+  getIndexationFormulaById(id: string): Promise<IndexationFormula | undefined>;
+  createIndexationFormula(formula: InsertIndexationFormula): Promise<IndexationFormula>;
+  updateIndexationFormula(id: string, formula: Partial<InsertIndexationFormula>): Promise<IndexationFormula | undefined>;
+  deleteIndexationFormula(id: string): Promise<boolean>;
+
   // KPIs
   getKPIs(): Promise<{
     contractsToValidate: number;
@@ -72,618 +102,388 @@ export interface IStorage {
   }>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private contracts: Map<string, Contract>;
-  private validationRequests: Map<string, ValidationRequest>;
-  private indexations: Map<string, Indexation>;
-  private deadlines: Map<string, Deadline>;
-  private alerts: Map<string, Alert>;
-  private activityLogs: Map<string, ActivityLog>;
-  private importLogs: Map<string, ImportLog>;
-
-  constructor() {
-    this.users = new Map();
-    this.contracts = new Map();
-    this.validationRequests = new Map();
-    this.indexations = new Map();
-    this.deadlines = new Map();
-    this.alerts = new Map();
-    this.activityLogs = new Map();
-    this.importLogs = new Map();
-
-    this.seedData();
-  }
-
-  private seedData() {
-    // Seed admin user - klyxOR
-    const adminUser: User = {
-      id: "admin-1",
-      username: "admin",
-      password: "admin",
-      name: "Pierre Durand",
-      role: "admin",
-      email: "pierre.durand@klyxor.com",
-    };
-    this.users.set(adminUser.id, adminUser);
-
-    // Seed klyxOR energy contracts
-    const contracts: Contract[] = [
-      {
-        id: "cnt-1",
-        number: "KLX-2024-001",
-        title: "Fourniture électricité site Lyon Confluence",
-        status: "pending_validation",
-        type: "Fourniture Électricité",
-        businessUnit: "klyxOR Solutions France",
-        amount: "1250000.00",
-        currency: "EUR",
-        startDate: new Date("2024-01-01"),
-        endDate: new Date("2026-12-31"),
-        indexationFrequency: "annual",
-        nextIndexationDate: new Date("2024-12-01"),
-        createdBy: "user-1",
-        validatedBy: null,
-        createdAt: new Date("2024-01-15"),
-        updatedAt: new Date("2024-01-15"),
-        hasRequiredDocuments: false,
-      },
-      {
-        id: "cnt-2",
-        number: "KLX-2023-045",
-        title: "Maintenance parc éolien Hauts-de-France",
-        status: "active",
-        type: "Maintenance Infrastructure",
-        businessUnit: "klyxOR Green",
-        amount: "450000.00",
-        currency: "EUR",
-        startDate: new Date("2023-02-01"),
-        endDate: new Date("2025-02-15"),
-        indexationFrequency: "quarterly",
-        nextIndexationDate: new Date("2024-03-01"),
-        createdBy: "user-2",
-        validatedBy: "admin-1",
-        createdAt: new Date("2023-01-20"),
-        updatedAt: new Date("2023-02-01"),
-        hasRequiredDocuments: true,
-      },
-      {
-        id: "cnt-3",
-        number: "KLX-2024-012",
-        title: "Contrat PPA solaire 25MW - Occitanie",
-        status: "active",
-        type: "Contrat PPA",
-        businessUnit: "klyxOR Green",
-        amount: "8500000.00",
-        currency: "EUR",
-        startDate: new Date("2024-01-01"),
-        endDate: new Date("2044-01-01"),
-        indexationFrequency: "annual",
-        nextIndexationDate: new Date("2025-01-01"),
-        createdBy: "user-3",
-        validatedBy: "admin-1",
-        createdAt: new Date("2023-12-15"),
-        updatedAt: new Date("2024-01-01"),
-        hasRequiredDocuments: true,
-      },
-      {
-        id: "cnt-4",
-        number: "KLX-2023-089",
-        title: "Trading gaz naturel - Hub PEG Nord",
-        status: "active",
-        type: "Trading Énergie",
-        businessUnit: "klyxOR Global Energy Management",
-        amount: "15000000.00",
-        currency: "EUR",
-        startDate: new Date("2023-07-01"),
-        endDate: new Date("2024-06-30"),
-        indexationFrequency: "monthly",
-        nextIndexationDate: new Date("2024-03-01"),
-        createdBy: "user-4",
-        validatedBy: "admin-1",
-        createdAt: new Date("2023-06-15"),
-        updatedAt: new Date("2023-07-01"),
-        hasRequiredDocuments: true,
-      },
-    ];
-
-    contracts.forEach(contract => this.contracts.set(contract.id, contract));
-
-    // Seed klyxOR validation requests
-    const validationRequests: ValidationRequest[] = [
-      {
-        id: "val-1",
-        type: "contract",
-        referenceId: "cnt-1",
-        reference: "KLX-2024-001",
-        subject: "Fourniture électricité site Lyon Confluence",
-        requestedBy: "Marie Leclerc",
-        assignedTo: "Pierre Durand",
-        status: "pending",
-        reason: null,
-        createdAt: new Date("2024-01-15"),
-        age: 3,
-      },
-      {
-        id: "val-2",
-        type: "indexation",
-        referenceId: "idx-1",
-        reference: "IDX-2024-012",
-        subject: "Indexation tarif électricité - Zone Sud",
-        requestedBy: "system",
-        assignedTo: "Sophie Martin",
-        status: "pending",
-        reason: null,
-        createdAt: new Date("2024-02-07"),
-        age: 1,
-      },
-      {
-        id: "val-3",
-        type: "amendment",
-        referenceId: "avt-1",
-        reference: "AVK-2024-007",
-        subject: "Extension capacité parc éolien +10MW",
-        requestedBy: "Thomas Dubois",
-        assignedTo: "Pierre Durand",
-        status: "pending",
-        reason: null,
-        createdAt: new Date("2024-02-06"),
-        age: 2,
-      },
-    ];
-
-    validationRequests.forEach(req => this.validationRequests.set(req.id, req));
-
-    // Seed klyxOR indexations
-    const indexations: Indexation[] = [
-      {
-        id: "idx-1",
-        contractId: "cnt-2",
-        contractNumber: "KLX-2023-045",
-        contractTitle: "Maintenance parc éolien Hauts-de-France",
-        indexationDate: new Date("2024-01-01"),
-        frequency: "Trimestrielle",
-        formula: "IPEA",
-        indexKey: "IPEA-E",
-        source: "INSEE",
-        businessUnit: "klyxOR Green",
-        responsible: "Marie Dupont",
-        periodFrom: new Date("2023-01-01"),
-        periodTo: new Date("2023-12-31"),
-        originalIndexDate: new Date("2023-01-01"),
-        revisionIndexDate: new Date("2024-01-01"),
-        indices: [
-          {
-            code: "IPEA-E",
-            valueN1: 115.2,
-            valueN: 117.8,
-            source: "INSEE",
-            date: "2024-01-15"
-          }
-        ],
-        oldAmount: "450000.00",
-        newAmount: "460000.00",
-        previousAmount: "450000.00",
-        proposedAmount: "460000.00",
-        deltaAmount: "10000.00",
-        deltaPercentage: "2.22",
-        status: "pending",
-        assignedValidator: "Jean Martin",
-        validatedBy: null,
-        validatedAt: null,
-        rejectionReason: null,
-        createdAt: new Date("2024-02-07"),
-        updatedAt: new Date("2024-02-07"),
-      },
-      {
-        id: "idx-2",
-        contractId: "cnt-3",
-        contractNumber: "CNT-2024-003",
-        contractTitle: "Location bureaux",
-        indexationDate: new Date("2024-02-01"),
-        frequency: "Trimestrielle",
-        formula: "ILC",
-        indexKey: "ILC",
-        source: "INSEE",
-        businessUnit: "BU France",
-        responsible: "Sophie Bernard",
-        periodFrom: new Date("2023-11-01"),
-        periodTo: new Date("2024-01-31"),
-        originalIndexDate: new Date("2023-02-01"),
-        revisionIndexDate: new Date("2024-02-01"),
-        indices: [
-          {
-            code: "ILC",
-            valueN1: 125.3,
-            valueN: 128.7,
-            source: "INSEE",
-            date: "2024-02-01"
-          }
-        ],
-        oldAmount: "50000.00",
-        newAmount: "51355.00",
-        previousAmount: "50000.00",
-        proposedAmount: "51355.00",
-        deltaAmount: "1355.00",
-        deltaPercentage: "2.71",
-        status: "validated",
-        assignedValidator: "Jean Martin",
-        validatedBy: "Jean Martin",
-        validatedAt: new Date("2024-02-08"),
-        rejectionReason: null,
-        createdAt: new Date("2024-02-01"),
-        updatedAt: new Date("2024-02-08"),
-      },
-      {
-        id: "idx-3",
-        contractId: "cnt-4",
-        contractNumber: "CNT-2024-004",
-        contractTitle: "Services de nettoyage",
-        indexationDate: new Date("2024-03-01"),
-        frequency: "Annuelle",
-        formula: "IRL",
-        indexKey: "IRL",
-        source: "INSEE",
-        businessUnit: "BU Services",
-        responsible: null,
-        periodFrom: new Date("2023-03-01"),
-        periodTo: new Date("2024-02-29"),
-        originalIndexDate: new Date("2023-03-01"),
-        revisionIndexDate: new Date("2024-03-01"),
-        indices: [
-          {
-            code: "IRL",
-            valueN1: 138.9,
-            valueN: 142.1,
-            source: "INSEE",
-            date: "2024-03-01"
-          }
-        ],
-        oldAmount: "25000.00",
-        newAmount: "25576.00",
-        previousAmount: "25000.00",
-        proposedAmount: "25576.00",
-        deltaAmount: "576.00",
-        deltaPercentage: "2.30",
-        status: "to_calculate",
-        assignedValidator: null,
-        validatedBy: null,
-        validatedAt: null,
-        rejectionReason: null,
-        createdAt: new Date("2024-03-01"),
-        updatedAt: new Date("2024-03-01"),
-      },
-      {
-        id: "idx-4",
-        contractId: "cnt-5",
-        contractNumber: "CNT-2024-005",
-        contractTitle: "Fournitures de bureau",
-        indexationDate: new Date("2024-01-15"),
-        frequency: "Semestrielle",
-        formula: "FM0A",
-        indexKey: "FM0A",
-        source: "Banque de France",
-        businessUnit: "BU International",
-        responsible: "Marie Dupont",
-        periodFrom: new Date("2023-07-01"),
-        periodTo: new Date("2023-12-31"),
-        originalIndexDate: new Date("2023-07-01"),
-        revisionIndexDate: new Date("2024-01-15"),
-        indices: null,
-        oldAmount: "15000.00",
-        newAmount: "15000.00",
-        previousAmount: "15000.00",
-        proposedAmount: null,
-        deltaAmount: "0.00",
-        deltaPercentage: "0.00",
-        status: "waiting_index",
-        assignedValidator: null,
-        validatedBy: null,
-        validatedAt: null,
-        rejectionReason: null,
-        createdAt: new Date("2024-01-15"),
-        updatedAt: new Date("2024-01-15"),
-      },
-      {
-        id: "idx-5",
-        contractId: "cnt-6",
-        contractNumber: "CNT-2024-006",
-        contractTitle: "Transport logistique",
-        indexationDate: new Date("2024-02-10"),
-        frequency: "Annuelle",
-        formula: "Personnalisée",
-        indexKey: "CUSTOM",
-        source: "Eurostat",
-        businessUnit: "BU France",
-        responsible: "Jean Martin",
-        periodFrom: new Date("2023-02-01"),
-        periodTo: new Date("2024-01-31"),
-        originalIndexDate: new Date("2023-02-01"),
-        revisionIndexDate: new Date("2024-02-10"),
-        indices: [
-          {
-            code: "CUSTOM",
-            valueN1: 100,
-            valueN: 105,
-            source: "Eurostat",
-            date: "2024-02-10"
-          }
-        ],
-        oldAmount: "80000.00",
-        newAmount: "84000.00",
-        previousAmount: "80000.00",
-        proposedAmount: "84000.00",
-        deltaAmount: "4000.00",
-        deltaPercentage: "5.00",
-        status: "rejected",
-        assignedValidator: "Sophie Bernard",
-        validatedBy: "Sophie Bernard",
-        validatedAt: new Date("2024-02-11"),
-        rejectionReason: "Formule de calcul incorrecte",
-        createdAt: new Date("2024-02-10"),
-        updatedAt: new Date("2024-02-11"),
-      },
-    ];
-
-    indexations.forEach(idx => this.indexations.set(idx.id, idx));
-
-    // Seed deadlines
-    const deadlines: Deadline[] = [
-      {
-        id: "ddl-1",
-        contractId: "cnt-2",
-        contractNumber: "CNT-2023-045",
-        type: "end_contract",
-        date: new Date("2024-02-15"),
-        daysRemaining: 7,
-        businessUnit: "IT Services",
-        notificationSent: true,
-      },
-    ];
-
-    deadlines.forEach(ddl => this.deadlines.set(ddl.id, ddl));
-
-    // Seed alerts
-    const alerts: Alert[] = [
-      {
-        id: "alert-1",
-        type: "critical",
-        category: "sap_error",
-        title: "Erreur SAP - Import contrats",
-        message: "Échec de synchronisation avec SAP pour 5 contrats",
-        isRead: false,
-        referenceId: "import-123",
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      },
-      {
-        id: "alert-2",
-        type: "warning",
-        category: "workflow_delay",
-        title: "Workflow bloqué > 24h",
-        message: "Contrat CNT-2024-008 en attente de validation depuis 26h",
-        isRead: false,
-        referenceId: "cnt-8",
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-      },
-    ];
-
-    alerts.forEach(alert => this.alerts.set(alert.id, alert));
-
-    // Seed activity logs
-    const activityLogs: ActivityLog[] = [
-      {
-        id: "log-1",
-        userId: "admin-1",
-        userName: "Marie Martin",
-        action: "approved",
-        entityType: "contract",
-        entityId: "cnt-3",
-        entityReference: "CNT-2024-003",
-        details: "Contract validated successfully",
-        createdAt: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-      },
-      {
-        id: "log-2",
-        userId: "user-2",
-        userName: "Pierre Durand",
-        action: "rejected",
-        entityType: "indexation",
-        entityId: "idx-8",
-        entityReference: "IDX-2024-008",
-        details: "Indexation rejected due to incorrect indices",
-        createdAt: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago
-      },
-    ];
-
-    activityLogs.forEach(log => this.activityLogs.set(log.id, log));
-
-    // Seed import logs
-    const importLogs: ImportLog[] = [
-      {
-        id: "imp-1",
-        fileName: "contrats_q1_2024.xlsx",
-        author: "Admin User",
-        status: "error",
-        totalRows: 50,
-        successRows: 45,
-        errorRows: 5,
-        errorReport: "5 rows failed validation - missing required fields",
-        createdAt: new Date("2024-02-08T14:30:00"),
-      },
-    ];
-
-    importLogs.forEach(log => this.importLogs.set(log.id, log));
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
   }
 
   async getContracts(): Promise<Contract[]> {
-    return Array.from(this.contracts.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return await db.select().from(contracts).orderBy(desc(contracts.createdAt));
   }
 
   async getContract(id: string): Promise<Contract | undefined> {
-    return this.contracts.get(id);
+    const [contract] = await db.select().from(contracts).where(eq(contracts.id, id));
+    return contract || undefined;
   }
 
   async createContract(insertContract: InsertContract): Promise<Contract> {
-    const id = randomUUID();
-    const now = new Date();
-    const contract: Contract = {
-      ...insertContract,
-      id,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.contracts.set(id, contract);
+    const [contract] = await db
+      .insert(contracts)
+      .values({
+        ...insertContract,
+        updatedAt: new Date(),
+      })
+      .returning();
     return contract;
   }
 
   async updateContract(id: string, updates: Partial<Contract>): Promise<Contract | undefined> {
-    const contract = this.contracts.get(id);
-    if (!contract) return undefined;
+    const [contract] = await db
+      .update(contracts)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(contracts.id, id))
+      .returning();
+    return contract || undefined;
+  }
 
-    const updatedContract: Contract = {
-      ...contract,
-      ...updates,
-      updatedAt: new Date(),
-    };
-    this.contracts.set(id, updatedContract);
-    return updatedContract;
+  async getAmendments(): Promise<Amendment[]> {
+    return await db.select().from(amendments).orderBy(desc(amendments.createdAt));
+  }
+
+  async getAmendmentsByContractId(contractId: string): Promise<Amendment[]> {
+    return await db.select().from(amendments).where(eq(amendments.contractId, contractId)).orderBy(desc(amendments.createdAt));
+  }
+
+  async getAmendment(id: string): Promise<Amendment | undefined> {
+    const [amendment] = await db.select().from(amendments).where(eq(amendments.id, id));
+    return amendment || undefined;
+  }
+
+  async createAmendment(insertAmendment: InsertAmendment): Promise<Amendment> {
+    const [amendment] = await db
+      .insert(amendments)
+      .values({
+        ...insertAmendment,
+        updatedAt: new Date(),
+      })
+      .returning();
+    return amendment;
+  }
+
+  async updateAmendment(id: string, updates: Partial<Amendment>): Promise<Amendment | undefined> {
+    const [amendment] = await db
+      .update(amendments)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(amendments.id, id))
+      .returning();
+    return amendment || undefined;
+  }
+
+  async deleteAmendment(id: string): Promise<boolean> {
+    const result = await db.delete(amendments).where(eq(amendments.id, id));
+    return true;
   }
 
   async getValidationRequests(): Promise<ValidationRequest[]> {
-    return Array.from(this.validationRequests.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return await db.select().from(validationRequests).orderBy(desc(validationRequests.createdAt));
   }
 
   async getValidationRequest(id: string): Promise<ValidationRequest | undefined> {
-    return this.validationRequests.get(id);
+    const [request] = await db.select().from(validationRequests).where(eq(validationRequests.id, id));
+    return request || undefined;
   }
 
   async createValidationRequest(insertRequest: InsertValidationRequest): Promise<ValidationRequest> {
-    const id = randomUUID();
-    const now = new Date();
-    const request: ValidationRequest = {
-      ...insertRequest,
-      id,
-      createdAt: now,
-      age: 0,
-    };
-    this.validationRequests.set(id, request);
+    const [request] = await db
+      .insert(validationRequests)
+      .values(insertRequest)
+      .returning();
     return request;
   }
 
   async updateValidationRequest(id: string, updates: Partial<ValidationRequest>): Promise<ValidationRequest | undefined> {
-    const request = this.validationRequests.get(id);
-    if (!request) return undefined;
-
-    const updatedRequest: ValidationRequest = {
-      ...request,
-      ...updates,
-    };
-    this.validationRequests.set(id, updatedRequest);
-    return updatedRequest;
+    const [request] = await db
+      .update(validationRequests)
+      .set(updates)
+      .where(eq(validationRequests.id, id))
+      .returning();
+    return request || undefined;
   }
 
   async getIndexations(): Promise<Indexation[]> {
-    return Array.from(this.indexations.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    // Données de test en cours pour l'onglet "En cours"
+    const mockIndexations: Indexation[] = [
+      {
+        id: "idx-001",
+        contractId: "contract-001",
+        contractNumber: "TEG55",
+        contractTitle: "Tour Eiffel Green - Production solaire",
+        indexationDate: new Date("2024-10-01"),
+        frequency: "Trimestrielle",
+        formula: "Type 2.A",
+        indexKey: "ICHT/FMOA",
+        originalIndexDate: new Date("2023-10-01"),
+        revisionIndexDate: new Date("2024-10-01"),
+        periodFrom: new Date("2024-07-01"),
+        periodTo: new Date("2024-09-30"),
+        indices: [{code: "ICHT", valueN1: "128.5", valueN: "131.2", source: "INSEE", date: "2024-10-01"}],
+        oldAmount: "180000",
+        newAmount: "191550",
+        previousAmount: "185000",
+        proposedAmount: "191550",
+        deltaAmount: "6550",
+        deltaPercentage: "3.54",
+        status: "pending",
+        assignedValidator: "Marie Dupont",
+        responsible: "Jean Martin",
+        businessUnit: "ENGIE Green",
+        source: "INSEE",
+        validatedBy: null,
+        rejectionReason: null,
+        createdAt: new Date("2024-10-01"),
+        updatedAt: new Date("2024-10-02"),
+        validatedAt: null
+      },
+      {
+        id: "idx-002",
+        contractId: "contract-002",
+        contractNumber: "MRS14",
+        contractTitle: "Marseille Renewable Services",
+        indexationDate: new Date("2024-09-15"),
+        frequency: "Annuelle",
+        formula: "Type 1",
+        indexKey: "ICHT",
+        originalIndexDate: new Date("2023-09-15"),
+        revisionIndexDate: new Date("2024-09-15"),
+        periodFrom: new Date("2023-09-15"),
+        periodTo: new Date("2024-09-14"),
+        indices: [{code: "ICHT", valueN1: "125.3", valueN: "128.0", source: "INSEE", date: "2024-09-15"}],
+        oldAmount: "520000",
+        newAmount: "531400",
+        previousAmount: "520000",
+        proposedAmount: "531400",
+        deltaAmount: "11400",
+        deltaPercentage: "2.19",
+        status: "validated",
+        assignedValidator: "Sophie Bernard",
+        responsible: "Pierre Leclerc",
+        businessUnit: "ENGIE Solutions France",
+        source: "INSEE",
+        validatedBy: "user-001",
+        rejectionReason: null,
+        createdAt: new Date("2024-09-15"),
+        updatedAt: new Date("2024-09-16"),
+        validatedAt: new Date("2024-09-17")
+      },
+      {
+        id: "idx-003",
+        contractId: "contract-003",
+        contractNumber: "LYN42",
+        contractTitle: "Lyon Nord Énergie - Maintenance",
+        indexationDate: new Date("2024-11-01"),
+        frequency: "Semestrielle",
+        formula: "Type 3",
+        indexKey: "CPI",
+        originalIndexDate: new Date("2024-05-01"),
+        revisionIndexDate: new Date("2024-11-01"),
+        periodFrom: new Date("2024-05-01"),
+        periodTo: new Date("2024-10-31"),
+        indices: [{code: "CPI", valueN1: "115.5", valueN: "118.1", source: "Eurostat", date: "2024-11-01"}],
+        oldAmount: "315000",
+        newAmount: "322125",
+        previousAmount: "315000",
+        proposedAmount: "322125",
+        deltaAmount: "7125",
+        deltaPercentage: "2.26",
+        status: "pending",
+        assignedValidator: "Jean Martin",
+        responsible: "Marie Dupont",
+        businessUnit: "ENGIE Flex",
+        source: "Eurostat",
+        validatedBy: null,
+        rejectionReason: null,
+        createdAt: new Date("2024-11-01"),
+        updatedAt: new Date("2024-11-01"),
+        validatedAt: null
+      },
+      {
+        id: "idx-004",
+        contractId: "contract-004",
+        contractNumber: "BRD09",
+        contractTitle: "Bordeaux Renewable District",
+        indexationDate: new Date("2024-08-01"),
+        frequency: "Mensuelle",
+        formula: "ICC",
+        indexKey: "ICC",
+        originalIndexDate: new Date("2024-07-01"),
+        revisionIndexDate: new Date("2024-08-01"),
+        periodFrom: new Date("2024-07-01"),
+        periodTo: new Date("2024-07-31"),
+        indices: [{code: "ICC", valueN1: "134.2", valueN: "136.9", source: "INSEE", date: "2024-08-01"}],
+        oldAmount: "92000",
+        newAmount: "93840",
+        previousAmount: "92000",
+        proposedAmount: "93840",
+        deltaAmount: "1840",
+        deltaPercentage: "2.0",
+        status: "rejected",
+        assignedValidator: "Pierre Leclerc",
+        responsible: "Sophie Bernard",
+        businessUnit: "ENGIE Global Energy Management",
+        source: "INSEE",
+        validatedBy: null,
+        rejectionReason: "Dépassement du plafond contractuel",
+        createdAt: new Date("2024-08-01"),
+        updatedAt: new Date("2024-08-03"),
+        validatedAt: null
+      },
+      {
+        id: "idx-005",
+        contractId: "contract-005",
+        contractNumber: "NAN88",
+        contractTitle: "Nantes Atlantic Wind",
+        indexationDate: new Date("2024-12-01"),
+        frequency: "Annuelle",
+        formula: "Type 2.B",
+        indexKey: "ICHT/FMOA",
+        originalIndexDate: new Date("2023-12-01"),
+        revisionIndexDate: new Date("2024-12-01"),
+        periodFrom: new Date("2023-12-01"),
+        periodTo: new Date("2024-11-30"),
+        indices: [],
+        oldAmount: "675000",
+        newAmount: "0",
+        previousAmount: "675000",
+        proposedAmount: "0",
+        deltaAmount: "0",
+        deltaPercentage: "0",
+        status: "waiting_index",
+        assignedValidator: null,
+        responsible: "Jean Martin",
+        businessUnit: "ENGIE Green",
+        source: "INSEE",
+        validatedBy: null,
+        rejectionReason: null,
+        createdAt: new Date("2024-12-01"),
+        updatedAt: new Date("2024-12-01"),
+        validatedAt: null
+      }
+    ];
+    
+    return mockIndexations;
   }
 
   async getIndexation(id: string): Promise<Indexation | undefined> {
-    return this.indexations.get(id);
+    const [indexation] = await db.select().from(indexations).where(eq(indexations.id, id));
+    return indexation || undefined;
   }
 
   async createIndexation(insertIndexation: InsertIndexation): Promise<Indexation> {
-    const id = randomUUID();
-    const indexation: Indexation = {
-      ...insertIndexation,
-      id,
-      createdAt: new Date(),
-    };
-    this.indexations.set(id, indexation);
+    const [indexation] = await db
+      .insert(indexations)
+      .values(insertIndexation)
+      .returning();
     return indexation;
   }
 
   async updateIndexation(id: string, updates: Partial<Indexation>): Promise<Indexation | undefined> {
-    const indexation = this.indexations.get(id);
-    if (!indexation) return undefined;
-
-    const updatedIndexation: Indexation = {
-      ...indexation,
-      ...updates,
-    };
-    this.indexations.set(id, updatedIndexation);
-    return updatedIndexation;
+    const [indexation] = await db
+      .update(indexations)
+      .set(updates)
+      .where(eq(indexations.id, id))
+      .returning();
+    return indexation || undefined;
   }
 
   async getDeadlines(): Promise<Deadline[]> {
-    return Array.from(this.deadlines.values()).sort(
-      (a, b) => a.daysRemaining - b.daysRemaining
-    );
+    return await db.select().from(deadlines).orderBy(deadlines.daysRemaining);
   }
 
   async getAlerts(): Promise<Alert[]> {
-    return Array.from(this.alerts.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return await db.select().from(alerts).orderBy(desc(alerts.createdAt));
   }
 
   async markAlertAsRead(id: string): Promise<void> {
-    const alert = this.alerts.get(id);
-    if (alert) {
-      alert.isRead = true;
-      this.alerts.set(id, alert);
-    }
+    await db
+      .update(alerts)
+      .set({ isRead: true })
+      .where(eq(alerts.id, id));
   }
 
   async markAllAlertsAsRead(): Promise<void> {
-    this.alerts.forEach((alert, id) => {
-      alert.isRead = true;
-      this.alerts.set(id, alert);
-    });
+    await db
+      .update(alerts)
+      .set({ isRead: true });
   }
 
   async getActivityLogs(): Promise<ActivityLog[]> {
-    return Array.from(this.activityLogs.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return await db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt));
   }
 
   async createActivityLog(insertLog: InsertActivityLog): Promise<ActivityLog> {
-    const id = randomUUID();
-    const log: ActivityLog = {
-      ...insertLog,
-      id,
-      createdAt: new Date(),
-    };
-    this.activityLogs.set(id, log);
+    const [log] = await db
+      .insert(activityLogs)
+      .values(insertLog)
+      .returning();
     return log;
   }
 
   async getImportLogs(): Promise<ImportLog[]> {
-    return Array.from(this.importLogs.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return await db.select().from(importLogs).orderBy(desc(importLogs.createdAt));
+  }
+
+  async getIndexationFormulas(): Promise<IndexationFormula[]> {
+    return await db.select().from(indexationFormulas).where(eq(indexationFormulas.isActive, true)).orderBy(desc(indexationFormulas.createdAt));
+  }
+
+  async getIndexationFormulaById(id: string): Promise<IndexationFormula | undefined> {
+    const [formula] = await db.select().from(indexationFormulas).where(eq(indexationFormulas.id, id));
+    return formula || undefined;
+  }
+
+  async createIndexationFormula(insertFormula: InsertIndexationFormula): Promise<IndexationFormula> {
+    const [formula] = await db
+      .insert(indexationFormulas)
+      .values({
+        ...insertFormula,
+        updatedAt: new Date(),
+      })
+      .returning();
+    return formula;
+  }
+
+  async updateIndexationFormula(id: string, updates: Partial<InsertIndexationFormula>): Promise<IndexationFormula | undefined> {
+    const [formula] = await db
+      .update(indexationFormulas)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(indexationFormulas.id, id))
+      .returning();
+    return formula || undefined;
+  }
+
+  async deleteIndexationFormula(id: string): Promise<boolean> {
+    const [formula] = await db
+      .update(indexationFormulas)
+      .set({
+        isActive: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(indexationFormulas.id, id))
+      .returning();
+    return !!formula;
   }
 
   async getKPIs(): Promise<{
@@ -698,24 +498,31 @@ export class MemStorage implements IStorage {
     missingDocuments: number;
     importErrors: number;
   }> {
-    const validationRequests = await this.getValidationRequests();
-    const contracts = await this.getContracts();
-    const deadlines = await this.getDeadlines();
-    const importLogs = await this.getImportLogs();
+    const validationRequestsPromise = this.getValidationRequests();
+    const contractsPromise = this.getContracts();
+    const deadlinesPromise = this.getDeadlines();
+    const importLogsPromise = this.getImportLogs();
+
+    const [validationRequestsData, contractsData, deadlinesData, importLogsData] = await Promise.all([
+      validationRequestsPromise,
+      contractsPromise,
+      deadlinesPromise,
+      importLogsPromise,
+    ]);
 
     return {
-      contractsToValidate: validationRequests.filter(r => r.type === "contract" && r.status === "pending").length,
-      indexationsToValidate: validationRequests.filter(r => r.type === "indexation" && r.status === "pending").length,
-      dueDatesJ30: deadlines.filter(d => d.daysRemaining <= 30 && d.daysRemaining > 7).length,
-      dueDatesJ7: deadlines.filter(d => d.daysRemaining <= 7 && d.daysRemaining > 1).length,
-      dueDatesJ1: deadlines.filter(d => d.daysRemaining <= 1).length,
-      delayedWorkflows: validationRequests.filter(r => r.age > 1).length,
-      pendingTerminations: validationRequests.filter(r => r.type === "termination" && r.status === "pending").length,
-      amendmentsToValidate: validationRequests.filter(r => r.type === "amendment" && r.status === "pending").length,
-      missingDocuments: contracts.filter(c => !c.hasRequiredDocuments).length,
-      importErrors: importLogs.filter(l => l.status === "error").length,
+      contractsToValidate: validationRequestsData.filter(r => r.type === "contract" && r.status === "pending").length,
+      indexationsToValidate: validationRequestsData.filter(r => r.type === "indexation" && r.status === "pending").length,
+      dueDatesJ30: deadlinesData.filter(d => d.daysRemaining <= 30 && d.daysRemaining > 7).length,
+      dueDatesJ7: deadlinesData.filter(d => d.daysRemaining <= 7 && d.daysRemaining > 1).length,
+      dueDatesJ1: deadlinesData.filter(d => d.daysRemaining <= 1).length,
+      delayedWorkflows: validationRequestsData.filter(r => r.age > 1).length,
+      pendingTerminations: validationRequestsData.filter(r => r.type === "termination" && r.status === "pending").length,
+      amendmentsToValidate: validationRequestsData.filter(r => r.type === "amendment" && r.status === "pending").length,
+      missingDocuments: contractsData.filter(c => !c.hasRequiredDocuments).length,
+      importErrors: importLogsData.filter(l => l.status === "error").length,
     };
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

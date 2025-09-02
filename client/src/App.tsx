@@ -21,6 +21,15 @@ import PaymentProofs from "@/pages/payment-proofs";
 import NotFound from "@/pages/not-found";
 import { AIHelpProvider } from "@/components/ai-help/context-provider";
 
+// Admin pages
+import { AdminDashboard } from "@/pages/admin/AdminDashboard";
+import { AdminContracts } from "@/pages/admin/AdminContracts";
+import { AdminBilling } from "@/pages/admin/AdminBilling";
+import { AdminIndexations } from "@/pages/admin/AdminIndexations";
+import AdminAmendments from "@/pages/admin/amendments";
+import AdminDeadlines from "@/pages/admin/deadlines";
+import AdminDocuments from "@/pages/admin/documents";
+
 function Router() {
   return (
     <Switch>
@@ -39,6 +48,21 @@ function Router() {
       <Route path="/payment-flows" component={PaymentFlows} />
       <Route path="/payment-blocks" component={PaymentBlocks} />
       <Route path="/payment-proofs" component={PaymentProofs} />
+      
+      {/* Admin routes */}
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/contracts" component={AdminContracts} />
+      <Route path="/admin/billing" component={AdminBilling} />
+      <Route path="/admin/indexations" component={AdminIndexations} />
+      <Route path="/admin/amendments" component={AdminAmendments} />
+      <Route path="/admin/deadlines" component={AdminDeadlines} />
+      <Route path="/admin/documents" component={AdminDocuments} />
+      <Route path="/admin/alerts" component={AdminDashboard} />
+      <Route path="/admin/extraction" component={AdminDashboard} />
+      <Route path="/admin/imports" component={AdminDashboard} />
+      <Route path="/admin/security" component={AdminDashboard} />
+      <Route path="/admin/audit" component={AdminDashboard} />
+      
       <Route component={NotFound} />
     </Switch>
   );

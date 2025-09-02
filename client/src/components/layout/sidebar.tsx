@@ -27,7 +27,7 @@ const menuItems = [
   },
   {
     label: "Gestion des contrats",
-    href: "/contracts",
+    href: "/admin/contracts",
     icon: FileText,
   },
   {
@@ -37,17 +37,17 @@ const menuItems = [
   },
   {
     label: "Échéances & rappels",
-    href: "/deadlines",
+    href: "/admin/deadlines",
     icon: Calendar,
   },
   {
     label: "Indexations & rapports",
-    href: "/indexations",
+    href: "/admin/indexations",
     icon: TrendingUp,
   },
   {
     label: "Avenants",
-    href: "/amendments",
+    href: "/admin/amendments",
     icon: Edit,
   },
   {
@@ -57,7 +57,7 @@ const menuItems = [
   },
   {
     label: "Documents & GED",
-    href: "/documents",
+    href: "/admin/documents",
     icon: Folder,
   },
   {
@@ -84,7 +84,7 @@ const menuItems = [
   },
   {
     label: "Plans de facturation",
-    href: "/billing-plans",
+    href: "/admin/billing",
     icon: FileCheck,
   },
   {

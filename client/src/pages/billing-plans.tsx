@@ -20,24 +20,40 @@ import {
   Clock,
   TrendingUp,
   FileCheck,
-  Info
+  Info,
+  Database,
+  Send,
+  CreditCard,
+  DollarSign,
+  Receipt,
+  AlertTriangle,
+  Building2,
+  Link,
+  TrendingDown,
+  Upload
 } from "lucide-react";
 
 interface BillingPlan {
   id: string;
   contractId: string;
   contractName: string;
+  contractType: string;
   period: { start: string; end: string };
   periodicity: string;
   term: string;
   linesCount: number;
   totalAmount: number;
   currency: string;
-  status: "to_validate" | "validated" | "rejected";
+  status: "to_validate" | "validated" | "rejected" | "sap_pending" | "sap_error";
   lastAction: string;
   flowsToCreate: number;
   creator: string;
   createdAt: string;
+  indexationFormula?: string;
+  sapStatus?: string;
+  sapCode?: string;
+  paymentProofCount?: number;
+  businessUnit?: string;
 }
 
 export default function BillingPlans() {
@@ -47,12 +63,13 @@ export default function BillingPlans() {
   const [statusFilter, setStatusFilter] = useState("to_validate");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Données exemple
+  // Données exemple enrichies
   const plans: BillingPlan[] = [
     {
       id: "PF-2025-001",
-      contractId: "KLX-2024-034",
-      contractName: "Maintenance Éolienne Normandie",
+      contractId: "AUX89",
+      contractName: "OMSA - Maintenance Éolienne Normandie",
+      contractType: "OMSA",
       period: { start: "2025-01-01", end: "2025-12-31" },
       periodicity: "Mensuel",
       term: "À échoir",
@@ -60,42 +77,79 @@ export default function BillingPlans() {
       totalAmount: 240000,
       currency: "EUR",
       status: "to_validate",
-      lastAction: "Création",
+      lastAction: "Création avec indexation ICHT",
       flowsToCreate: 12,
       creator: "Sophie Martin",
-      createdAt: "2025-01-20 14:30"
+      createdAt: "2025-01-20 14:30",
+      indexationFormula: "ICHT",
+      sapStatus: "En attente",
+      paymentProofCount: 0,
+      businessUnit: "ENGIE Solutions France"
     },
     {
       id: "PF-2025-002",
-      contractId: "KLX-2024-089",
-      contractName: "Fourniture Gaz Site Lyon",
+      contractId: "FIG83",
+      contractName: "PPA - Parc Photovoltaïque Figueira",
+      contractType: "PPA",
       period: { start: "2025-02-01", end: "2025-07-31" },
       periodicity: "Trimestriel",
       term: "Échu",
       linesCount: 2,
-      totalAmount: 180000,
+      totalAmount: 875000,
       currency: "EUR",
-      status: "to_validate",
-      lastAction: "Modification",
+      status: "sap_pending",
+      lastAction: "Export SAP en cours",
       flowsToCreate: 2,
       creator: "Pierre Durand",
-      createdAt: "2025-01-19 09:15"
+      createdAt: "2025-01-19 09:15",
+      indexationFormula: "FMOA",
+      sapStatus: "Interface SAP",
+      sapCode: "4500123456",
+      paymentProofCount: 0,
+      businessUnit: "ENGIE Green"
     },
     {
       id: "PF-2024-098",
-      contractId: "KLX-2024-012",
-      contractName: "PPA Solaire Marseille",
+      contractId: "JCO99",
+      contractName: "LTSA - Joint Contract Operation Belgium",
+      contractType: "LTSA",
       period: { start: "2024-01-01", end: "2024-12-31" },
       periodicity: "Mensuel",
       term: "À échoir",
       linesCount: 12,
-      totalAmount: 360000,
+      totalAmount: 1250000,
       currency: "EUR",
       status: "validated",
-      lastAction: "Validation",
+      lastAction: "Validé et intégré SAP",
       flowsToCreate: 0,
       creator: "Marie Leblanc",
-      createdAt: "2024-01-05 11:00"
+      createdAt: "2024-01-05 11:00",
+      indexationFormula: "CPI",
+      sapStatus: "Intégré",
+      sapCode: "4500112233",
+      paymentProofCount: 8,
+      businessUnit: "ENGIE Global Energy Management"
+    },
+    {
+      id: "PF-2025-003",
+      contractId: "CPP12",
+      contractName: "OMGC - Contrat Performance Pays de Loire",
+      contractType: "OMGC",
+      period: { start: "2025-01-01", end: "2025-06-30" },
+      periodicity: "Mensuel",
+      term: "À échoir",
+      linesCount: 6,
+      totalAmount: 320000,
+      currency: "EUR",
+      status: "sap_error",
+      lastAction: "Erreur SAP - Code article manquant",
+      flowsToCreate: 6,
+      creator: "Jean Martin",
+      createdAt: "2025-01-18 16:45",
+      indexationFormula: "ICC",
+      sapStatus: "Erreur",
+      paymentProofCount: 0,
+      businessUnit: "ENGIE Solutions France"
     }
   ];
 
@@ -115,6 +169,16 @@ export default function BillingPlans() {
         return <Badge variant="secondary" className="bg-green-100 text-green-700">Validé</Badge>;
       case "rejected":
         return <Badge variant="destructive">Rejeté</Badge>;
+      case "sap_pending":
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+          <Database className="w-3 h-3 mr-1" />
+          SAP en cours
+        </Badge>;
+      case "sap_error":
+        return <Badge variant="destructive">
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          Erreur SAP
+        </Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -169,6 +233,8 @@ export default function BillingPlans() {
                 <SelectItem value="to_validate">À valider</SelectItem>
                 <SelectItem value="validated">Validé</SelectItem>
                 <SelectItem value="rejected">Rejeté</SelectItem>
+                <SelectItem value="sap_pending">SAP en cours</SelectItem>
+                <SelectItem value="sap_error">Erreur SAP</SelectItem>
               </SelectContent>
             </Select>
 
@@ -240,14 +306,14 @@ export default function BillingPlans() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan ID</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contrat</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Période</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Périodicité</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Terme</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nb lignes</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant total</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Indexation</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernière action</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flux à créer</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SAP</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preuves</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -262,21 +328,39 @@ export default function BillingPlans() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {plan.period.start} → {plan.period.end}
+                      <Badge variant="outline">{plan.contractType}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {new Date(plan.period.start).toLocaleDateString('fr-FR')} - {new Date(plan.period.end).toLocaleDateString('fr-FR')}
                     </td>
                     <td className="px-4 py-3 text-sm">{plan.periodicity}</td>
-                    <td className="px-4 py-3 text-sm">{plan.term}</td>
-                    <td className="px-4 py-3 text-sm text-center">{plan.linesCount}</td>
                     <td className="px-4 py-3 text-sm font-medium">
-                      {plan.totalAmount.toLocaleString()} {plan.currency}
+                      {plan.totalAmount.toLocaleString('fr-FR')} {plan.currency}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {plan.indexationFormula && (
+                        <Badge variant="secondary">{plan.indexationFormula}</Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm">{getStatusBadge(plan.status)}</td>
-                    <td className="px-4 py-3 text-sm">{plan.lastAction}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {plan.sapCode ? (
+                        <div className="flex items-center gap-1">
+                          <Link className="w-3 h-3 text-blue-600" />
+                          <span className="text-xs font-mono">{plan.sapCode}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-center">
-                      {plan.flowsToCreate > 0 && (
-                        <Badge variant="outline" className="border-[#C9A646]/30 text-[#C9A646]">
-                          {plan.flowsToCreate}
+                      {plan.paymentProofCount && plan.paymentProofCount > 0 ? (
+                        <Badge variant="outline" className="bg-green-50">
+                          <Receipt className="w-3 h-3 mr-1" />
+                          {plan.paymentProofCount}
                         </Badge>
+                      ) : (
+                        <span className="text-gray-400">0</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm">

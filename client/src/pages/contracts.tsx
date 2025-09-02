@@ -60,6 +60,11 @@ export default function Contracts() {
     queryKey: ["/api/contracts"],
   });
 
+  // Récupérer les formules d'indexation depuis l'API
+  const { data: indexationFormulas = [] } = useQuery<any[]>({
+    queryKey: ["/api/indexation-formulas"],
+  });
+
   // KPIs calculation
   const kpis = {
     drafts: contracts.filter(c => c.status === "draft").length,
@@ -121,16 +126,37 @@ export default function Contracts() {
   };
 
   const businessUnits = [...new Set(contracts.map(c => c.businessUnit))];
-  const contractTypes = [
-    "Fourniture Électricité",
-    "Fourniture Gaz",
-    "Production Renouvelable",
-    "Maintenance Infrastructure",
-    "Services Énergétiques",
-    "Trading Énergie",
-    "Distribution Réseau",
-    "Contrat PPA",
-    "Smart Grid"
+  
+  // Types de contrats pour la compatibilité
+  const contractTypes = ["OMSA", "Bail", "LTSA", "OMGC", "PPA", "Distribution", "Trading"];
+  
+  // Définitions détaillées des types de contrats
+  const contractTypeDefinitions = [
+    { value: "OMSA", label: "OMSA - Services de Maintenance", hasFixedAmount: true, hasTechnology: true },
+    { value: "Bail", label: "Bail - Location/Leasing", hasFixedAmount: false, hasTechnology: false },
+    { value: "LTSA", label: "LTSA - Services Long Terme", hasFixedAmount: true, hasTechnology: false, hasMaintainer: true },
+    { value: "OMGC", label: "OMGC - Maintenance Globale", hasFixedAmount: true, hasTechnology: false, hasMaintainer: true },
+    { value: "PPA", label: "PPA - Power Purchase Agreement", hasFixedAmount: true, hasTechnology: true },
+    { value: "Distribution", label: "Distribution Réseau", hasFixedAmount: true, hasTechnology: false },
+    { value: "Trading", label: "Trading Énergie", hasFixedAmount: true, hasTechnology: false }
+  ];
+
+  const technologies = [
+    "Éolien",
+    "Photovoltaïque", 
+    "Hydraulique",
+    "Biomasse",
+    "Cogénération",
+    "Géothermie"
+  ];
+
+  // Les formules d'indexation sont maintenant récupérées depuis l'API
+
+  const billingPeriods = [
+    { value: "monthly", label: "Mensuelle" },
+    { value: "quarterly", label: "Trimestrielle" },
+    { value: "semi-annual", label: "Semestrielle" },
+    { value: "annual", label: "Annuelle" }
   ];
 
   const handleCreateContract = () => {
@@ -604,8 +630,8 @@ export default function Contracts() {
                                 <SelectValue placeholder="Sélectionner un type" />
                               </SelectTrigger>
                               <SelectContent>
-                                {contractTypes.map(type => (
-                                  <SelectItem key={type} value={type.toLowerCase()}>{type}</SelectItem>
+                                {contractTypeDefinitions.map(type => (
+                                  <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -659,6 +685,84 @@ export default function Contracts() {
                             </Select>
                           </div>
                         </div>
+
+                        {/* Champs conditionnels selon le type */}
+                        {wizardData.type && (() => {
+                          const selectedType = contractTypeDefinitions.find(t => t.value === wizardData.type);
+                          return (
+                            <>
+                              {selectedType?.hasTechnology && (
+                                <div className="mt-4">
+                                  <Label>Technologie *</Label>
+                                  <Select 
+                                    value={wizardData.technology || ""}
+                                    onValueChange={(value) => setWizardData({...wizardData, technology: value})}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Sélectionner la technologie" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {technologies.map(tech => (
+                                        <SelectItem key={tech} value={tech}>{tech}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                              {selectedType?.hasMaintainer && (
+                                <div className="mt-4">
+                                  <Label>Mainteneur *</Label>
+                                  <Input 
+                                    placeholder="Nom du mainteneur"
+                                    value={wizardData.maintainer || ""}
+                                    onChange={(e) => setWizardData({...wizardData, maintainer: e.target.value})}
+                                  />
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                        
+                        {/* Formule d'indexation */}
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Formule d'indexation</Label>
+                            <Select 
+                              value={wizardData.indexationFormula || ""}
+                              onValueChange={(value) => setWizardData({...wizardData, indexationFormula: value})}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionner une formule" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Pas d'indexation</SelectItem>
+                                {indexationFormulas.map((formula: any) => (
+                                  <SelectItem key={formula.id} value={formula.id}>
+                                    {formula.name} - {formula.type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Périodicité de facturation */}
+                          <div>
+                            <Label>Périodicité de facturation</Label>
+                            <Select 
+                              value={wizardData.billingPeriod || "monthly"}
+                              onValueChange={(value) => setWizardData({...wizardData, billingPeriod: value})}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionner" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {billingPeriods.map(period => (
+                                  <SelectItem key={period.value} value={period.value}>{period.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -685,12 +789,13 @@ export default function Contracts() {
                             <p className="text-xs text-gray-500 mt-1">Doit être supérieure à la date début</p>
                           </div>
                           <div>
-                            <Label>Montant fixe *</Label>
+                            <Label>Montant fixe {wizardData.type === "Bail" ? "(Non applicable)" : "*"}</Label>
                             <Input 
                               type="number"
-                              placeholder="0.00"
+                              placeholder={wizardData.type === "Bail" ? "Non applicable" : "0.00"}
                               value={wizardData.fixedAmount || ""}
                               onChange={(e) => setWizardData({...wizardData, fixedAmount: e.target.value})}
+                              disabled={wizardData.type === "Bail"}
                             />
                           </div>
                           <div>
@@ -742,56 +847,97 @@ export default function Contracts() {
                     {/* Étape 3: Indexation */}
                     {wizardStep === 3 && (
                       <div className="space-y-4">
-                        <h2 className="text-xl font-semibold">Étape 3 — Indexation (paramètres)</h2>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Formule d'indexation</Label>
-                            <Select 
-                              value={wizardData.indexationFormula || "none"}
-                              onValueChange={(value) => setWizardData({...wizardData, indexationFormula: value})}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Pas d'indexation</SelectItem>
-                                <SelectItem value="icc">ICC</SelectItem>
-                                <SelectItem value="ilc">ILC</SelectItem>
-                                <SelectItem value="irl">IRL</SelectItem>
-                                <SelectItem value="custom">Personnalisée</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {wizardData.indexationFormula !== "none" && (
-                            <>
+                        <h2 className="text-xl font-semibold">Étape 3 — Paramètres d'indexation</h2>
+                        
+                        {wizardData.indexationFormula && wizardData.indexationFormula !== "none" ? (
+                          <>
+                            <Alert>
+                              <Info className="h-4 w-4" />
+                              <AlertDescription>
+                                <strong>Formule sélectionnée :</strong>
+                                <div className="mt-1">
+                                  {(() => {
+                                    const formula = indexationFormulas.find((f: any) => f.id === wizardData.indexationFormula);
+                                    return formula ? (
+                                      <>
+                                        <div className="font-medium">{formula.name} - {formula.type}</div>
+                                        <div className="text-xs font-mono mt-1">{formula.expression}</div>
+                                        <div className="text-xs mt-1">{formula.description}</div>
+                                      </>
+                                    ) : "Formule sélectionnée"
+                                  })()}
+                                </div>
+                              </AlertDescription>
+                            </Alert>
+                            
+                            <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <Label>Date d'indexation</Label>
+                                <Label>Montant de base pour l'indexation *</Label>
+                                <Input 
+                                  type="number"
+                                  placeholder="Montant initial"
+                                  value={wizardData.indexationBaseAmount || wizardData.fixedAmount || ""}
+                                  onChange={(e) => setWizardData({...wizardData, indexationBaseAmount: e.target.value})}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Montant qui sera indexé</p>
+                              </div>
+                              <div>
+                                <Label>Date de première indexation *</Label>
                                 <Input 
                                   type="date"
                                   value={wizardData.indexationDate || ""}
                                   onChange={(e) => setWizardData({...wizardData, indexationDate: e.target.value})}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Anniversaire</p>
+                                <p className="text-xs text-gray-500 mt-1">Date anniversaire pour le calcul</p>
                               </div>
                               <div>
-                                <Label>Date indice d'origine</Label>
-                                <Input 
-                                  type="date"
-                                  value={wizardData.originalIndexDate || ""}
-                                  onChange={(e) => setWizardData({...wizardData, originalIndexDate: e.target.value})}
-                                />
+                                <Label>Fréquence d'indexation</Label>
+                                <Select 
+                                  value={wizardData.indexationFrequency || "annual"}
+                                  onValueChange={(value) => setWizardData({...wizardData, indexationFrequency: value})}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="annual">Annuelle</SelectItem>
+                                    <SelectItem value="biennial">Biennale</SelectItem>
+                                    <SelectItem value="triennial">Triennale</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
                               <div>
-                                <Label>Date de révision d'indice</Label>
+                                <Label>Cap (plafond) en %</Label>
                                 <Input 
-                                  type="date"
-                                  value={wizardData.indexRevisionDate || ""}
-                                  onChange={(e) => setWizardData({...wizardData, indexRevisionDate: e.target.value})}
+                                  type="number"
+                                  placeholder="Ex: 5 pour 5%"
+                                  value={wizardData.indexationCap || ""}
+                                  onChange={(e) => setWizardData({...wizardData, indexationCap: e.target.value})}
                                 />
+                                <p className="text-xs text-gray-500 mt-1">Limite maximale de variation (optionnel)</p>
                               </div>
-                            </>
-                          )}
-                        </div>
+                              <div>
+                                <Label>Seuil minimum en %</Label>
+                                <Input 
+                                  type="number"
+                                  placeholder="Ex: 2 pour 2%"
+                                  value={wizardData.indexationThreshold || ""}
+                                  onChange={(e) => setWizardData({...wizardData, indexationThreshold: e.target.value})}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Variation minimale pour déclencher (optionnel)</p>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertDescription>
+                              Aucune formule d'indexation sélectionnée. Le contrat n'aura pas d'indexation automatique.
+                              <br />
+                              <span className="text-xs">Vous pouvez sélectionner une formule à l'étape 1 si vous souhaitez activer l'indexation.</span>
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </div>
                     )}
 
@@ -868,6 +1014,20 @@ export default function Contracts() {
                             <div>Montant variable : {wizardData.variableAmount || "0"} {wizardData.currency}</div>
                           </div>
                         </div>
+
+                        {wizardData.indexationFormula && wizardData.indexationFormula !== "none" && (
+                          <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                            <h3 className="font-medium">Indexation</h3>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>Formule : {indexationFormulas.find((f: any) => f.id === wizardData.indexationFormula)?.name || "-"}</div>
+                              <div>Montant de base : {wizardData.indexationBaseAmount || wizardData.fixedAmount || "-"} {wizardData.currency}</div>
+                              <div>Date indexation : {wizardData.indexationDate || "-"}</div>
+                              <div>Fréquence : {wizardData.indexationFrequency === "annual" ? "Annuelle" : wizardData.indexationFrequency === "biennial" ? "Biennale" : "Triennale"}</div>
+                              {wizardData.indexationCap && <div>Cap : {wizardData.indexationCap}%</div>}
+                              {wizardData.indexationThreshold && <div>Seuil : {wizardData.indexationThreshold}%</div>}
+                            </div>
+                          </div>
+                        )}
 
                         <Alert>
                           <Info className="h-4 w-4" />

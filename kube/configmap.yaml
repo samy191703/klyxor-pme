@@ -5,3 +5,4 @@ metadata:
   namespace: clm
 data:
   ENVIRONMENT: "DEV"
+  DATABASE_URL: "postgresql://neondb_owner:npg_lAm9dtJkyw0f@ep-damp-hill-aehfh4fh.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
