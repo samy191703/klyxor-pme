@@ -6,3 +6,4 @@ metadata:
 data:
   ENVIRONMENT: "DEV"
   DATABASE_URL: "postgresql://neondb_owner:npg_n7gxh3JzbtKr@ep-divine-dust-a6z42doq.us-west-2.aws.neon.tech/neondb?sslmode=require"
+  OPENAI_API_KEY: ""
