@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: clm-front-admin
+  name: clm-app
   namespace: NAMESPACE_PLACEHOLDER
   labels:
-    app: clm-front-admin
+    app: clm-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: clm-front-admin
+      app: clm-app
   template:
     metadata:
       labels:
-        app: clm-front-admin
+        app: clm-app
     spec:
       containers:
-        - name: clm-front-admin
+        - name: clm-app
           image: IMAGE_PLACEHOLDER
           imagePullPolicy: Always
           ports:
@@ -26,7 +26,7 @@ spec:
               value: production
           envFrom:
             - configMapRef:
-                name: clm-front-admin-config
+                name: clm-app-config
           resources:
             requests:
               memory: "128Mi"

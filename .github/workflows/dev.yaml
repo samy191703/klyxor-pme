@@ -1,4 +1,4 @@
-name: CI/CD CLM Front for Admin
+name: CI/CD CLM Application
 
 on:
   push:
@@ -54,7 +54,7 @@ jobs:
         run: |
           sed -i "s|IMAGE_PLACEHOLDER|${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG|g" kube/deployment.yaml
           sed -i "s|ACM_ARN_PLACEHOLDER|${{ secrets.ACM_ARN }}|g" kube/ingress.yaml
-          sed -i "s|HOST_PLACEHOLDER|admin.klyxor.com|g" kube/ingress.yaml
+          sed -i "s|HOST_PLACEHOLDER|app.klyxor.com|g" kube/ingress.yaml
           sed -i "s|NAMESPACE_PLACEHOLDER|clm|g" kube/ingress.yaml
           sed -i "s|NAMESPACE_PLACEHOLDER|clm|g" kube/service.yaml
           sed -i "s|NAMESPACE_PLACEHOLDER|clm|g" kube/deployment.yaml
