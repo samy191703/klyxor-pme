@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preuve de paiement - {{invoiceNumber}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        .header {
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            width: 150px;
+            margin-bottom: 10px;
+        }
+        .entity-info {
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+        .title {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 24px;
+            margin: 30px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .payment-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .info-value {
+            color: #212529;
+        }
+        .amount-section {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        .amount-paid {
+            font-size: 28px;
+            color: #1976d2;
+            font-weight: bold;
+        }
+        .balance-due {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #666;
+        }
+        .partial-payment-notice {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            font-size: 11px;
+            color: #6c757d;
+            text-align: center;
+        }
+        .legal-mentions {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f1f3f4;
+            border-radius: 5px;
+            font-size: 10px;
+            color: #666;
+        }
+        .stamp {
+            position: absolute;
+            top: 50px;
+            right: 50px;
+            width: 120px;
+            height: 120px;
+            border: 3px solid #27ae60;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-15deg);
+            color: #27ae60;
+            font-weight: bold;
+            font-size: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="stamp">PAYÉ</div>
+        
+        <div class="header">
+            <div class="entity-info">
+                <h2>{{entityInfo.name}}</h2>
+                <p>SIREN: {{entityInfo.siren}}</p>
+                <p>{{entityInfo.address}}</p>
+            </div>
+        </div>
+
+        <h1 class="title">Preuve de Paiement</h1>
+
+        <div class="payment-info">
+            <div class="info-row">
+                <span class="info-label">Référence paiement :</span>
+                <span class="info-value">{{paymentId}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Numéro de facture :</span>
+                <span class="info-value">{{invoiceNumber}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Date de paiement :</span>
+                <span class="info-value">{{formatDate paymentDate}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Moyen de paiement :</span>
+                <span class="info-value">{{method}}</span>
+            </div>
+            {{#if bankReference}}
+            <div class="info-row">
+                <span class="info-label">Référence bancaire :</span>
+                <span class="info-value">{{bankReference}}</span>
+            </div>
+            {{/if}}
+            <div class="info-row">
+                <span class="info-label">Bénéficiaire :</span>
+                <span class="info-value">{{beneficiary}}</span>
+            </div>
+            {{#if payer}}
+            <div class="info-row">
+                <span class="info-label">Payeur :</span>
+                <span class="info-value">{{payer}}</span>
+            </div>
+            {{/if}}
+            <div class="info-row">
+                <span class="info-label">Contrat :</span>
+                <span class="info-value">{{contractName}} ({{contractId}})</span>
+            </div>
+        </div>
+
+        <div class="amount-section">
+            <div class="amount-paid">
+                Montant payé : {{formatAmount amount currency}}
+            </div>
+            {{#if isPartialPayment}}
+            <div class="balance-due">
+                Solde restant dû : {{formatAmount balanceDue currency}}
+            </div>
+            {{/if}}
+        </div>
+
+        {{#if isPartialPayment}}
+        <div class="partial-payment-notice">
+            <strong>⚠️ Paiement partiel</strong><br>
+            Ce document atteste d'un paiement partiel de la facture {{invoiceNumber}}. 
+            Le solde restant de {{formatAmount balanceDue currency}} reste à régler.
+        </div>
+        {{/if}}
+
+        {{#if legalMentions}}
+        <div class="legal-mentions">
+            <p><strong>Mentions légales :</strong></p>
+            <p>{{legalMentions}}</p>
+        </div>
+        {{/if}}
+
+        <div class="footer">
+            <p>Document généré automatiquement le {{formatDate currentDate}}</p>
+            <p>Ce document constitue une preuve de paiement et doit être conservé.</p>
+            <p>Pour toute question, contactez notre service comptabilité : comptabilite@klyxor.fr</p>
+        </div>
+    </div>
+</body>
+</html>

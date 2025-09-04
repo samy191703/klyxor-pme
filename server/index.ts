@@ -1,10 +1,122 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import passport from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { pool } from "./db";
+import { initializeKeycloakAuth } from "./auth.keycloak";
+
+// Packages de sécurité
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import mongoSanitize from "express-mongo-sanitize";
+import hpp from "hpp";
+import cors from "cors";
+
+// Import des nouveaux services
+import { validationReminderService } from "./services/validationReminder";
+import { stateTransitionManager } from "./services/stateTransitionManager";
+import { sapSyncService } from "./services/sapSynchronization";
+import { alertService } from "./services/alertNotificationService";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Configuration trust proxy pour Replit
+// Utiliser 1 pour accepter seulement le premier proxy
+app.set('trust proxy', 1);
+
+// Configuration CORS sécurisée
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.ALLOWED_ORIGINS?.split(',') || ['https://klyxor.engie.com']
+    : true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Helmet pour les headers de sécurité
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // unsafe-eval pour Vite dev
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "ws:", "wss:"], // WebSocket pour HMR
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Nécessaire pour Vite
+}));
+
+// Rate limiting global
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // 1000 requêtes par IP
+  message: "Trop de requêtes depuis cette adresse IP, réessayez plus tard.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting strict pour l'authentification (temporairement désactivé pour debug)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Augmenté à 20 tentatives pour tests
+  message: "Trop de tentatives de connexion, veuillez réessayer dans 15 minutes.",
+  skipSuccessfulRequests: true, // Ne compte que les échecs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', globalLimiter);
+// Désactivé temporairement pour debug
+// app.use('/api/auth/login', authLimiter);
+
+// Protection contre la pollution des paramètres HTTP
+app.use(hpp());
+
+// Sanitization des données MongoDB (protection injection)
+app.use(mongoSanitize({
+  replaceWith: '_',
+  onSanitize: ({ req, key }) => {
+    console.warn(`Tentative d'injection détectée: ${key}`);
+  }
+}));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Configure session store
+const pgSession = connectPgSimple(session);
+const sessionStore = new pgSession({
+  pool: pool,
+  tableName: 'sessions',
+  createTableIfMissing: true,
+});
+
+// Configure sessions avec sécurité renforcée
+app.use(session({
+  store: sessionStore,
+  secret: process.env.SESSION_SECRET || 'klyxor-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  rolling: true, // Renouvelle la session à chaque requête
+  name: 'klyxor.sid', // Nom personnalisé du cookie
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'strict', // Protection CSRF
+    domain: process.env.COOKIE_DOMAIN || undefined,
+    path: '/'
+  }
+}));
+
+// Initialize passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -37,7 +149,29 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  // Initialiser Keycloak si configuré
+  const keycloakEnabled = await initializeKeycloakAuth();
+  
+  const server = await registerRoutes(app, keycloakEnabled);
+  
+  // Démarrer les services automatiques
+  console.log("Démarrage des services automatiques...");
+  
+  // Service de relances automatiques pour les validations
+  validationReminderService.start();
+  console.log("✓ Service de relances automatiques démarré");
+  
+  // Service de gestion des transitions d'état
+  await stateTransitionManager.start();
+  console.log("✓ Service de transitions d'état démarré");
+  
+  // Service d'alertes et notifications
+  await alertService.start();
+  console.log("✓ Service d'alertes et notifications démarré");
+  
+  // Service de synchronisation SAP (désactivé par défaut - en attente de l'API)
+  // sapSyncService sera activé quand l'API SAP sera disponible
+  console.log("✓ Service SAP prêt (en attente de configuration API)");
   
   // Add graceful shutdown handling for production environment
   let isShuttingDown = false;

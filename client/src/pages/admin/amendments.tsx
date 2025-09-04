@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import AdminLayout from "@/components/layout/admin-layout";
 import { 
@@ -34,58 +35,22 @@ export default function AdminAmendments() {
     { label: "Paramètres", value: "settings", active: activeView === "settings" }
   ];
 
-  // Données simulées pour les avenants
-  const amendments = [
-    {
-      id: 1,
-      contract: "AUX89 - PARC AUXERROIS",
-      type: "Montant",
-      oldValue: "128 000 €",
-      newValue: "130 000 €",
-      vatRate: "20%",
-      status: "to_validate",
-      requestDate: "25/01/2025",
-      requestedBy: "Jean Martin"
-    },
-    {
-      id: 2,
-      contract: "FIG83 - PARC FIGANIÈRES",
-      type: "Périodicité",
-      oldValue: "Mensuelle",
-      newValue: "Trimestrielle",
-      vatRate: null,
-      status: "to_validate",
-      requestDate: "24/01/2025",
-      requestedBy: "Sophie Laurent"
-    },
-    {
-      id: 3,
-      contract: "SCM29 - PARC SCAER LE MERDY",
-      type: "Date d'indexation",
-      oldValue: "01/09/2024",
-      newValue: "01/01/2025",
-      vatRate: null,
-      status: "validated",
-      requestDate: "20/01/2025",
-      requestedBy: "Marie Dupont",
-      validatedBy: "Pierre Durand",
-      validationDate: "21/01/2025"
-    },
-    {
-      id: 4,
-      contract: "GLB04 - PARC GRÉOUX 1",
-      type: "Clause",
-      oldValue: "Révision annuelle",
-      newValue: "Révision semestrielle",
-      vatRate: null,
-      status: "rejected",
-      requestDate: "19/01/2025",
-      requestedBy: "Jean Martin",
-      rejectedBy: "Sophie Laurent",
-      rejectionDate: "20/01/2025",
-      rejectionReason: "Impact financier non évalué"
-    }
-  ];
+  /**
+   * Hook pour récupérer les avenants contractuels depuis l'API
+   * @description Récupère dynamiquement tous les avenants depuis la base PostgreSQL.
+   * Les avenants représentent les modifications apportées aux contrats existants
+   * (changements de montant, durée, clauses, périodicité, dates d'indexation, etc.).
+   * 
+   * @returns {Array} amendments - Liste des avenants avec leurs statuts de validation
+   * @returns {boolean} isLoading - État de chargement des données
+   * 
+   * @note Le rafraîchissement automatique permet de voir les nouveaux avenants
+   * créés ou validés par d'autres utilisateurs sans rafraîchir la page
+   */
+  const { data: amendments = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/amendments"],
+    refetchInterval: 30000, // Rafraîchir toutes les 30 secondes pour synchronisation multi-utilisateurs
+  });
 
   const handleValidate = (amendment: any) => {
     setSelectedAmendment(amendment);
@@ -398,6 +363,9 @@ export default function AdminAmendments() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Validation de l'avenant</DialogTitle>
+            <DialogDescription>
+              Examinez et validez l'avenant proposé
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {selectedAmendment && (

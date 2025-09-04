@@ -1,6 +1,6 @@
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { 
   FileCheck, 
   Send, 
@@ -29,19 +31,21 @@ import {
 
 interface PaymentProof {
   id: string;
-  paymentId: string;
-  invoiceId: string;
-  invoiceNumber: string;
-  paymentDate: string;
-  amount: number;
-  currency: string;
-  method: string;
-  beneficiary: string;
-  proofAvailable: boolean;
+  paymentId?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  paymentDate?: string;
+  amount?: number;
+  currency?: string;
+  method?: string;
+  beneficiary?: string;
+  proofAvailable?: boolean;
   lastSent?: string;
   sentTo?: string[];
-  contractId: string;
-  contractName: string;
+  contractId?: string;
+  contractNumber?: string;
+  contractName?: string;
+  contractTitle?: string;
 }
 
 export default function PaymentProofs() {
@@ -49,111 +53,140 @@ export default function PaymentProofs() {
   const [selectedProof, setSelectedProof] = useState<PaymentProof | null>(null);
   const [showSendHistory, setShowSendHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  
+  // Permissions
+  const { hasPermission } = usePermissions();
+  const canGenerateProof = hasPermission("/payment-proofs");
+  const canResendProof = hasPermission("/payment-proofs");
+  const canDownloadProof = hasPermission("/payment-proofs");
 
-  const proofs: PaymentProof[] = [
-    {
-      id: "PP-2025-001",
-      paymentId: "PAY-2025-0145",
-      invoiceId: "INV-2024-9876",
-      invoiceNumber: "FAC-2024-9876",
-      paymentDate: "2024-12-05",
-      amount: 30000,
-      currency: "EUR",
-      method: "Virement SEPA",
-      beneficiary: "KLYXOR Solutions France",
-      proofAvailable: true,
-      lastSent: "2024-12-06 10:30",
-      sentTo: ["comptabilite@KLYXOR.fr", "finance@KLYXOR.fr"],
-      contractId: "KLX-2024-012",
-      contractName: "PPA Solaire Marseille"
+  /**
+   * Hook pour récupérer les preuves de paiement depuis l'API
+   * @description Récupère dynamiquement les preuves de paiement depuis la base PostgreSQL.
+   * Les preuves incluent les attestations de virement, prélèvements et autres moyens de paiement.
+   * Le rafraîchissement automatique assure que les nouvelles preuves générées sont visibles rapidement.
+   * 
+   * @returns {PaymentProof[]} proofsData - Liste des preuves de paiement avec leurs détails
+   * @returns {boolean} proofsLoading - Indicateur de chargement des données
+   */
+  const { data: proofsData = [], isLoading: proofsLoading } = useQuery<PaymentProof[]>({
+    queryKey: ["/api/payment-proofs"],
+    refetchInterval: 30000, // Rafraîchir toutes les 30 secondes pour détecter les nouvelles preuves
+  });
+
+  // Mutation pour générer une preuve
+  const generateProofMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("POST", "/api/payment-proofs/generate", data);
     },
-    {
-      id: "PP-2025-002",
-      paymentId: "PAY-2025-0089",
-      invoiceId: "INV-2024-8765",
-      invoiceNumber: "FAC-2024-8765",
-      paymentDate: "2024-11-15",
-      amount: 45000,
-      currency: "EUR",
-      method: "Prélèvement automatique",
-      beneficiary: "KLYXOR Green",
-      proofAvailable: true,
-      lastSent: "2024-11-16 14:15",
-      sentTo: ["tresorerie@KLYXOR.fr"],
-      contractId: "KLX-2024-089",
-      contractName: "Fourniture Gaz Site Lyon"
+    onSuccess: () => {
+      toast({
+        title: "Preuve générée",
+        description: "La preuve de paiement a été générée",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/payment-proofs"] });
     },
-    {
-      id: "PP-2025-003",
-      paymentId: "PAY-2025-0234",
-      invoiceId: "INV-2025-0012",
-      invoiceNumber: "FAC-2025-0012",
-      paymentDate: "2025-01-10",
-      amount: 20000,
-      currency: "EUR",
-      method: "Virement SEPA",
-      beneficiary: "KLYXOR Solutions France",
-      proofAvailable: false,
-      contractId: "KLX-2024-034",
-      contractName: "Maintenance Éolienne Normandie"
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer la preuve",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation pour renvoyer une preuve
+  const resendProofMutation = useMutation({
+    mutationFn: async ({ proofId, recipients }: any) => {
+      return await apiRequest("POST", `/api/payment-proofs/${proofId}/resend`, {
+        recipients
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Preuve renvoyée",
+        description: "La preuve de paiement a été renvoyée",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de renvoyer la preuve",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Fonction pour télécharger une preuve
+  const handleDownloadProof = async (proofId: string) => {
+    try {
+      const response = await fetch(`/api/payment-proofs/${proofId}/download`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `preuve-paiement-${proofId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Téléchargement réussi",
+        description: "La preuve de paiement a été téléchargée",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de télécharger la preuve",
+        variant: "destructive",
+      });
     }
-  ];
+  };
+
+  /**
+   * Preuves de paiement réelles depuis la base de données
+   * @description Utilise exclusivement les données réelles provenant de l'API.
+   * Aucune donnée mockée n'est utilisée même si la base est vide.
+   * Ceci garantit l'intégrité et la véracité des preuves affichées aux utilisateurs.
+   */
+  const proofs: PaymentProof[] = proofsData || [];
 
   const filteredProofs = proofs.filter(proof => {
-    const matchesSearch = proof.contractName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          proof.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          proof.paymentId.toLowerCase().includes(searchQuery.toLowerCase());
+    const contractDisplay = proof.contractName || proof.contractTitle || "";
+    const matchesSearch = contractDisplay.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (proof.invoiceNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (proof.paymentId || "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 
-  const sendHistory = [
-    {
-      paymentId: "PAY-2025-0145",
-      invoice: "FAC-2024-9876",
-      recipients: ["comptabilite@KLYXOR.fr", "finance@KLYXOR.fr"],
-      status: "success",
-      timestamp: "2024-12-06 10:30",
+  /**
+   * Génération de l'historique d'envoi depuis les données réelles
+   * @description Construit l'historique d'envoi en extrayant les informations
+   * des preuves de paiement existantes. Ceci remplace l'ancien tableau statique
+   * par des données dynamiques basées sur les vrais envois effectués.
+   * 
+   * @note Seules les preuves avec une date d'envoi (lastSent) sont incluses
+   */
+  const sendHistory = proofs
+    .filter(p => p.lastSent)
+    .map(p => ({
+      paymentId: p.paymentId,
+      invoice: p.invoiceNumber,
+      recipients: p.sentTo || [],
+      status: "success" as const,
+      timestamp: p.lastSent,
       channel: "Email"
-    },
-    {
-      paymentId: "PAY-2025-0089",
-      invoice: "FAC-2024-8765",
-      recipients: ["tresorerie@KLYXOR.fr"],
-      status: "success",
-      timestamp: "2024-11-16 14:15",
-      channel: "Email"
-    },
-    {
-      paymentId: "PAY-2025-0067",
-      invoice: "FAC-2024-7654",
-      recipients: ["finance@client.fr"],
-      status: "failed",
-      timestamp: "2024-11-10 09:00",
-      channel: "Email",
-      error: "Adresse email invalide"
-    }
-  ];
+    }));
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <SidebarWithSubmenu />
-      
-      {/* Main content */}
-      <div className="flex-1 flex flex-col">
-        {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b">
-          <MobileNavWithSubmenu />
-          <img 
-            src="/klyxor-logo.jpeg" 
-            alt="KLYXOR Logo"
-            className="w-10 h-10 object-contain rounded-lg shadow"
-          />
-        </div>
-        
-        {/* Page content */}
-        <div className="flex-1 overflow-auto">
-          <div className="container mx-auto py-6 px-4 lg:px-8 xl:px-12 space-y-6 max-w-[1600px]">
+    <div className="flex flex-col h-full bg-gray-50">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="payment-proofs-main">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900">Preuves de paiement</h1>
+          </div>
       {/* En-tête */}
       <div className="flex justify-between items-center">
         <div>
@@ -563,9 +596,8 @@ export default function PaymentProofs() {
           </Card>
         </div>
       )}
-          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

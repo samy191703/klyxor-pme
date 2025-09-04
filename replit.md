@@ -1,82 +1,82 @@
-# Overview
+# KLYXOR - Système de Gestion des Contrats ENGIE
 
-KLYXOR is an advanced Contract Lifecycle Management (CLM) application specifically tailored for ENGIE, the global energy company. Built with a full-stack architecture using React (frontend) and Express.js (backend), this system manages energy contracts, validation workflows, indexations, deadlines, and various business processes critical to energy sector operations. The application features comprehensive dashboard with KPI tracking, contract management interfaces for energy trading and renewable projects, and validation workflows optimized for ENGIE's business units.
+## Overview
 
-# User Preferences
+KLYXOR is a Contract Lifecycle Management (CLM) application designed for ENGIE, a global energy leader. It manages the entire lifecycle of energy contracts, including electricity, natural gas, renewable PPAs, and infrastructure maintenance. The system provides comprehensive contract management, multi-level validation workflows, automatic indexation based on economic indices, proactive deadline alerts, robust security with RBAC, real-time KPI dashboards, and integrated document management.
 
-Preferred communication style: Simple, everyday language.
+**Business Vision & Ambition:** To streamline contract management for ENGIE, ensuring compliance, optimizing financial performance through precise indexation, and enhancing operational efficiency across all energy contract types.
 
-# System Architecture
+## User Preferences
 
-## Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Routing**: Wouter for client-side routing
-- **State Management**: TanStack Query (React Query) for server state management
-- **UI Components**: Shadcn/ui component library built on Radix UI primitives
-- **Styling**: Tailwind CSS with custom design tokens and CSS variables
-- **Build Tool**: Vite with hot module replacement for development
+I prefer simple language and clear explanations. I want iterative development with frequent, small updates. Please ask for my approval before implementing major architectural changes or new features. I value detailed explanations for complex technical decisions.
 
-## Backend Architecture
-- **Framework**: Express.js with TypeScript
-- **Module System**: ES modules throughout the application
-- **Request Handling**: RESTful API endpoints with JSON middleware
-- **Error Handling**: Centralized error handling with custom status codes
-- **Development Server**: Integrated with Vite for seamless development experience
+## System Architecture
 
-## Data Storage
-- **Database**: PostgreSQL (configured for production via DATABASE_URL)
-- **ORM**: Drizzle ORM with TypeScript-first schema definitions
-- **Database Client**: Neon Database serverless for PostgreSQL connectivity
-- **Schema Management**: Shared schema definitions between frontend and backend
-- **Migrations**: Drizzle Kit for database migrations and schema management
+KLYXOR follows a modern full-stack architecture with a clear separation between frontend and backend.
 
-## Project Structure
-- **Monorepo Layout**: Organized with `client/`, `server/`, and `shared/` directories
-- **Shared Types**: Database schema and TypeScript types shared between frontend and backend
-- **Path Aliases**: Configured path aliases for clean imports (`@/`, `@shared/`)
-- **Asset Organization**: Dedicated directories for components, utilities, and assets
+### UI/UX Decisions
 
-## Key Features
-- **Application Name**: KLYXOR - ENGIE's Contract Management System
-- **Dashboard**: KPI tracking for energy contracts, renewable projects, and trading operations
-- **Contract Management**: Specialized for electricity, gas, renewable energy (PPA), and infrastructure maintenance contracts
-- **Energy-Specific Workflows**: Validation for power purchase agreements, grid connections, and energy trading
-- **Business Units**: ENGIE Solutions France, ENGIE Green, ENGIE Global Energy Management, ENGIE Flex
-- **Real-time Updates**: Query invalidation for immediate UI updates
-- **Responsive Design**: Mobile-first approach with responsive layouts
-- **Form Handling**: React Hook Form with Zod validation schemas
-- **Security & Compliance**: Complete RBAC system with audit trails for energy sector compliance
+The frontend leverages **Shadcn/ui**, **Radix UI**, and **Tailwind CSS** for a consistent and modern design system, ensuring a responsive and intuitive user experience. **Lucide React** is used for iconography.
 
-## Development Workflow
-- **Hot Reloading**: Vite-powered development with instant updates
-- **Type Safety**: End-to-end TypeScript coverage from database to frontend
-- **Code Quality**: ESLint and TypeScript strict mode enabled
-- **Build Process**: Separate build pipelines for client and server with bundling
+### Technical Implementations
 
-# External Dependencies
+*   **Frontend:** Built with **React 18** and **TypeScript**. It uses **Wouter** for routing, **TanStack Query v5** for state management, and **React Hook Form** with **Zod** for robust form handling and validation. **Vite** is used for fast development and building.
+*   **Backend:** Developed with **Node.js** and **Express.js**, employing a strict **TypeScript** configuration. **Passport.js** handles authentication with local strategy and **Express-session** manages sessions. Security is enhanced with **Bcrypt** for password hashing and comprehensive **CORS** configuration. APIs are **RESTful** with Zod-based validation.
+*   **Database:** **PostgreSQL** (leveraging Neon serverless) is the chosen SGBD. **Drizzle ORM** provides type-safe database interactions, with **Drizzle Kit** for migrations and **Drizzle-Zod** for schema validation.
+*   **Security Architecture:** A multi-layered security approach includes:
+    *   **Double Validation:** Frontend (Zod, React Hook Form) for instant feedback and Backend (Zod) for absolute API protection.
+    *   **Comprehensive RBAC:** Frontend UI masking (`usePermissions` hook, `ProtectedRoute`) combined with backend API blocking (`requirePermission`, `requireAuth`) for granular control by resource and action.
+    *   **Strong Password Policy:** For user accounts.
+    *   **Session Management:** Secure sessions with HTTPOnly cookies, configurable timeouts, and CSRF protection.
+    *   **Audit Trails:** Comprehensive logging for compliance (e.g., RGPD).
 
-## Database & Infrastructure
-- **Neon Database**: Serverless PostgreSQL hosting
-- **Drizzle ORM**: TypeScript-first database toolkit
-- **Connect PG Simple**: PostgreSQL session store for Express
+### Feature Specifications
 
-## Frontend Libraries
-- **React Ecosystem**: React 18, React DOM, React Hook Form
-- **UI Framework**: Radix UI primitives with Shadcn/ui components
-- **Styling**: Tailwind CSS, Class Variance Authority, Clsx
-- **State Management**: TanStack React Query for server state
-- **Routing**: Wouter for lightweight client-side routing
-- **Date Handling**: Date-fns for date formatting and manipulation
-- **Icons**: Lucide React for consistent iconography
+*   **Contract Management:** Full lifecycle support from creation to archiving, including multi-level validation workflows with SLAs.
+*   **Automatic Indexation V3 (100% ENGIE Compliant):** 
+    - **Core Engine:** Advanced calculation engine supporting all ENGIE formula types (Type 1, 2A, 2B, 3)
+    - **Economic Indices:** Real-time integration with INSEE for ICHT-IME, FM0A/FMOA, IPC/CPI indices
+    - **Threshold/Cap Logic:** Correct order implementation (threshold blocks first, then cap limits)
+    - **Date Decoupling:** Separate index taking date from application date (N-2 rule support)
+    - **Tariff Tiers:** Automatic management of year 6 and year 11 contract adjustments
+    - **Retroactive Processing:** Handles provisional to definitive index updates with recalculation
+    - **Pending Queue:** Smart management of calculations awaiting missing indices
+*   **Data Validation:** Strict validation at frontend, backend, and database levels with explicit, localized error messages.
+*   **Authentication:** Secure user authentication with role-based access control.
+*   **Document Management:** Integrated GED for contractual documents.
+*   **API Endpoints:** 
+    - **Core APIs:** Authentication, contracts, validations, amendments, deadlines, alerts
+    - **V3 Indexation API:** 
+      - `/api/v3/indexation/calculate` - Single contract calculation
+      - `/api/v3/indexation/simulate` - Simulation without saving
+      - `/api/v3/indexation/calculate-batch` - Batch processing
+      - `/api/v3/indexation/pending` - Queue management
+      - `/api/v3/indices/update` - Manual index updates
+      - `/api/v3/indexation/retroactive` - Retroactive calculations
 
-## Development Tools
-- **Build Tools**: Vite, esbuild for production builds
-- **TypeScript**: Full TypeScript support with strict configuration
-- **Linting**: ESLint with TypeScript integration
-- **Replit Integration**: Replit-specific plugins for development environment
+### System Design Choices
 
-## Utility Libraries
-- **Validation**: Zod for runtime type validation
-- **Styling Utilities**: Tailwind Merge, Class Variance Authority
-- **Carousel**: Embla Carousel for interactive components
-- **Command Interface**: CMDK for command palette functionality
+*   **Project Structure:** Monorepo-like, with `client/` for frontend, `server/` for backend, and `shared/` for common code (schemas, types).
+*   **Data Model:** Core tables include `users`, `contracts`, `validation_requests`, `indexations`, `amendments`, `deadlines`, and `audit_logs`, designed for clear relationships and data integrity.
+*   **Workflow Automation:** Automated processes for contract creation, indexation, amendment management, and deadline alerts.
+
+## Recent Updates (September 2025)
+
+### Indexation Engine V3 Deployment
+- **100% ENGIE Compliance:** Full implementation of ENGIE indexation specifications
+- **Enhanced Database Schema:** Added 9 new fields to contracts table for V3 features
+- **New API Layer:** Complete V3 REST API with simulation, batch, and retroactive endpoints
+- **Improved Documentation:** Comprehensive JSDoc and inline documentation
+- **Performance Optimizations:** Parallel batch processing, efficient index caching
+
+### Technical Debt Resolution
+- Cleaned test files with SQL syntax issues
+- Enhanced error handling and logging
+- Improved type safety with Zod validation
+- Better separation of concerns in service layer
+
+## External Dependencies
+
+*   **Database:** PostgreSQL (specifically Neon serverless for production).
+*   **Economic Indices:** INSEE (French National Institute of Statistics and Economic Studies) for real economic indices (ICHT, FM0A/FMOA, IPC/CPI).
+*   **Future Integrations (Roadmap):** Stripe API for payments, electronic signature module.

@@ -344,7 +344,7 @@ export function AdminIndexations() {
                         <SelectValue placeholder="Tous les types" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Tous</SelectItem>
+                        <SelectItem value="all">Tous</SelectItem>
                         <SelectItem value="OMSA">OMSA</SelectItem>
                         <SelectItem value="LTSA">LTSA</SelectItem>
                         <SelectItem value="OMGC">OMGC</SelectItem>
@@ -360,7 +360,7 @@ export function AdminIndexations() {
                         <SelectValue placeholder="Toutes les formules" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Toutes</SelectItem>
+                        <SelectItem value="all">Toutes</SelectItem>
                         {formulas.map(f => (
                           <SelectItem key={f.id} value={f.code}>{f.name}</SelectItem>
                         ))}
@@ -378,7 +378,7 @@ export function AdminIndexations() {
                         <SelectValue placeholder="Toutes les BU" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Toutes</SelectItem>
+                        <SelectItem value="all">Toutes</SelectItem>
                         <SelectItem value="ENGIE Solutions France">ENGIE Solutions France</SelectItem>
                         <SelectItem value="ENGIE Green">ENGIE Green</SelectItem>
                       </SelectContent>

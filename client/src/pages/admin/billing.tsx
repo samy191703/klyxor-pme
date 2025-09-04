@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,102 +32,50 @@ export default function AdminBilling() {
     { label: "Paramètres", value: "settings", active: activeView === "settings" }
   ];
 
-  // Données simulées pour les plans de facturation
-  const billingPlans = [
-    {
-      id: 1,
-      contract: "AUX89 - PARC AUXERROIS",
-      periodicAmount: 32000,
-      periodicity: "Trimestrielle",
-      term: "Avance",
-      status: "Non validé",
-      source: "Récupéré automatiquement",
-      nextDue: "01/04/2024"
-    },
-    {
-      id: 2,
-      contract: "FIG83 - PARC FIGANIÈRES",
-      periodicAmount: 36416,
-      periodicity: "Mensuelle",
-      term: "Avance",
-      status: "Validé",
-      source: "Généré",
-      nextDue: "01/02/2024"
-    },
-    {
-      id: 3,
-      contract: "SCM29 - PARC SCAER LE MERDY",
-      periodicAmount: 13234,
-      periodicity: "Trimestrielle",
-      term: "Échu",
-      status: "Non validé",
-      source: "Récupéré automatiquement",
-      nextDue: "31/03/2024"
-    },
-    {
-      id: 4,
-      contract: "GLB04 - PARC GRÉOUX 1",
-      periodicAmount: 141480,
-      periodicity: "Annuelle",
-      term: "Avance",
-      status: "Validé",
-      source: "Généré",
-      nextDue: "01/01/2025"
-    }
-  ];
+  /**
+   * Hook pour récupérer les plans de facturation depuis l'API
+   * @description Récupère dynamiquement les plans de facturation depuis la base PostgreSQL.
+   * Ces plans définissent la périodicité et les montants de facturation pour chaque contrat.
+   * 
+   * @returns {Array} billingPlans - Plans de facturation avec périodicité, montants et échéances
+   * @returns {boolean} plansLoading - Indicateur de chargement
+   * 
+   * @note Remplace l'ancien tableau statique par des données réelles de la base
+   */
+  const { data: billingPlans = [], isLoading: plansLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/billing/plans"],
+    refetchInterval: 30000, // Mise à jour automatique pour refléter les modifications
+  });
 
-  // Données simulées pour les flux de paiement
-  const paymentFlows = [
-    {
-      id: 1,
-      contract: "AUX89",
-      dueDate: "01/04/2024",
-      amount: 32000,
-      status: "pending",
-      erpStatus: "ready",
-      blockReason: null
-    },
-    {
-      id: 2,
-      contract: "FIG83",
-      dueDate: "01/02/2024",
-      amount: 36416,
-      status: "sent",
-      erpStatus: "exported",
-      blockReason: null
-    },
-    {
-      id: 3,
-      contract: "SCM29",
-      dueDate: "31/03/2024",
-      amount: 13234,
-      status: "blocked",
-      erpStatus: "pending",
-      blockReason: "Changement de montant non approuvé"
-    }
-  ];
+  /**
+   * Hook pour récupérer les flux de paiement depuis l'API
+   * @description Récupère les flux de paiement avec leurs statuts SAP et blocages éventuels.
+   * Permet le suivi en temps réel de l'intégration avec les systèmes ERP.
+   * 
+   * @returns {Array} paymentFlows - Flux de paiement avec statuts d'export SAP
+   * @returns {boolean} flowsLoading - État de chargement
+   * 
+   * @note Les données proviennent directement de PostgreSQL, garantissant la synchronisation ERP
+   */
+  const { data: paymentFlows = [], isLoading: flowsLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/billing/flows"],
+    refetchInterval: 30000, // Suivi en temps réel des exports SAP
+  });
 
-  // Données simulées pour les preuves de paiement
-  const paymentProofs = [
-    {
-      id: 1,
-      contract: "FIG83",
-      date: "01/01/2024",
-      amount: 36416,
-      proofType: "Virement",
-      channel: "Email",
-      status: "sent"
-    },
-    {
-      id: 2,
-      contract: "AUX89",
-      date: "01/01/2024",
-      amount: 32000,
-      proofType: "Virement",
-      channel: "Courrier",
-      status: "generated"
-    }
-  ];
+  /**
+   * Hook pour récupérer les preuves de paiement depuis l'API
+   * @description Récupère les preuves de paiement générées et leur statut d'envoi.
+   * Ces preuves sont essentielles pour la traçabilité comptable et la conformité.
+   * 
+   * @returns {Array} paymentProofs - Preuves avec type de paiement, canal d'envoi et statut
+   * @returns {boolean} proofsLoading - Indicateur de chargement
+   * 
+   * @note Données 100% réelles depuis PostgreSQL, aucune donnée simulée
+   */
+  const { data: paymentProofs = [], isLoading: proofsLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/billing/proofs"],
+    refetchInterval: 30000, // Vérification régulière des nouvelles preuves
+  });
 
   return (
     <AdminLayout 

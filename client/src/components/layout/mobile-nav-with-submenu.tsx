@@ -24,7 +24,9 @@ import {
   Ban,
   Receipt,
   Settings,
-  X
+  X,
+  Calculator,
+  HelpCircle
 } from "lucide-react";
 
 interface MenuItem {
@@ -53,9 +55,19 @@ const menuItems: MenuItem[] = [
     label: "Validation & Contrôle",
     icon: GitBranch,
     children: [
-      { label: "Workflows de validation", href: "/validation", icon: GitBranch },
+      { label: "Demandes de validation", href: "/validation", icon: GitBranch },
+      { label: "Workflows", href: "/workflows", icon: Settings },
       { label: "Échéances & rappels", href: "/deadlines", icon: Calendar },
-      { label: "Indexations & rapports", href: "/indexations", icon: TrendingUp },
+    ],
+  },
+  {
+    label: "Indexation",
+    icon: Calculator,
+    children: [
+      { label: "Dashboard", href: "/indexation-dashboard", icon: TrendingUp },
+      { label: "Configuration", href: "/indexation-config", icon: Settings },
+      { label: "Module autonome", href: "/indexation", icon: Calculator },
+      { label: "Historique & rapports", href: "/indexations", icon: TrendingUp },
     ],
   },
   {
@@ -195,8 +207,24 @@ export default function MobileNavWithSubmenu() {
           {menuItems.map(item => renderMenuItem(item))}
         </nav>
 
-        {/* Footer with user info */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
+        {/* Footer with user info and tutorial button */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-3">
+          {/* Tutorial Button */}
+          <button
+            onClick={() => {
+              // Utiliser la fonction globale pour relancer le tutoriel
+              if ((window as any).restartTutorial) {
+                (window as any).restartTutorial();
+                setOpen(false); // Fermer le menu mobile après avoir cliqué
+              }
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg bg-[var(--klyxor-or)]/10 hover:bg-[var(--klyxor-or)]/20 text-[var(--klyxor-bleu-nuit)] transition-all duration-200"
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>Relancer le tutoriel</span>
+          </button>
+          
+          {/* User info */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-[var(--klyxor-bleu-nuit)] flex items-center justify-center text-white text-sm font-medium">
               AD

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   ChevronDown,
   ChevronRight,
@@ -26,6 +27,8 @@ import {
   AlertCircle,
   Clock,
   Archive,
+  Calculator,
+  HelpCircle,
 } from "lucide-react";
 
 interface MenuItem {
@@ -54,9 +57,19 @@ const menuItems: MenuItem[] = [
     label: "Validation & Contrôle",
     icon: GitBranch,
     children: [
-      { label: "Workflows de validation", href: "/validation", icon: GitBranch },
+      { label: "Demandes de validation", href: "/validation", icon: GitBranch },
+      { label: "Workflows", href: "/workflows", icon: Settings },
       { label: "Échéances & rappels", href: "/deadlines", icon: Calendar },
-      { label: "Indexations & rapports", href: "/indexations", icon: TrendingUp },
+    ],
+  },
+  {
+    label: "Indexation",
+    icon: Calculator,
+    children: [
+      { label: "Dashboard", href: "/indexation-dashboard", icon: BarChart },
+      { label: "Configuration", href: "/indexation-config", icon: Settings },
+      { label: "Module autonome", href: "/indexations", icon: Calculator },
+      { label: "Historique & rapports", href: "/indexations", icon: TrendingUp },
     ],
   },
   {
@@ -89,6 +102,7 @@ const menuItems: MenuItem[] = [
 
 export default function SidebarWithSubmenu() {
   const [location] = useLocation();
+  const { hasPermission, userRole } = usePermissions();
   // Toutes les sections sont toujours ouvertes
   const expandedSections = menuItems
     .filter(item => item.children && item.children.length > 0)
@@ -102,6 +116,33 @@ export default function SidebarWithSubmenu() {
     return false;
   };
 
+  const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
+    return items.filter(item => {
+      // Check if user has permission for this item
+      if (item.href && !hasPermission(item.href)) {
+        return false;
+      }
+      
+      // Special handling for Admin section
+      if (item.label === 'Administration' && userRole !== 'admin') {
+        return false;
+      }
+      
+      // Filter children recursively
+      if (item.children) {
+        const filteredChildren = filterMenuItems(item.children);
+        if (filteredChildren.length === 0) {
+          return false; // Hide parent if no children are accessible
+        }
+        item.children = filteredChildren;
+      }
+      
+      return true;
+    });
+  };
+  
+  const filteredMenuItems = filterMenuItems([...menuItems]);
+  
   const renderMenuItem = (item: MenuItem, level: number = 0) => {
     const Icon = item.icon;
     const hasChildren = item.children && item.children.length > 0;
@@ -154,7 +195,7 @@ export default function SidebarWithSubmenu() {
   };
 
   return (
-    <div className="hidden lg:flex w-72 bg-white shadow-lg border-r border-gray-200 flex-col">
+    <div className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-10 w-64 bg-white shadow-lg border-r border-gray-200 flex-col">
       {/* Logo/Header */}
       <div className="p-6 border-b border-gray-200 bg-gradient-to-br from-[var(--klyxor-bleu-nuit)]/5 via-[var(--klyxor-or)]/10 to-[var(--klyxor-bleu-nuit)]/5">
         <div className="flex items-center space-x-3">
@@ -172,11 +213,26 @@ export default function SidebarWithSubmenu() {
       
       {/* Navigation Menu */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {menuItems.map(item => renderMenuItem(item))}
+        {filteredMenuItems.map(item => renderMenuItem(item))}
       </nav>
 
-      {/* Footer with user info */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
+      {/* Footer with user info and tutorial button */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-3">
+        {/* Tutorial Button */}
+        <button
+          onClick={() => {
+            // Utiliser la fonction globale pour relancer le tutoriel
+            if ((window as any).restartTutorial) {
+              (window as any).restartTutorial();
+            }
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg bg-[var(--klyxor-or)]/10 hover:bg-[var(--klyxor-or)]/20 text-[var(--klyxor-bleu-nuit)] transition-all duration-200"
+        >
+          <HelpCircle className="w-4 h-4" />
+          <span>Relancer le tutoriel</span>
+        </button>
+        
+        {/* User info */}
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[var(--klyxor-bleu-nuit)] flex items-center justify-center text-white text-sm font-medium">
             AD

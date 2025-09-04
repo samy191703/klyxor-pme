@@ -1,7 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,17 +12,21 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import StatusBadge from "@/components/common/status-badge";
+import StatusBadge from "@/components/widgets/status-badge";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { 
   Eye, Check, X, Share, Clock, AlertTriangle, CheckCircle, 
   XCircle, Download, RefreshCw, Settings, FileText, Paperclip,
   User, Calendar, ArrowRight, History, AlertCircle, Info
 } from "lucide-react";
+import { ConfirmModal } from "@/components/common/confirm-modal";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/queryClient";
 import type { ValidationRequest } from "@shared/schema";
 
 export default function Validation() {
+  const { canValidate } = usePermissions();
   const [activeTab, setActiveTab] = useState("list");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [moduleFilter, setModuleFilter] = useState<string>("all");
@@ -39,11 +41,53 @@ export default function Validation() {
   const [internalComment, setInternalComment] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState("25");
   
+  // États pour les modals
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showBulkActionModal, setShowBulkActionModal] = useState(false);
+  const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<"approve" | "reject" | "">("");
+  
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: requests = [], isLoading } = useQuery<ValidationRequest[]>({
     queryKey: ["/api/validation-requests"],
+  });
+
+  // Récupération des utilisateurs validateurs
+  const { data: validators = [] } = useQuery({
+    queryKey: ["/api/users"],
+    select: (users: any[]) => users.filter(u => 
+      u.role === 'validator' || 
+      u.role === 'manager' || 
+      u.role === 'admin'
+    )
+  });
+
+  // Récupération de l'historique des validations depuis l'API
+  const { data: validationHistory = [] } = useQuery({
+    queryKey: ["/api/validation-history"],
+    queryFn: async () => {
+      // Récupérer les demandes traitées (approuvées ou rejetées)
+      const processedRequests = requests.filter(r => r.status !== "pending");
+      return processedRequests.map(req => ({
+        id: req.id,
+        date: req.createdAt,
+        requestId: req.id,
+        type: req.type,
+        module: getModuleLabel(req.type),
+        contractNumber: req.reference,
+        requester: req.requestedBy,
+        validator: req.assignedTo || "N/A",
+        decision: req.status,
+        reason: req.reason || "",
+        processingTime: "N/A",
+        traceId: `TRC-${req.id.substring(0, 8)}`
+      }));
+    },
+    enabled: requests.length > 0
   });
 
   const approveMutation = useMutation({
@@ -87,44 +131,23 @@ export default function Validation() {
     },
   });
 
-  // Données mockées enrichies
-  const mockValidationHistory = [
-    {
-      id: "val-hist-1",
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      requestId: "val-101",
-      type: "contract",
-      module: "Contrats",
-      contractNumber: "CNT-2024-001",
-      requester: "Sophie Martin",
-      validator: "Pierre Durand",
-      decision: "approved",
-      reason: "",
-      processingTime: "2h 15min",
-      traceId: "TRC-2024-0145"
-    },
-    {
-      id: "val-hist-2",
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      requestId: "val-102",
-      type: "indexation",
-      module: "Indexations",
-      contractNumber: "CNT-2024-002",
-      requester: "Marie Laurent",
-      validator: "Jean Dubois",
-      decision: "rejected",
-      reason: "Justificatifs manquants",
-      processingTime: "45min",
-      traceId: "TRC-2024-0144"
-    }
-  ];
+  // Calcul des statistiques sur 7 jours depuis les vraies données
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const rejected7d = requests.filter(r => 
+    r.status === "rejected" && 
+    new Date(r.createdAt) >= sevenDaysAgo
+  ).length;
+  const approved7d = requests.filter(r => 
+    r.status === "approved" && 
+    new Date(r.createdAt) >= sevenDaysAgo
+  ).length;
 
-  // Calcul des KPIs
+  // Calcul des KPIs depuis les vraies données
   const kpis = {
     pending: requests.filter(r => r.status === "pending").length,
     overdue: requests.filter(r => r.age > 1).length,
-    rejected7d: 3, // Mock
-    approved7d: 12, // Mock
+    rejected7d: rejected7d,
+    approved7d: approved7d,
   };
 
   const filteredRequests = requests.filter(request => {
@@ -172,11 +195,15 @@ export default function Validation() {
     }
   };
 
-  const getSLARemaining = (createdAt: Date, age: number) => {
-    const hours = 24 - (age * 24);
-    if (hours <= 0) return { text: "Expiré", variant: "destructive" };
-    if (hours <= 6) return { text: `${hours}h`, variant: "warning" };
-    return { text: `${hours}h`, variant: "secondary" };
+  const getSLARemaining = (createdAt: Date | string, age: number) => {
+    try {
+      const hours = 24 - (age * 24);
+      if (hours <= 0) return { text: "Expiré", variant: "destructive" };
+      if (hours <= 6) return { text: `${hours}h`, variant: "warning" };
+      return { text: `${hours}h`, variant: "secondary" };
+    } catch (error) {
+      return { text: "N/A", variant: "secondary" };
+    }
   };
 
   const handleShowDetails = (request: any) => {
@@ -190,52 +217,50 @@ export default function Validation() {
 
   const handleDecision = () => {
     if (decision === "approve") {
-      approveMutation.mutate(selectedRequest.id);
-      setShowDetailsPanel(false);
-    } else if (decision === "reject" && rejectReason) {
-      rejectMutation.mutate({ id: selectedRequest.id, reason: rejectReason });
-      setShowDetailsPanel(false);
+      setShowApproveModal(true);
+    } else if (decision === "reject") {
+      setShowRejectModal(true);
     } else if (transferTo) {
-      toast({
-        title: "Demande transférée",
-        description: `La demande a été transférée à ${transferTo}`,
-      });
-      setShowDetailsPanel(false);
+      setShowTransferModal(true);
     }
   };
 
-  const formatDate = (date: Date | string) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(date));
+  const formatDate = (date: Date | string | undefined | null) => {
+    if (!date) return 'N/A';
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) return 'N/A';
+      return new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(dateObj);
+    } catch (error) {
+      return 'N/A';
+    }
   };
 
-  const formatDateShort = (date: Date | string) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(date));
+  const formatDateShort = (date: Date | string | undefined | null) => {
+    if (!date) return 'N/A';
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) return 'N/A';
+      return new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(dateObj);
+    } catch (error) {
+      return 'N/A';
+    }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <SidebarWithSubmenu />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 lg:hidden">
-          <div className="flex items-center justify-between">
-            <MobileNavWithSubmenu />
-            <h1 className="text-lg font-semibold">Workflows de validation</h1>
-          </div>
-        </header>
-        
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="validation-main">
+    <div className="flex flex-col h-full bg-gray-50">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="validation-main">
           <div className="max-w-7xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-6">
@@ -372,6 +397,17 @@ export default function Validation() {
                         <Download className="w-4 h-4 mr-2" />
                         Exporter
                       </Button>
+
+                      {selectedRequests.length > 0 && (
+                        <Button 
+                          variant="outline"
+                          onClick={() => setShowBulkActionModal(true)}
+                          data-testid="button-bulk-action"
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          Actions groupées ({selectedRequests.length})
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -410,6 +446,19 @@ export default function Validation() {
                         <Table>
                           <TableHeader>
                             <TableRow>
+                              <TableHead className="w-12">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRequests.length === filteredRequests.filter(r => r.status === 'pending').length && filteredRequests.filter(r => r.status === 'pending').length > 0}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedRequests(filteredRequests.filter(r => r.status === 'pending').map(r => r.id));
+                                    } else {
+                                      setSelectedRequests([]);
+                                    }
+                                  }}
+                                />
+                              </TableHead>
                               <TableHead>ID demande</TableHead>
                               <TableHead>Type</TableHead>
                               <TableHead>Contrat</TableHead>
@@ -431,6 +480,20 @@ export default function Validation() {
                                   className="cursor-pointer hover:bg-gray-50"
                                   onClick={() => handleShowDetails(request)}
                                 >
+                                  <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedRequests.includes(request.id)}
+                                      disabled={request.status !== 'pending'}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedRequests([...selectedRequests, request.id]);
+                                        } else {
+                                          setSelectedRequests(selectedRequests.filter(id => id !== request.id));
+                                        }
+                                      }}
+                                    />
+                                  </TableCell>
                                   <TableCell>
                                     <a href="#" className="text-blue-600 hover:underline">
                                       {request.id}
@@ -585,8 +648,11 @@ export default function Validation() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tous</SelectItem>
-                          <SelectItem value="pierre">Pierre Durand</SelectItem>
-                          <SelectItem value="jean">Jean Dubois</SelectItem>
+                          {validators.map((user: any) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.firstName} {user.lastName}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Select>
@@ -633,7 +699,7 @@ export default function Validation() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {mockValidationHistory.map((item) => (
+                        {validationHistory.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell>{formatDate(item.date)}</TableCell>
                             <TableCell>
@@ -823,7 +889,7 @@ export default function Validation() {
                             </a>
                           </div>
                           <div className="text-sm font-normal text-gray-600">
-                            SLA restant: {getSLARemaining(selectedRequest.createdAt, selectedRequest.age).text}
+                            SLA restant: {selectedRequest.createdAt ? getSLARemaining(selectedRequest.createdAt, selectedRequest.age || 0).text : "N/A"}
                           </div>
                         </div>
                       </SheetTitle>
@@ -888,7 +954,7 @@ export default function Validation() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Affectée:</span>
-                            <span>{formatDate(new Date())}</span>
+                            <span>{formatDate(selectedRequest.createdAt || new Date())}</span>
                           </div>
                           {selectedRequest.age > 1 && (
                             <div className="flex justify-between">
@@ -950,9 +1016,17 @@ export default function Validation() {
                                 <SelectValue placeholder="Sélectionner une personne" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="pierre">Pierre Durand</SelectItem>
-                                <SelectItem value="marie">Marie Martin</SelectItem>
-                                <SelectItem value="jean">Jean Dubois</SelectItem>
+                                {validators.length === 0 ? (
+                                  <SelectItem value="none" disabled>
+                                    Aucun validateur disponible
+                                  </SelectItem>
+                                ) : (
+                                  validators.map((user: any) => (
+                                    <SelectItem key={user.id} value={user.id}>
+                                      {user.firstName} {user.lastName} - {user.role === 'admin' ? 'Administrateur' : user.role === 'manager' ? 'Gestionnaire' : 'Validateur'}
+                                    </SelectItem>
+                                  ))
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
@@ -1002,9 +1076,202 @@ export default function Validation() {
                 )}
               </SheetContent>
             </Sheet>
+
+            {/* Modal de confirmation d'approbation */}
+            <ConfirmModal
+              open={showApproveModal}
+              onOpenChange={setShowApproveModal}
+              title="Approuver la demande"
+              description={`Êtes-vous sûr de vouloir approuver la demande de validation #${selectedRequest?.reference} ?`}
+              confirmText="Approuver"
+              cancelText="Annuler"
+              variant="default"
+              onConfirm={() => {
+                if (selectedRequest) {
+                  approveMutation.mutate(selectedRequest.id);
+                  setShowApproveModal(false);
+                  setShowDetailsPanel(false);
+                }
+              }}
+            />
+
+            {/* Modal de confirmation de rejet */}
+            <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+              <DialogContent data-testid="reject-modal">
+                <DialogHeader>
+                  <DialogTitle>Rejeter la demande</DialogTitle>
+                  <DialogDescription>
+                    Veuillez indiquer le motif du rejet pour la demande #{selectedRequest?.reference}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label htmlFor="reject-reason">Motif du rejet *</Label>
+                    <Textarea
+                      id="reject-reason"
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      placeholder="Expliquez la raison du rejet..."
+                      rows={4}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="reject-comment">Commentaire interne (optionnel)</Label>
+                    <Textarea
+                      id="reject-comment"
+                      value={internalComment}
+                      onChange={(e) => setInternalComment(e.target.value)}
+                      placeholder="Commentaire visible uniquement en interne..."
+                      rows={2}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button 
+                    variant="destructive"
+                    disabled={!rejectReason}
+                    onClick={() => {
+                      if (selectedRequest && rejectReason) {
+                        rejectMutation.mutate({ id: selectedRequest.id, reason: rejectReason });
+                        setShowRejectModal(false);
+                        setRejectReason("");
+                        setInternalComment("");
+                      }
+                    }}
+                  >
+                    Rejeter la demande
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Modal de transfert */}
+            <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
+              <DialogContent data-testid="transfer-modal">
+                <DialogHeader>
+                  <DialogTitle>Transférer la demande</DialogTitle>
+                  <DialogDescription>
+                    Transférer la demande de validation à un autre validateur
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label htmlFor="transfer-to">Transférer à *</Label>
+                    <Select value={transferTo} onValueChange={setTransferTo}>
+                      <SelectTrigger id="transfer-to">
+                        <SelectValue placeholder="Sélectionnez un validateur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {validators.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            Aucun validateur disponible
+                          </SelectItem>
+                        ) : (
+                          validators.map((user: any) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.firstName} {user.lastName} ({user.email}) - {user.role === 'admin' ? 'Administrateur' : user.role === 'manager' ? 'Gestionnaire' : 'Validateur'}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="transfer-note">Note de transfert</Label>
+                    <Textarea
+                      id="transfer-note"
+                      placeholder="Ajoutez une note pour le nouveau validateur..."
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowTransferModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button 
+                    disabled={!transferTo}
+                    onClick={() => {
+                      console.log('Transfert à:', transferTo);
+                      setShowTransferModal(false);
+                      setTransferTo("");
+                      const selectedValidator = validators.find((v: any) => v.id === transferTo);
+                      toast({
+                        title: "Demande transférée",
+                        description: `La demande a été transférée à ${selectedValidator ? selectedValidator.firstName + ' ' + selectedValidator.lastName : transferTo}`,
+                      });
+                    }}
+                  >
+                    Transférer
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Modal d'action groupée */}
+            <Dialog open={showBulkActionModal} onOpenChange={setShowBulkActionModal}>
+              <DialogContent data-testid="bulk-action-modal">
+                <DialogHeader>
+                  <DialogTitle>Action groupée</DialogTitle>
+                  <DialogDescription>
+                    Appliquer une action à {selectedRequests.length} demandes sélectionnées
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <RadioGroup value={bulkAction} onValueChange={(v) => setBulkAction(v as any)}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="approve" id="bulk-approve" />
+                      <Label htmlFor="bulk-approve" className="cursor-pointer">
+                        Approuver toutes les demandes
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="reject" id="bulk-reject" />
+                      <Label htmlFor="bulk-reject" className="cursor-pointer">
+                        Rejeter toutes les demandes
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  
+                  {bulkAction === "reject" && (
+                    <div>
+                      <Label htmlFor="bulk-reject-reason">Motif du rejet *</Label>
+                      <Textarea
+                        id="bulk-reject-reason"
+                        placeholder="Motif commun pour tous les rejets..."
+                        rows={3}
+                      />
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowBulkActionModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button 
+                    disabled={!bulkAction}
+                    variant={bulkAction === "reject" ? "destructive" : "default"}
+                    onClick={() => {
+                      console.log('Action groupée:', bulkAction, 'sur', selectedRequests);
+                      setShowBulkActionModal(false);
+                      setBulkAction("");
+                      setSelectedRequests([]);
+                      toast({
+                        title: "Action groupée effectuée",
+                        description: `${selectedRequests.length} demandes ont été ${bulkAction === "approve" ? "approuvées" : "rejetées"}`,
+                      });
+                    }}
+                  >
+                    {bulkAction === "approve" ? "Approuver" : "Rejeter"} ({selectedRequests.length})
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </main>
-      </div>
     </div>
   );
 }

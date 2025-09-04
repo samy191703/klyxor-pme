@@ -1,7 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+/**
+ * Module d'indexation autonome KLYXOR pour ENGIE
+ * Gère les révisions tarifaires automatiques selon les indices économiques INSEE
+ * 
+ * Fonctionnalités principales :
+ * - Détection automatique des contrats éligibles à l'indexation
+ * - Calcul des nouveaux montants selon formules paramétrables
+ * - Workflow de validation multi-niveaux
+ * - Intégration avec les indices INSEE (ICHT, IPC, IPPAP, etc.)
+ * - Génération de rapports d'indexation
+ */
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -17,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { 
   TrendingUp, Download, Eye, Check, X, Calculator, AlertTriangle,
   Calendar, DollarSign, FileText, Info, RefreshCw, Clock, Settings,
@@ -25,9 +35,16 @@ import {
   Activity, Link, Save, Edit, Trash2, Plus
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Indexation } from "@shared/schema";
+import type { Indexation, IndexationFormula } from "@shared/schema";
+import { IndicesINSEE } from "@/components/indexation/IndicesINSEE";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
+/**
+ * Composant principal de la page d'indexation
+ * Structure en onglets : À calculer | En cours | Historique | Indices INSEE | Rapports | Paramétrage
+ */
 export default function Indexations() {
+  const { canValidate, canModifyContract } = usePermissions();
   const [activeTab, setActiveTab] = useState("toCalculate");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -39,6 +56,25 @@ export default function Indexations() {
   const [buFilter, setBuFilter] = useState<string>("all");
   const [responsibleFilter, setResponsibleFilter] = useState<string>("all");
   const [itemsPerPage, setItemsPerPage] = useState("25");
+  
+  // Filtres pour l'onglet historique
+  const [historyStartDate, setHistoryStartDate] = useState("");
+  const [historyEndDate, setHistoryEndDate] = useState("");
+  const [historyContract, setHistoryContract] = useState("");
+  const [historyIndexKey, setHistoryIndexKey] = useState("");
+  const [historySource, setHistorySource] = useState("");
+  const [historyResult, setHistoryResult] = useState("");
+  const [historyEventType, setHistoryEventType] = useState("");
+  const [historyIdContract, setHistoryIdContract] = useState("");
+  
+  // Filtres pour l'onglet rapports
+  const [reportsStartDate, setReportsStartDate] = useState("");
+  const [reportsEndDate, setReportsEndDate] = useState("");
+  const [reportsContract, setReportsContract] = useState("");
+  const [reportsIndexKey, setReportsIndexKey] = useState("");
+  const [reportsSource, setReportsSource] = useState("");
+  const [reportsStatus, setReportsStatus] = useState("");
+  const [reportsSearch, setReportsSearch] = useState("");
   
   // Detail panel
   const [showIndexationDetails, setShowIndexationDetails] = useState(false);
@@ -63,10 +99,62 @@ export default function Indexations() {
   const [formulaDescription, setFormulaDescription] = useState("");
   const [formulaType, setFormulaType] = useState("");
   
+  // States for validation assignment editing
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [assignmentMainValidator, setAssignmentMainValidator] = useState("");
+  const [assignmentBackupValidator, setAssignmentBackupValidator] = useState("");
+  
+  // States for frequency editing
+  const [showFrequencyModal, setShowFrequencyModal] = useState(false);
+  const [selectedFrequency, setSelectedFrequency] = useState<any>(null);
+  const [frequencyValue, setFrequencyValue] = useState("");
+  const [frequencyScope, setFrequencyScope] = useState("");
+  
   // Fetch formulas
-  const { data: formulas = [] } = useQuery({
+  const { data: formulas = [] } = useQuery<IndexationFormula[]>({
     queryKey: ["/api/indexation-formulas"],
   });
+  
+  // Fetch economic indices for display
+  const { data: economicIndices = [] } = useQuery({
+    queryKey: ["/api/economic-indices"],
+  });
+  
+  // Récupérer les rapports d'indexation depuis l'API
+  const { data: reportsData } = useQuery({
+    queryKey: ["/api/indexation/reports"],
+    enabled: activeTab === "reports"
+  });
+  
+  /**
+   * Récupération des affectations de validation depuis l'API
+   * @description Charge dynamiquement les affectations de validateurs pour chaque contrat
+   */
+  const { data: validationAssignments = [] } = useQuery({
+    queryKey: ["/api/validation-assignments"],
+  });
+  
+  /**
+   * Récupération des fréquences d'indexation depuis l'API
+   * @description Charge dynamiquement les configurations de fréquences et périmètres d'indexation
+   */
+  const { data: indexationFrequencies = [] } = useQuery({
+    queryKey: ["/api/indexation-frequencies"],
+  });
+  
+  // Get latest values for each index type
+  const getLatestIndexValue = (code: string) => {
+    const indices = economicIndices.filter((i: any) => i.code === code);
+    if (indices.length === 0) return { value: "-", date: "-" };
+    const latest = indices.reduce((prev: any, current: any) => 
+      new Date(current.date) > new Date(prev.date) ? current : prev
+    );
+    return {
+      value: latest.value || "-",
+      date: new Date(latest.date).toLocaleDateString('fr-FR')
+    };
+  };
   
   // Create formula mutation
   const createFormula = useMutation({
@@ -108,6 +196,53 @@ export default function Indexations() {
     },
   });
   
+  // Mutation for updating validation assignments
+  const updateValidationAssignment = useMutation({
+    mutationFn: ({ id, assignment }: any) => apiRequest("PUT", `/api/validation-assignments/${id}`, assignment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/validation-assignments"] });
+      toast({
+        title: "Affectation modifiée",
+        description: "L'affectation a été modifiée avec succès"
+      });
+      setShowAssignmentModal(false);
+      setSelectedAssignment(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier l'affectation",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  /**
+   * Mutation pour la mise à jour des fréquences d'indexation
+   * @description Envoie les modifications de fréquence à l'API et gère les retours
+   * @param {string} id - Identifiant de la fréquence à modifier
+   * @param {Object} frequency - Nouvelles valeurs de fréquence et périmètre
+   */
+  const updateIndexationFrequency = useMutation({
+    mutationFn: ({ id, frequency }: any) => apiRequest("PUT", `/api/indexation-frequencies/${id}`, frequency),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/indexation-frequencies"] });
+      toast({
+        title: "Fréquence modifiée",
+        description: "La fréquence d'indexation a été modifiée avec succès"
+      });
+      setShowFrequencyModal(false);
+      setSelectedFrequency(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier la fréquence",
+        variant: "destructive"
+      });
+    }
+  });
+  
   const resetForm = () => {
     setSelectedFormula(null);
     setFormulaName("");
@@ -144,19 +279,18 @@ export default function Indexations() {
     setShowFormulaModal(true);
   };
   
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: indexations = [], isLoading } = useQuery<Indexation[]>({
     queryKey: ["/api/indexations"],
   });
 
-  // KPIs calculation
+  // KPIs calculation - dynamique depuis les données réelles
   const kpis = {
     toCalculateToday: indexations.filter(i => i.status === "to_calculate" && isToday(i.indexationDate)).length,
-    toValidate: indexations.filter(i => i.status === "pending").length,
+    toValidate: indexations.filter(i => i.status === "pending" || i.status === "to_calculate").length,
     validated30Days: indexations.filter(i => i.status === "validated" && isWithin30Days(i.validatedAt)).length,
-    inError: indexations.filter(i => i.status === "error" || i.status === "waiting_index").length,
+    inError: indexations.filter(i => i.status === "error" || i.status === "rejected").length,
   };
 
   const filteredIndexations = indexations.filter(indexation => {
@@ -276,16 +410,16 @@ export default function Indexations() {
       
       // Type 1 - ICHT Simple
       if (formula.type === "Type 1") {
-        const ichtRev = indices.ICHT?.current || 118.2;
-        const icht0 = indices.ICHT?.previous || 115.7;
+        const ichtRev = indices.ICHT?.current || 0;
+        const icht0 = indices.ICHT?.previous || 1;
         result = baseAmount * (ichtRev / icht0);
       }
       // Type 2.A - OMSF Pondéré (utilise maintenant les coefficients de la BD)
       else if (formula.type === "Type 2.A") {
-        const ichtRev = indices.ICHT?.current || 118.2;
-        const icht0 = indices.ICHT?.previous || 115.7;
-        const fmoaRev = indices.FMOA?.current || 94.3;
-        const fmoa0 = indices.FMOA?.previous || 91.57;
+        const ichtRev = indices.ICHT?.current || 0;
+        const icht0 = indices.ICHT?.previous || 1;
+        const fmoaRev = indices.FMOA?.current || 0;
+        const fmoa0 = indices.FMOA?.previous || 1;
         
         // Extraction des coefficients de l'expression
         // Par défaut: 0,10 + 0,60×ICHT + 0,30×FMOA (nouveaux coefficients)
@@ -298,17 +432,17 @@ export default function Indexations() {
       // Type 2.B - Base glissante
       else if (formula.type === "Type 2.B") {
         const previousAmount = baseAmount; // Utilise le montant précédent
-        const ichtRev = indices.ICHT?.current || 118.2;
-        const icht0 = indices.ICHT?.previous || 115.7;
-        const fmoaRev = indices.FMOA?.current || 94.3;
-        const fmoa0 = indices.FMOA?.previous || 91.57;
+        const ichtRev = indices.ICHT?.current || 0;
+        const icht0 = indices.ICHT?.previous || 1;
+        const fmoaRev = indices.FMOA?.current || 0;
+        const fmoa0 = indices.FMOA?.previous || 1;
         
         result = previousAmount * (0.15 + 0.55 * (ichtRev / icht0) + 0.3 * (fmoaRev / fmoa0));
       }
       // Type 3 - CPI
       else if (formula.type === "Type 3") {
-        const cpi = indices.CPI?.current || 108.5;
-        const cpi0 = indices.CPI?.previous || 106.2;
+        const cpi = indices.CPI?.current || 0;
+        const cpi0 = indices.CPI?.previous || 1;
         result = baseAmount * (1 + ((cpi - cpi0) / cpi0));
       }
       
@@ -319,22 +453,49 @@ export default function Indexations() {
     }
   };
 
+  // Mutation pour mettre à jour l'indexation après recalcul
+  const updateIndexation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Indexation> }) =>
+      apiRequest("PUT", `/api/indexations/${id}`, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/indexations"] });
+      toast({
+        title: "Indexation mise à jour",
+        description: "L'indexation a été recalculée avec succès",
+      });
+      setShowRecalculateModal(false);
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour l'indexation",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmitRecalculation = () => {
     if (selectedIndexation && selectedFormula) {
-      const newAmount = calculateIndexation(selectedFormula, selectedIndexation.previousAmount || 100000, indicesValues);
+      const baseAmount = parseFloat(selectedIndexation.previousAmount || "100000");
+      const newAmount = calculateIndexation(selectedFormula, baseAmount, indicesValues);
+      const variation = ((newAmount - baseAmount) / baseAmount * 100).toFixed(2);
       
-      toast({
-        title: "Recalcul effectué",
-        description: `Nouveau montant calculé: ${newAmount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })} (formule: ${selectedFormula.name})`,
+      // Mettre à jour l'indexation avec les nouvelles valeurs
+      updateIndexation.mutate({
+        id: selectedIndexation.id,
+        updates: {
+          proposedAmount: newAmount.toString(),
+          formula: selectedFormula.name,
+          status: "pending", // Passe en attente de validation après recalcul
+        },
       });
     } else {
       toast({
-        title: "Recalcul lancé",
-        description: "L'indexation a été recalculée avec les dernières valeurs d'indices",
+        title: "Erreur",
+        description: "Veuillez sélectionner une formule pour le recalcul",
+        variant: "destructive",
       });
     }
-    setShowRecalculateModal(false);
-    queryClient.invalidateQueries({ queryKey: ["/api/indexations"] });
   };
 
   const handleSubmitValidation = () => {
@@ -396,12 +557,35 @@ export default function Indexations() {
     }
   ];
 
-  // Valeurs des indices économiques réels
-  const indicesValues = {
-    ICHT: { current: 118.2, previous: 115.7, date: "01/09/2024" },
-    FMOA: { current: 94.3, previous: 91.57, date: "01/09/2024" },
-    CPI: { current: 108.5, previous: 106.2, date: "01/09/2024" }
+  // Récupérer les vraies valeurs des indices depuis les données
+  const getLatestIndicesValues = () => {
+    const values: any = {
+      ICHT: { current: "-", previous: "-", date: "-" },
+      FMOA: { current: "-", previous: "-", date: "-" },
+      CPI: { current: "-", previous: "-", date: "-" }
+    };
+
+    // Parcourir toutes les indexations pour récupérer les dernières valeurs
+    if (indexations?.length > 0) {
+      indexations.forEach((indexation: any) => {
+        if (indexation.indices && Array.isArray(indexation.indices)) {
+          indexation.indices.forEach((index: any) => {
+            if (index.code && values[index.code]) {
+              values[index.code] = {
+                current: index.valueN || "-",
+                previous: index.valueN1 || "-",
+                date: index.date ? formatDate(index.date) : "-"
+              };
+            }
+          });
+        }
+      });
+    }
+
+    return values;
   };
+
+  const indicesValues = getLatestIndicesValues();
 
   // Données de test réelles des 4 parcs
   const testIndexations = [
@@ -492,24 +676,15 @@ export default function Indexations() {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <SidebarWithSubmenu />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 lg:hidden">
-          <div className="flex items-center justify-between">
-            <MobileNavWithSubmenu />
-            <h1 className="text-lg font-semibold">Indexations & rapports</h1>
-          </div>
-        </header>
-        
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="indexations-main">
+    <div className="flex flex-col h-full bg-gray-50">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="indexations-main">
           <div className="max-w-7xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-6">
                 <TabsTrigger value="toCalculate">À calculer</TabsTrigger>
                 <TabsTrigger value="list">En cours</TabsTrigger>
                 <TabsTrigger value="history">Historique</TabsTrigger>
+                <TabsTrigger value="indices">Indices INSEE</TabsTrigger>
                 <TabsTrigger value="reports">Rapports</TabsTrigger>
                 <TabsTrigger value="settings">Paramétrage</TabsTrigger>
               </TabsList>
@@ -649,15 +824,15 @@ export default function Indexations() {
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div>
                               <span className="text-gray-500">Valeur actuelle:</span>
-                              <p className="font-mono font-bold">{indicesValues.ICHT.current}</p>
+                              <p className="font-mono font-bold">{indicesValues.ICHT.current || "-"}</p>
                             </div>
                             <div>
                               <span className="text-gray-500">Valeur précédente:</span>
-                              <p className="font-mono">{indicesValues.ICHT.previous}</p>
+                              <p className="font-mono">{indicesValues.ICHT.previous || "-"}</p>
                             </div>
                             <div className="col-span-2">
                               <span className="text-gray-500">Date:</span>
-                              <p className="text-sm">{indicesValues.ICHT.date}</p>
+                              <p className="text-sm">{indicesValues.ICHT.date || "-"}</p>
                             </div>
                           </div>
                         </div>
@@ -670,15 +845,15 @@ export default function Indexations() {
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div>
                               <span className="text-gray-500">Valeur actuelle:</span>
-                              <p className="font-mono font-bold">{indicesValues.FMOA.current}</p>
+                              <p className="font-mono font-bold">{indicesValues.FMOA.current || "-"}</p>
                             </div>
                             <div>
                               <span className="text-gray-500">Valeur précédente:</span>
-                              <p className="font-mono">{indicesValues.FMOA.previous}</p>
+                              <p className="font-mono">{indicesValues.FMOA.previous || "-"}</p>
                             </div>
                             <div className="col-span-2">
                               <span className="text-gray-500">Date:</span>
-                              <p className="text-sm">{indicesValues.FMOA.date}</p>
+                              <p className="text-sm">{indicesValues.FMOA.date || "-"}</p>
                             </div>
                           </div>
                         </div>
@@ -691,15 +866,15 @@ export default function Indexations() {
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div>
                               <span className="text-gray-500">Valeur actuelle:</span>
-                              <p className="font-mono font-bold">{indicesValues.CPI.current}</p>
+                              <p className="font-mono font-bold">{indicesValues.CPI.current || "-"}</p>
                             </div>
                             <div>
                               <span className="text-gray-500">Valeur précédente:</span>
-                              <p className="font-mono">{indicesValues.CPI.previous}</p>
+                              <p className="font-mono">{indicesValues.CPI.previous || "-"}</p>
                             </div>
                             <div className="col-span-2">
                               <span className="text-gray-500">Date:</span>
-                              <p className="text-sm">{indicesValues.CPI.date}</p>
+                              <p className="text-sm">{indicesValues.CPI.date || "-"}</p>
                             </div>
                           </div>
                         </div>
@@ -879,6 +1054,25 @@ export default function Indexations() {
                         className="col-span-2 md:col-span-4"
                         data-testid="input-search"
                       />
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => {
+                          setPeriodFilter("");
+                          setStatusFilter("all");
+                          setFrequencyFilter("all");
+                          setFormulaFilter("all");
+                          setIndexFilter("all");
+                          setSourceFilter("all");
+                          setBuFilter("all");
+                          setResponsibleFilter("all");
+                          setSearchTerm("");
+                        }}
+                        className="md:col-span-2"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Réinitialiser tous les filtres
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -993,18 +1187,20 @@ export default function Indexations() {
                                     >
                                       <Eye className="w-4 h-4" />
                                     </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleRecalculate(indexation);
-                                      }}
-                                      data-testid={`button-recalculate-${indexation.id}`}
-                                    >
-                                      <RefreshCw className="w-4 h-4" />
-                                    </Button>
-                                    {indexation.status === "pending" && (
+                                    {canModifyContract() && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRecalculate(indexation);
+                                        }}
+                                        data-testid={`button-recalculate-${indexation.id}`}
+                                      >
+                                        <RefreshCw className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                    {indexation.status === "pending" && canValidate() && (
                                       <Button 
                                         variant="ghost" 
                                         size="sm"
@@ -1058,6 +1254,77 @@ export default function Indexations() {
                   <h1 className="text-3xl font-bold text-gray-900">Historique des indexations</h1>
                 </div>
 
+                {/* Graphique d'évolution des indexations */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Évolution des indexations sur 12 mois</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={(() => {
+                          // Calculer les statistiques mensuelles à partir des vraies données
+                          const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+                          const now = new Date();
+                          const stats = [];
+                          
+                          for (let i = 11; i >= 0; i--) {
+                            const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                            const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+                            
+                            const monthIndexations = indexations.filter((idx: any) => {
+                              const date = new Date(idx.indexationDate);
+                              return date >= monthDate && date <= monthEnd;
+                            });
+                            
+                            stats.push({
+                              mois: monthNames[monthDate.getMonth()],
+                              validees: monthIndexations.filter((idx: any) => idx.status === 'validated').length,
+                              rejetees: monthIndexations.filter((idx: any) => idx.status === 'rejected').length,
+                              enAttente: monthIndexations.filter((idx: any) => idx.status === 'pending').length
+                            });
+                          }
+                          
+                          return stats;
+                        })()}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis dataKey="mois" stroke="#6b7280" fontSize={12} />
+                          <YAxis stroke="#6b7280" fontSize={12} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb' }}
+                            labelStyle={{ color: '#111827' }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '12px' }} />
+                          <Line 
+                            type="monotone" 
+                            dataKey="validees" 
+                            stroke="#10b981" 
+                            strokeWidth={2} 
+                            name="Validées" 
+                            dot={{ fill: '#10b981', r: 4 }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="rejetees" 
+                            stroke="#ef4444" 
+                            strokeWidth={2} 
+                            name="Rejetées" 
+                            dot={{ fill: '#ef4444', r: 4 }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="enAttente" 
+                            stroke="#f59e0b" 
+                            strokeWidth={2} 
+                            name="En attente" 
+                            dot={{ fill: '#f59e0b', r: 4 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle>Journal des indexations</CardTitle>
@@ -1065,42 +1332,86 @@ export default function Indexations() {
                   <CardContent>
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <Input type="date" placeholder="Période début" />
-                        <Input type="date" placeholder="Période fin" />
-                        <Input placeholder="Contrat" />
-                        <Input placeholder="Clé d'indice" />
-                        <Select>
+                        <Input 
+                          type="date" 
+                          placeholder="Période début" 
+                          value={historyStartDate}
+                          onChange={(e) => setHistoryStartDate(e.target.value)}
+                        />
+                        <Input 
+                          type="date" 
+                          placeholder="Période fin" 
+                          value={historyEndDate}
+                          onChange={(e) => setHistoryEndDate(e.target.value)}
+                        />
+                        <Input 
+                          placeholder="Contrat" 
+                          value={historyContract}
+                          onChange={(e) => setHistoryContract(e.target.value)}
+                        />
+                        <Input 
+                          placeholder="Clé d'indice" 
+                          value={historyIndexKey}
+                          onChange={(e) => setHistoryIndexKey(e.target.value)}
+                        />
+                        <Select value={historySource} onValueChange={setHistorySource}>
                           <SelectTrigger>
                             <SelectValue placeholder="Source" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="all">Toutes les sources</SelectItem>
                             {sources.map(source => (
                               <SelectItem key={source} value={source.toLowerCase()}>{source}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <Select>
+                        <Select value={historyResult} onValueChange={setHistoryResult}>
                           <SelectTrigger>
                             <SelectValue placeholder="Résultat" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="all">Tous les résultats</SelectItem>
                             <SelectItem value="validated">Validé</SelectItem>
                             <SelectItem value="rejected">Rejeté</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Select>
+                        <Select value={historyEventType} onValueChange={setHistoryEventType}>
                           <SelectTrigger>
                             <SelectValue placeholder="Type d'événement" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="all">Tous les types</SelectItem>
                             <SelectItem value="calculation">Calcul</SelectItem>
                             <SelectItem value="recalculation">Recalcul</SelectItem>
                             <SelectItem value="validation">Validation</SelectItem>
                             <SelectItem value="application">Application</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Input placeholder="ID/contrat" />
+                        <Input 
+                          placeholder="ID/contrat" 
+                          value={historyIdContract}
+                          onChange={(e) => setHistoryIdContract(e.target.value)}
+                        />
                       </div>
+
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => {
+                          setHistoryStartDate("");
+                          setHistoryEndDate("");
+                          setHistoryContract("");
+                          setHistoryIndexKey("");
+                          setHistorySource("");
+                          setHistoryResult("");
+                          setHistoryEventType("");
+                          setHistoryIdContract("");
+                        }}
+                        className="mb-2"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Réinitialiser les filtres
+                      </Button>
 
                       <div className="overflow-x-auto">
                         <Table>
@@ -1226,89 +1537,184 @@ export default function Indexations() {
                   <CardContent>
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <Input type="date" placeholder="Période début" />
-                        <Input type="date" placeholder="Période fin" />
-                        <Input placeholder="Contrat" />
-                        <Input placeholder="Clé d'indice" />
-                        <Select>
+                        <Input 
+                          type="date" 
+                          placeholder="Période début"
+                          value={reportsStartDate}
+                          onChange={(e) => setReportsStartDate(e.target.value)}
+                        />
+                        <Input 
+                          type="date" 
+                          placeholder="Période fin"
+                          value={reportsEndDate}
+                          onChange={(e) => setReportsEndDate(e.target.value)}
+                        />
+                        <Input 
+                          placeholder="Contrat"
+                          value={reportsContract}
+                          onChange={(e) => setReportsContract(e.target.value)}
+                        />
+                        <Input 
+                          placeholder="Clé d'indice"
+                          value={reportsIndexKey}
+                          onChange={(e) => setReportsIndexKey(e.target.value)}
+                        />
+                        <Select value={reportsSource} onValueChange={setReportsSource}>
                           <SelectTrigger>
                             <SelectValue placeholder="Source" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="all">Toutes les sources</SelectItem>
                             {sources.map(source => (
                               <SelectItem key={source} value={source.toLowerCase()}>{source}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <Select>
+                        <Select value={reportsStatus} onValueChange={setReportsStatus}>
                           <SelectTrigger>
                             <SelectValue placeholder="Statut indexation" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="all">Tous les statuts</SelectItem>
                             <SelectItem value="validated">Validée</SelectItem>
+                            <SelectItem value="rejected">Rejetée</SelectItem>
+                            <SelectItem value="pending">En attente</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Input placeholder="Recherche" className="col-span-2" />
+                        <Input 
+                          placeholder="Recherche" 
+                          className="col-span-2"
+                          value={reportsSearch}
+                          onChange={(e) => setReportsSearch(e.target.value)}
+                        />
                       </div>
+
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => {
+                          setReportsStartDate("");
+                          setReportsEndDate("");
+                          setReportsContract("");
+                          setReportsIndexKey("");
+                          setReportsSource("");
+                          setReportsStatus("");
+                          setReportsSearch("");
+                        }}
+                        className="mb-2"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Réinitialiser les filtres
+                      </Button>
 
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Date du rapport</TableHead>
-                              <TableHead>Contrat</TableHead>
-                              <TableHead>Période</TableHead>
-                              <TableHead>Indices utilisés</TableHead>
-                              <TableHead>Montant précédent/nouveau</TableHead>
-                              <TableHead>Δ % / Δ €</TableHead>
-                              <TableHead>Liens export</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Titre</TableHead>
+                              <TableHead>Date de création</TableHead>
+                              <TableHead>Statut</TableHead>
+                              <TableHead>Indexations traitées</TableHead>
+                              <TableHead>Validées/Rejetées</TableHead>
+                              <TableHead>Variation moyenne</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            <TableRow>
-                              <TableCell>{formatDate(new Date())}</TableCell>
-                              <TableCell>CNT-2024-001</TableCell>
-                              <TableCell>2023 → 2024</TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  <div>ICC: 125.3 → 128.7</div>
-                                  <div className="text-gray-500">INSEE</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  <div>{formatAmount(100000)} → {formatAmount(102712)}</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  <div>+2.71%</div>
-                                  <div className="text-gray-500">+2 712 €</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex space-x-2">
-                                  <Button variant="ghost" size="sm">
-                                    <FileDown className="w-4 h-4 mr-1" />
-                                    PDF
-                                  </Button>
-                                  <Button variant="ghost" size="sm">
-                                    <FileDown className="w-4 h-4 mr-1" />
-                                    Excel
-                                  </Button>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => handleViewReport({})}
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
+                            {reportsData?.reports && reportsData.reports.length > 0 ? (
+                              reportsData.reports.map((report: any) => (
+                                <TableRow key={report.id}>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      {report.type === 'monthly' && (
+                                        <Calendar className="w-4 h-4 text-blue-600" />
+                                      )}
+                                      {report.type === 'weekly' && (
+                                        <Clock className="w-4 h-4 text-green-600" />
+                                      )}
+                                      {report.type === 'annual' && (
+                                        <TrendingUp className="w-4 h-4 text-purple-600" />
+                                      )}
+                                      <span className="capitalize">{report.type}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {report.title}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatDate(new Date(report.createdAt))}
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      {report.status}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <span className="font-medium">
+                                      {report.statistics?.processed || 0}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="text-sm">
+                                      <div className="flex gap-2">
+                                        <span className="text-green-600">
+                                          ✓ {report.statistics?.validated || 0}
+                                        </span>
+                                        <span className="text-red-600">
+                                          ✗ {report.statistics?.rejected || 0}
+                                        </span>
+                                      </div>
+                                      {report.statistics?.pending > 0 && (
+                                        <span className="text-yellow-600 text-xs">
+                                          En attente: {report.statistics.pending}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="text-sm">
+                                      <span className={`font-medium ${
+                                        (report.statistics?.totalVariation || 0) > 0 
+                                          ? 'text-green-600' 
+                                          : (report.statistics?.totalVariation || 0) < 0 
+                                            ? 'text-red-600' 
+                                            : 'text-gray-600'
+                                      }`}>
+                                        {(report.statistics?.totalVariation || 0) > 0 && '+'}
+                                        {(report.statistics?.totalVariation || 0).toFixed(2)}%
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex justify-end gap-2">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => handleViewReport(report)}
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                      >
+                                        <FileDown className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                                  {reportsData?.reports ? 
+                                    "Aucun rapport disponible pour le moment" : 
+                                    "Chargement des rapports..."
+                                  }
+                                </TableCell>
+                              </TableRow>
+                            )}
                           </TableBody>
                         </Table>
                       </div>
@@ -1319,6 +1725,11 @@ export default function Indexations() {
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Onglet Indices INSEE */}
+              <TabsContent value="indices" className="space-y-6">
+                <IndicesINSEE />
               </TabsContent>
 
               {/* IX-8: Paramétrage des indexations */}
@@ -1367,196 +1778,50 @@ export default function Indexations() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {/* Type 1 */}
-                          <TableRow>
-                            <TableCell className="font-bold">Type 1 - ICHT Simple</TableCell>
-                            <TableCell className="font-mono text-sm">
-                              P = P₀ × (ICHT_rev / ICHT₀)
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Badge variant="outline">P₀</Badge>
-                                <Badge variant="outline">ICHT</Badge>
-                              </div>
-                            </TableCell>
-                            <TableCell>15/01/2024</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end space-x-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedFormula({
-                                      name: "Type 1 - ICHT Simple",
-                                      expression: "P = P₀ × (ICHT_rev / ICHT₀)",
-                                      variables: ["P₀", "ICHT"]
-                                    });
-                                    setFormulaName("Type 1 - ICHT Simple");
-                                    setFormulaExpression("P = P₀ × (ICHT_rev / ICHT₀)");
-                                    setFormulaVariables(["P₀", "ICHT"]);
-                                    setShowFormulaModal(true);
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    toast({
-                                      title: "Formule supprimée",
-                                      description: "La formule Type 1 a été supprimée avec succès"
-                                    });
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          {/* Type 2.A */}
-                          <TableRow>
-                            <TableCell className="font-bold">Type 2.A - Base initiale</TableCell>
-                            <TableCell className="font-mono text-sm">
-                              P = P₀ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Badge variant="outline">P₀</Badge>
-                                <Badge variant="outline">ICHT</Badge>
-                                <Badge variant="outline">FMOA</Badge>
-                              </div>
-                            </TableCell>
-                            <TableCell>20/01/2024</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end space-x-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedFormula({
-                                      name: "Type 2.A - OMSF Pondéré",
-                                      expression: "OMSFn = OMSF0 × (0,15 + 0,55×(ICHTrev/ICHT0) + 0,3×(FM0Arev/FM0A0))",
-                                      variables: ["OMSF", "ICHT", "FMOA"]
-                                    });
-                                    setFormulaName("Type 2.A - OMSF Pondéré");
-                                    setFormulaExpression("OMSFn = OMSF0 × (0,15 + 0,55×(ICHTrev/ICHT0) + 0,3×(FM0Arev/FM0A0))");
-                                    setFormulaVariables(["OMSF", "ICHT", "FMOA"]);
-                                    setShowFormulaModal(true);
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    toast({
-                                      title: "Formule supprimée",
-                                      description: "La formule Type 2.A a été supprimée avec succès"
-                                    });
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          {/* Type 2.B */}
-                          <TableRow>
-                            <TableCell className="font-bold">Type 2.B - Base glissante</TableCell>
-                            <TableCell className="font-mono text-sm">
-                              P = P₋₁ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Badge variant="outline">P₋₁</Badge>
-                                <Badge variant="outline">ICHT</Badge>
-                                <Badge variant="outline">FMOA</Badge>
-                              </div>
-                            </TableCell>
-                            <TableCell>22/01/2024</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end space-x-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedFormula({
-                                      name: "Type 2.B - Base glissante",
-                                      expression: "P = P₋₁ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))",
-                                      variables: ["P₋₁", "ICHT", "FMOA"]
-                                    });
-                                    setFormulaName("Type 2.B - Base glissante");
-                                    setFormulaExpression("P = P₋₁ × (0,15 + 0,55 × (ICHT_rev/ICHT₀) + 0,3 × (FMOA_rev/FMOA₀))");
-                                    setFormulaVariables(["P₋₁", "ICHT", "FMOA"]);
-                                    setShowFormulaModal(true);
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    toast({
-                                      title: "Formule supprimée",
-                                      description: "La formule Type 2.B a été supprimée avec succès"
-                                    });
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          {/* Type 3 */}
-                          <TableRow>
-                            <TableCell className="font-bold">Type 3 - CPI</TableCell>
-                            <TableCell className="font-mono text-sm">
-                              P = P₀ × (1 + (CPI / CPI₀))
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Badge variant="outline">P₀</Badge>
-                                <Badge variant="outline">CPI</Badge>
-                              </div>
-                            </TableCell>
-                            <TableCell>25/01/2024</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end space-x-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedFormula({
-                                      name: "Type 3 - CPI",
-                                      expression: "P = P₀ × (1 + (CPI / CPI₀))",
-                                      variables: ["P₀", "CPI"]
-                                    });
-                                    setFormulaName("Type 3 - CPI");
-                                    setFormulaExpression("P = P₀ × (1 + (CPI / CPI₀))");
-                                    setFormulaVariables(["P₀", "CPI"]);
-                                    setShowFormulaModal(true);
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    toast({
-                                      title: "Formule supprimée",
-                                      description: "La formule Type 3 a été supprimée avec succès"
-                                    });
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                          {formulas.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                                Aucune formule d'indexation. Cliquez sur "Nouvelle formule" pour en créer une.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            formulas.map((formula: any) => (
+                              <TableRow key={formula.id}>
+                                <TableCell className="font-bold">{formula.name}</TableCell>
+                                <TableCell className="font-mono text-sm">
+                                  {formula.expression}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-2 flex-wrap">
+                                    {formula.variables && formula.variables.map((variable: string) => (
+                                      <Badge key={variable} variant="outline">{variable}</Badge>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {formula.updatedAt ? new Date(formula.updatedAt).toLocaleDateString('fr-FR') : '-'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end space-x-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => handleEditFormula(formula)}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => deleteFormula.mutate(formula.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
                         </TableBody>
                       </Table>
                     </CardContent>
@@ -1581,46 +1846,35 @@ export default function Indexations() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          <TableRow>
-                            <TableCell className="font-mono font-bold">AUX89</TableCell>
-                            <TableCell>Annuelle</TableCell>
-                            <TableCell>Maintenance complète</TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="sm">
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-mono font-bold">FIG83</TableCell>
-                            <TableCell>Trimestrielle</TableCell>
-                            <TableCell>Production + Maintenance</TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="sm">
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-mono font-bold">SCM29</TableCell>
-                            <TableCell>Annuelle</TableCell>
-                            <TableCell>Opérations + Énergie</TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="sm">
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-mono font-bold">GLB04</TableCell>
-                            <TableCell>Annuelle</TableCell>
-                            <TableCell>Maintenance préventive</TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="sm">
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
+                          {indexationFrequencies.length > 0 ? (
+                            indexationFrequencies.map((frequency: any) => (
+                              <TableRow key={frequency.id}>
+                                <TableCell className="font-mono font-bold">{frequency.contractCode}</TableCell>
+                                <TableCell>{frequency.frequency}</TableCell>
+                                <TableCell>{frequency.scope}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedFrequency(frequency);
+                                      setFrequencyValue(frequency.frequency);
+                                      setFrequencyScope(frequency.scope);
+                                      setShowFrequencyModal(true);
+                                    }}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center text-gray-500">
+                                Aucune fréquence d'indexation configurée
+                              </TableCell>
+                            </TableRow>
+                          )}
                         </TableBody>
                       </Table>
                     </CardContent>
@@ -1629,7 +1883,33 @@ export default function Indexations() {
                   {/* Section Indices & sources */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Indices économiques & sources officielles</CardTitle>
+                      <CardTitle className="flex items-center justify-between">
+                        <span>Indices économiques & sources officielles</span>
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            apiRequest("POST", "/api/economic-indices/sync")
+                              .then(() => {
+                                queryClient.invalidateQueries({ queryKey: ["/api/economic-indices"] });
+                                toast({
+                                  title: "Synchronisation réussie",
+                                  description: "Les indices économiques ont été mis à jour depuis l'INSEE"
+                                });
+                              })
+                              .catch(() => {
+                                toast({
+                                  title: "Erreur de synchronisation",
+                                  description: "Impossible de récupérer les données INSEE",
+                                  variant: "destructive"
+                                });
+                              });
+                          }}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Synchroniser INSEE
+                        </Button>
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-gray-600 mb-4">
@@ -1654,9 +1934,16 @@ export default function Indexations() {
                             <TableRow>
                               <TableCell className="font-mono">ICHT-IME</TableCell>
                               <TableCell>Indice du coût horaire du travail</TableCell>
-                              <TableCell>INSEE</TableCell>
-                              <TableCell className="font-bold">118.2</TableCell>
-                              <TableCell>01/09/2024</TableCell>
+                              <TableCell>
+                                <a href="https://www.insee.fr/fr/statistiques/serie/001565183" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   className="text-blue-600 hover:underline">
+                                  INSEE
+                                </a>
+                              </TableCell>
+                              <TableCell className="font-bold">{getLatestIndexValue('ICHT').value}</TableCell>
+                              <TableCell>{getLatestIndexValue('ICHT').date}</TableCell>
                               <TableCell>
                                 <Badge className="bg-green-100 text-green-700">Actif</Badge>
                               </TableCell>
@@ -1664,19 +1951,16 @@ export default function Indexations() {
                             <TableRow>
                               <TableCell className="font-mono">FM0ABE0</TableCell>
                               <TableCell>Frais et services divers</TableCell>
-                              <TableCell>INSEE</TableCell>
-                              <TableCell className="font-bold">94.3</TableCell>
-                              <TableCell>01/09/2024</TableCell>
                               <TableCell>
-                                <Badge className="bg-green-100 text-green-700">Actif</Badge>
+                                <a href="https://www.insee.fr/fr/statistiques/serie/010534796" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   className="text-blue-600 hover:underline">
+                                  INSEE
+                                </a>
                               </TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-mono">HICP</TableCell>
-                              <TableCell>Consumer Price Index</TableCell>
-                              <TableCell>Eurostat</TableCell>
-                              <TableCell className="font-bold">108.5</TableCell>
-                              <TableCell>01/09/2024</TableCell>
+                              <TableCell className="font-bold">{getLatestIndexValue('IPPAP').value}</TableCell>
+                              <TableCell>{getLatestIndexValue('IPPAP').date}</TableCell>
                               <TableCell>
                                 <Badge className="bg-green-100 text-green-700">Actif</Badge>
                               </TableCell>
@@ -1684,9 +1968,16 @@ export default function Indexations() {
                             <TableRow>
                               <TableCell className="font-mono">ICC</TableCell>
                               <TableCell>Indice du coût de la construction</TableCell>
-                              <TableCell>INSEE</TableCell>
-                              <TableCell className="font-bold">1953.5</TableCell>
-                              <TableCell>T2 2024</TableCell>
+                              <TableCell>
+                                <a href="https://www.insee.fr/fr/statistiques/serie/001763852" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   className="text-blue-600 hover:underline">
+                                  INSEE
+                                </a>
+                              </TableCell>
+                              <TableCell className="font-bold">{getLatestIndexValue('IPC').value}</TableCell>
+                              <TableCell>{getLatestIndexValue('IPC').date}</TableCell>
                               <TableCell>
                                 <Badge className="bg-green-100 text-green-700">Actif</Badge>
                               </TableCell>
@@ -1695,8 +1986,8 @@ export default function Indexations() {
                               <TableCell className="font-mono">IRL</TableCell>
                               <TableCell>Indice de référence des loyers</TableCell>
                               <TableCell>INSEE</TableCell>
-                              <TableCell className="font-bold">142.03</TableCell>
-                              <TableCell>T2 2024</TableCell>
+                              <TableCell className="font-bold">{getLatestIndexValue('IRL').value}</TableCell>
+                              <TableCell>{getLatestIndexValue('IRL').date}</TableCell>
                               <TableCell>
                                 <Badge className="bg-green-100 text-green-700">Actif</Badge>
                               </TableCell>
@@ -1708,16 +1999,24 @@ export default function Indexations() {
                       {/* Configuration des sources */}
                       <div className="space-y-4">
                         <h4 className="font-semibold">Configuration des API</h4>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-4">
                           <div>
-                            <Label>API INSEE</Label>
-                            <Input value="https://api.insee.fr/series/v1/" readOnly />
-                            <p className="text-xs text-gray-500 mt-1">ICHT, FMOA, ICC, IRL</p>
-                          </div>
-                          <div>
-                            <Label>API Eurostat</Label>
-                            <Input value="https://ec.europa.eu/eurostat/api/dissemination/" readOnly />
-                            <p className="text-xs text-gray-500 mt-1">CPI/HICP</p>
+                            <Label>Sources INSEE - Indices économiques</Label>
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <Input value="https://www.insee.fr/fr/statistiques/serie/001565183" readOnly className="flex-1" />
+                                <Badge variant="outline">ICHT-IME</Badge>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Input value="https://www.insee.fr/fr/statistiques/serie/010534796" readOnly className="flex-1" />
+                                <Badge variant="outline">FM0ABE0</Badge>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Input value="https://www.insee.fr/fr/statistiques/serie/001763852" readOnly className="flex-1" />
+                                <Badge variant="outline">ICC</Badge>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">Séries chronologiques INSEE pour le calcul des indexations</p>
+                            </div>
                           </div>
                         </div>
                         
@@ -1751,62 +2050,53 @@ export default function Indexations() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            <TableRow>
-                              <TableCell className="font-mono">AUX89</TableCell>
-                              <TableCell>ENGIE Green</TableCell>
-                              <TableCell>Marie Dupont</TableCell>
-                              <TableCell>Jean Martin</TableCell>
-                              <TableCell>
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-mono">FIG83</TableCell>
-                              <TableCell>ENGIE Green</TableCell>
-                              <TableCell>Jean Martin</TableCell>
-                              <TableCell>Sophie Bernard</TableCell>
-                              <TableCell>
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-mono">SCM29</TableCell>
-                              <TableCell>ENGIE Green</TableCell>
-                              <TableCell>Sophie Bernard</TableCell>
-                              <TableCell>Pierre Leclerc</TableCell>
-                              <TableCell>
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-mono">GLB04</TableCell>
-                              <TableCell>ENGIE Green</TableCell>
-                              <TableCell>Pierre Leclerc</TableCell>
-                              <TableCell>Marie Dupont</TableCell>
-                              <TableCell>
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
+                            {validationAssignments.length > 0 ? (
+                              validationAssignments.map((assignment: any) => (
+                                <TableRow key={assignment.id}>
+                                  <TableCell className="font-mono">{assignment.parkCode}</TableCell>
+                                  <TableCell>{assignment.businessUnit}</TableCell>
+                                  <TableCell>{assignment.mainValidatorName}</TableCell>
+                                  <TableCell>{assignment.backupValidatorName || "-"}</TableCell>
+                                  <TableCell>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedAssignment(assignment);
+                                        setAssignmentMainValidator(assignment.mainValidatorName);
+                                        setAssignmentBackupValidator(assignment.backupValidatorName || "");
+                                        setShowAssignmentModal(true);
+                                      }}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center text-gray-500">
+                                  Aucune affectation trouvée
+                                </TableCell>
+                              </TableRow>
+                            )}
                           </TableBody>
                         </Table>
                         
                         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                           <div className="flex items-center space-x-2 mb-2">
-                            <input type="checkbox" id="auto-reminder" defaultChecked />
+                            <input 
+                              type="checkbox" 
+                              id="auto-reminder" 
+                              defaultChecked={validationAssignments[0]?.autoReminder ?? true}
+                            />
                             <Label htmlFor="auto-reminder" className="font-semibold">
                               Relances automatiques activées
                             </Label>
                           </div>
                           <p className="text-sm text-gray-600">
-                            Email de rappel envoyé après 24h sans action, puis escalade au suppléant après 48h
+                            Email de rappel envoyé après {validationAssignments[0]?.reminderDelay || 24}h sans action, 
+                            puis escalade au suppléant après {validationAssignments[0]?.escalationDelay || 48}h
                           </p>
                         </div>
                       </div>
@@ -1901,7 +2191,7 @@ export default function Indexations() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Périmètre :</span>
-                            <span>Fixe + Variable</span>
+                            <span>{selectedIndexation.scope || "Fixe + Variable"}</span>
                           </div>
                         </div>
                       </div>
@@ -1918,22 +2208,34 @@ export default function Indexations() {
                             <span className="text-gray-600">Source :</span>
                             <span>{selectedIndexation.source}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Dernière valeur (définitive) :</span>
-                            <span>128.7</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Date de publication :</span>
-                            <span>{formatDate(new Date())}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Indice d'origine :</span>
-                            <span>{formatDate(selectedIndexation.originalIndexDate)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Indice révisé :</span>
-                            <span>{formatDate(selectedIndexation.revisionIndexDate)}</span>
-                          </div>
+                          {selectedIndexation.indices && Array.isArray(selectedIndexation.indices) && selectedIndexation.indices.length > 0 && (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Dernière valeur (définitive) :</span>
+                                <span>{selectedIndexation.indices[0]?.valueN || selectedIndexation.newAmount || "-"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Valeur précédente :</span>
+                                <span>{selectedIndexation.indices[0]?.valueN1 || selectedIndexation.oldAmount || "-"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Date de publication :</span>
+                                <span>{selectedIndexation.indices[0]?.date ? formatDate(selectedIndexation.indices[0].date) : "-"}</span>
+                              </div>
+                            </>
+                          )}
+                          {selectedIndexation.originalIndexDate && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Date indice d'origine :</span>
+                              <span>{formatDate(selectedIndexation.originalIndexDate)}</span>
+                            </div>
+                          )}
+                          {selectedIndexation.revisionIndexDate && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Date indice révisé :</span>
+                              <span>{formatDate(selectedIndexation.revisionIndexDate)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1968,7 +2270,7 @@ export default function Indexations() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Règle d'arrondi :</span>
-                            <span>2 décimales</span>
+                            <span>{selectedIndexation.roundingRule || "2 décimales"}</span>
                           </div>
                         </div>
                         <Alert>
@@ -1989,7 +2291,7 @@ export default function Indexations() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">SLA :</span>
-                            <span>48h</span>
+                            <span>{selectedIndexation.sla ? `${selectedIndexation.sla}h` : "48h"}</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <CheckCircle className="w-4 h-4 text-green-500" />
@@ -2006,7 +2308,7 @@ export default function Indexations() {
                             <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5"></div>
                             <div className="flex-1">
                               <div className="font-medium">Calcul initial</div>
-                              <div className="text-gray-500">{formatDate(new Date())} - Système</div>
+                              <div className="text-gray-500">{formatDate(selectedIndexation.createdAt || new Date())} - Système</div>
                             </div>
                           </div>
                         </div>
@@ -2014,11 +2316,13 @@ export default function Indexations() {
 
                       {/* Actions */}
                       <div className="flex space-x-2">
-                        <Button onClick={() => handleRecalculate(selectedIndexation)}>
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Recalculer
-                        </Button>
-                        {selectedIndexation.status === "pending" && (
+                        {canModifyContract() && (
+                          <Button onClick={() => handleRecalculate(selectedIndexation)}>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Recalculer
+                          </Button>
+                        )}
+                        {selectedIndexation.status === "pending" && canValidate() && (
                           <Button onClick={() => handleValidate(selectedIndexation)}>
                             Valider / Rejeter
                           </Button>
@@ -2044,6 +2348,9 @@ export default function Indexations() {
               <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Recalculer l'indexation avec nouvelle formule</DialogTitle>
+                  <DialogDescription>
+                    Appliquez une nouvelle formule d'indexation et recalculez les montants
+                  </DialogDescription>
                 </DialogHeader>
                 
                 {selectedIndexation && (
@@ -2109,15 +2416,15 @@ export default function Indexations() {
                       <div className="text-sm space-y-1">
                         <div className="flex justify-between">
                           <span className="text-gray-600">ICHT :</span>
-                          <span>{indicesValues.ICHT.current} (préc: {indicesValues.ICHT.previous})</span>
+                          <span>{indicesValues.ICHT.current || "-"} (préc: {indicesValues.ICHT.previous || "-"})</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">FMOA :</span>
-                          <span>{indicesValues.FMOA.current} (préc: {indicesValues.FMOA.previous})</span>
+                          <span>{indicesValues.FMOA.current || "-"} (préc: {indicesValues.FMOA.previous || "-"})</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">CPI :</span>
-                          <span>{indicesValues.CPI.current} (préc: {indicesValues.CPI.previous})</span>
+                          <span>{indicesValues.CPI.current || "-"} (préc: {indicesValues.CPI.previous || "-"})</span>
                         </div>
                       </div>
                     </div>
@@ -2135,8 +2442,21 @@ export default function Indexations() {
                   <Button variant="outline" onClick={() => setShowRecalculateModal(false)}>
                     Annuler
                   </Button>
-                  <Button onClick={handleSubmitRecalculation}>
-                    Lancer le recalcul
+                  <Button 
+                    onClick={handleSubmitRecalculation}
+                    disabled={!selectedFormula || updateIndexation.isPending}
+                  >
+                    {updateIndexation.isPending ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Recalcul en cours...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Appliquer le recalcul
+                      </>
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -2147,6 +2467,9 @@ export default function Indexations() {
               <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Valider / Rejeter l'indexation</DialogTitle>
+                  <DialogDescription>
+                    Examinez les détails de l'indexation et prenez une décision de validation
+                  </DialogDescription>
                 </DialogHeader>
                 
                 {selectedIndexation && (
@@ -2158,7 +2481,12 @@ export default function Indexations() {
                       </div>
                       <div className="flex justify-between">
                         <span>Indices N-1 / N :</span>
-                        <span>125.3 / 128.7 (INSEE)</span>
+                        <span>
+                          {selectedIndexation.indices && Array.isArray(selectedIndexation.indices) && selectedIndexation.indices.length > 0
+                            ? `${selectedIndexation.indices[0]?.valueN1 || "-"} / ${selectedIndexation.indices[0]?.valueN || "-"} (${selectedIndexation.source})`
+                            : `${selectedIndexation.oldAmount || "-"} / ${selectedIndexation.newAmount || "-"} (${selectedIndexation.source})`
+                          }
+                        </span>
                       </div>
                       <div className="flex justify-between font-medium">
                         <span>Montant calculé :</span>
@@ -2243,6 +2571,9 @@ export default function Indexations() {
                       </Button>
                     </div>
                   </DialogTitle>
+                  <DialogDescription>
+                    Visualisez et exportez le rapport détaillé de l'indexation
+                  </DialogDescription>
                 </DialogHeader>
                 
                 <div className="mt-4">
@@ -2252,11 +2583,23 @@ export default function Indexations() {
                       <div>
                         <p className="text-lg font-medium">Rapport d'indexation</p>
                         <p className="text-sm text-gray-600 mt-2">
-                          Contrat: CNT-2024-001<br />
-                          Période: 2023 → 2024<br />
-                          Formule appliquée: ICC<br />
-                          Montants: {formatAmount(100000)} → {formatAmount(102712)}<br />
-                          Δ: +2.71% / +2 712 €
+                          {selectedReport || selectedIndexation ? (
+                            <>
+                              Contrat: {(selectedReport || selectedIndexation).contractNumber}<br />
+                              Période: {formatDate((selectedReport || selectedIndexation).periodFrom)} → {formatDate((selectedReport || selectedIndexation).periodTo)}<br />
+                              Formule appliquée: {(selectedReport || selectedIndexation).formula}<br />
+                              Montants: {formatAmount((selectedReport || selectedIndexation).previousAmount)} → {formatAmount((selectedReport || selectedIndexation).proposedAmount)}<br />
+                              Δ: {formatPercentage((selectedReport || selectedIndexation).deltaPercentage)} / {formatAmount((selectedReport || selectedIndexation).deltaAmount)}
+                            </>
+                          ) : (
+                            <>
+                              Contrat: -<br />
+                              Période: -<br />
+                              Formule appliquée: -<br />
+                              Montants: -<br />
+                              Δ: -
+                            </>
+                          )}
                         </p>
                       </div>
                       <p className="text-xs text-gray-500">
@@ -2324,6 +2667,9 @@ export default function Indexations() {
                   <DialogTitle>
                     {selectedFormula ? "Modifier la formule" : "Nouvelle formule d'indexation"}
                   </DialogTitle>
+                  <DialogDescription>
+                    {selectedFormula ? "Modifiez les paramètres de la formule d'indexation" : "Créez une nouvelle formule d'indexation pour vos contrats"}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
                   <div>
@@ -2373,6 +2719,8 @@ export default function Indexations() {
                     <Label htmlFor="formula-description">Description</Label>
                     <textarea
                       id="formula-description"
+                      value={formulaDescription}
+                      onChange={(e) => setFormulaDescription(e.target.value)}
                       className="w-full mt-1 px-3 py-2 border rounded-md"
                       rows={2}
                       placeholder="Description optionnelle de la formule et de son usage"
@@ -2390,22 +2738,155 @@ export default function Indexations() {
                     Annuler
                   </Button>
                   <Button 
-                    onClick={() => {
-                      toast({
-                        title: selectedFormula ? "Formule modifiée" : "Formule créée",
-                        description: `La formule "${formulaName}" a été ${selectedFormula ? "modifiée" : "créée"} avec succès`
-                      });
-                      setShowFormulaModal(false);
-                    }}
+                    onClick={handleSaveFormula}
+                    disabled={!formulaName || !formulaExpression}
                   >
                     {selectedFormula ? "Modifier" : "Créer"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            
+            {/* Modal pour modifier les affectations de validation */}
+            <Dialog open={showAssignmentModal} onOpenChange={setShowAssignmentModal}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    Modifier l'affectation pour {selectedAssignment?.parkCode}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Modifiez les validateurs pour le parc {selectedAssignment?.parkCode} ({selectedAssignment?.businessUnit})
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="main-validator">Validateur principal</Label>
+                    <input
+                      id="main-validator"
+                      type="text"
+                      value={assignmentMainValidator}
+                      onChange={(e) => setAssignmentMainValidator(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                      placeholder="Nom du validateur principal"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="backup-validator">Validateur suppléant</Label>
+                    <input
+                      id="backup-validator"
+                      type="text"
+                      value={assignmentBackupValidator}
+                      onChange={(e) => setAssignmentBackupValidator(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                      placeholder="Nom du validateur suppléant (optionnel)"
+                    />
+                  </div>
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Les changements seront appliqués immédiatement et affectés aux nouvelles validations.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowAssignmentModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (selectedAssignment) {
+                        updateValidationAssignment.mutate({
+                          id: selectedAssignment.id,
+                          assignment: {
+                            mainValidatorName: assignmentMainValidator,
+                            backupValidatorName: assignmentBackupValidator || null
+                          }
+                        });
+                      }
+                    }}
+                    disabled={!assignmentMainValidator || updateValidationAssignment.isPending}
+                  >
+                    {updateValidationAssignment.isPending ? "Enregistrement..." : "Enregistrer"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            
+            {/* 
+             * Modal de modification des fréquences d'indexation
+             * @description Interface permettant de modifier la fréquence et le périmètre d'indexation
+             * pour un contrat spécifique. Les modifications sont appliquées immédiatement
+             * et impactées sur les prochains calculs d'indexation automatique.
+             */}
+            <Dialog open={showFrequencyModal} onOpenChange={setShowFrequencyModal}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    Modifier la fréquence pour {selectedFrequency?.contractCode}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Modifiez la fréquence et le périmètre d'indexation pour le contrat {selectedFrequency?.contractCode}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="frequency">Fréquence</Label>
+                    <select
+                      id="frequency"
+                      value={frequencyValue}
+                      onChange={(e) => setFrequencyValue(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                    >
+                      <option value="">Sélectionnez une fréquence</option>
+                      <option value="Mensuelle">Mensuelle</option>
+                      <option value="Trimestrielle">Trimestrielle</option>
+                      <option value="Semestrielle">Semestrielle</option>
+                      <option value="Annuelle">Annuelle</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="scope">Périmètre</Label>
+                    <input
+                      id="scope"
+                      type="text"
+                      value={frequencyScope}
+                      onChange={(e) => setFrequencyScope(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border rounded-md"
+                      placeholder="Ex: Maintenance complète, Production + Maintenance"
+                    />
+                  </div>
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Les modifications seront appliquées aux prochains calculs d'indexation.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowFrequencyModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (selectedFrequency) {
+                        updateIndexationFrequency.mutate({
+                          id: selectedFrequency.id,
+                          frequency: {
+                            frequency: frequencyValue,
+                            scope: frequencyScope
+                          }
+                        });
+                      }
+                    }}
+                    disabled={!frequencyValue || !frequencyScope || updateIndexationFrequency.isPending}
+                  >
+                    {updateIndexationFrequency.isPending ? "Enregistrement..." : "Enregistrer"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </main>
-      </div>
     </div>
   );
 }

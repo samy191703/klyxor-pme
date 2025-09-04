@@ -1,14 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,6 +25,7 @@ export default function Deadlines() {
   const [responsibleFilter, setResponsibleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [itemsPerPage, setItemsPerPage] = useState("25");
   const [showExportModal, setShowExportModal] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [selectedDeadline, setSelectedDeadline] = useState<any>(null);
@@ -42,9 +41,41 @@ export default function Deadlines() {
     lastSent: true
   });
   const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
+  
+  // Nouveaux états pour les modals
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAlertConfigModal, setShowAlertConfigModal] = useState(false);
+  const [deadlineForm, setDeadlineForm] = useState({
+    contractId: '',
+    type: 'end_contract',
+    date: new Date().toISOString().split('T')[0],
+    businessUnit: '',
+    responsible: '',
+    alertChannel: 'email',
+    alertAdvance: '30'
+  });
+  const [alertConfig, setAlertConfig] = useState({
+    channels: {
+      email: true,
+      teams: false,
+      inApp: true
+    },
+    timing: {
+      j30: true,
+      j7: true,
+      j1: true,
+      jPlus: false
+    },
+    recipients: [] as string[]
+  });
 
   const { data: deadlines = [], isLoading } = useQuery<Deadline[]>({
     queryKey: ["/api/deadlines"],
+  });
+
+  // Récupération des utilisateurs pour les sélecteurs
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ["/api/users"],
   });
 
   // Calcul des KPIs
@@ -56,7 +87,8 @@ export default function Deadlines() {
   };
 
   const filteredDeadlines = deadlines.filter(deadline => {
-    const matchesSearch = deadline.contractNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = searchTerm === "" || 
+      (deadline.contractNumber && deadline.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesPeriod = 
       periodFilter === "all" || 
       (periodFilter === "j30" && deadline.daysRemaining <= 30 && deadline.daysRemaining > 7) ||
@@ -69,30 +101,44 @@ export default function Deadlines() {
     return matchesSearch && matchesPeriod && matchesType && matchesBU;
   });
 
-  const formatDate = (date: Date | string) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(new Date(date));
+  const formatDate = (date: Date | string | undefined | null) => {
+    if (!date) return 'N/A';
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) return 'N/A';
+      return new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(dateObj);
+    } catch (error) {
+      return 'N/A';
+    }
   };
 
-  const formatDateTime = (date: Date | string) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(date));
+  const formatDateTime = (date: Date | string | undefined | null) => {
+    if (!date) return 'N/A';
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) return 'N/A';
+      return new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(dateObj);
+    } catch (error) {
+      return 'N/A';
+    }
   };
 
   const getDaysVariant = (days: number) => {
     if (days < 0) return "destructive";
     if (days <= 1) return "destructive";
-    if (days <= 7) return "warning";
-    if (days <= 30) return "secondary";
-    return "outline";
+    if (days <= 7) return "secondary";
+    if (days <= 30) return "outline";
+    return "default";
   };
 
   const getTypeLabel = (type: string) => {
@@ -124,18 +170,8 @@ export default function Deadlines() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <SidebarWithSubmenu />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 lg:hidden">
-          <div className="flex items-center justify-between">
-            <MobileNavWithSubmenu />
-            <h1 className="text-lg font-semibold">Échéances</h1>
-          </div>
-        </header>
-        
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="deadlines-main">
+    <div className="flex flex-col h-full bg-gray-50">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="deadlines-main">
           <div className="max-w-7xl mx-auto">
             {/* EC-1: Titre de page */}
             <div className="mb-6">
@@ -238,9 +274,11 @@ export default function Deadlines() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tous les responsables</SelectItem>
-                        <SelectItem value="Marie Martin">Marie Martin</SelectItem>
-                        <SelectItem value="Pierre Durand">Pierre Durand</SelectItem>
-                        <SelectItem value="Sophie Laurent">Sophie Laurent</SelectItem>
+                        {users.map((user: any) => (
+                          <SelectItem key={user.id} value={`${user.firstName} ${user.lastName}`}>
+                            {user.firstName} {user.lastName}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 
@@ -275,6 +313,24 @@ export default function Deadlines() {
                     <Button variant="outline">
                       <Save className="w-4 h-4 mr-2" />
                       Sauver la vue
+                    </Button>
+
+                    <Button 
+                      variant="outline"
+                      onClick={() => setShowCreateModal(true)}
+                      data-testid="button-create-deadline"
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Nouvelle échéance
+                    </Button>
+
+                    <Button 
+                      variant="outline"
+                      onClick={() => setShowAlertConfigModal(true)}
+                      data-testid="button-config-alerts"
+                    >
+                      <Bell className="w-4 h-4 mr-2" />
+                      Configurer alertes
                     </Button>
 
                     <Button 
@@ -339,7 +395,7 @@ export default function Deadlines() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredDeadlines.map((deadline) => (
+                        {filteredDeadlines.slice(0, parseInt(itemsPerPage)).map((deadline) => (
                           <TableRow 
                             key={deadline.id} 
                             data-testid={`row-deadline-${deadline.id}`}
@@ -368,7 +424,7 @@ export default function Deadlines() {
                             <TableCell>{deadline.businessUnit}</TableCell>
                             <TableCell>Marie Martin</TableCell>
                             <TableCell>
-                              <Badge variant="success">Actif</Badge>
+                              <Badge variant="secondary">Actif</Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex space-x-1">
@@ -424,11 +480,11 @@ export default function Deadlines() {
                 {filteredDeadlines.length > 0 && (
                   <div className="border-t px-4 py-3 flex items-center justify-between text-sm text-gray-600">
                     <div>
-                      1-{Math.min(25, filteredDeadlines.length)} sur {filteredDeadlines.length}
+                      1-{Math.min(parseInt(itemsPerPage), filteredDeadlines.length)} sur {filteredDeadlines.length}
                     </div>
                     <div className="flex items-center space-x-2">
                       <span>Afficher:</span>
-                      <Select defaultValue="25">
+                      <Select value={itemsPerPage} onValueChange={setItemsPerPage}>
                         <SelectTrigger className="w-[70px]">
                           <SelectValue />
                         </SelectTrigger>
@@ -478,7 +534,7 @@ export default function Deadlines() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">Statut:</span>
-                            <Badge variant="success" className="text-xs">Actif</Badge>
+                            <Badge variant="secondary" className="text-xs">Actif</Badge>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">Période:</span>
@@ -564,6 +620,9 @@ export default function Deadlines() {
               <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Exporter les échéances</DialogTitle>
+                  <DialogDescription>
+                    Sélectionnez les colonnes à exporter et le format de fichier
+                  </DialogDescription>
                 </DialogHeader>
                 
                 <div className="space-y-4 py-4">
@@ -648,9 +707,251 @@ export default function Deadlines() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Modal de création/modification de deadline */}
+            <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+              <DialogContent data-testid="create-deadline-modal">
+                <DialogHeader>
+                  <DialogTitle>Créer une nouvelle échéance</DialogTitle>
+                  <DialogDescription>
+                    Définissez une nouvelle échéance pour un contrat
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="deadline-contract">Contrat</Label>
+                    <Select 
+                      value={deadlineForm.contractId}
+                      onValueChange={(v) => setDeadlineForm({...deadlineForm, contractId: v})}
+                    >
+                      <SelectTrigger id="deadline-contract">
+                        <SelectValue placeholder="Sélectionnez un contrat" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cnt-001">CNT-2024-001 - Services informatiques</SelectItem>
+                        <SelectItem value="cnt-002">CNT-2024-002 - Maintenance équipements</SelectItem>
+                        <SelectItem value="cnt-003">CNT-2024-003 - Location bureaux</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="deadline-type">Type d'échéance</Label>
+                    <Select 
+                      value={deadlineForm.type}
+                      onValueChange={(v) => setDeadlineForm({...deadlineForm, type: v})}
+                    >
+                      <SelectTrigger id="deadline-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="end_contract">Fin de contrat</SelectItem>
+                        <SelectItem value="anniversary">Date anniversaire</SelectItem>
+                        <SelectItem value="amendment">Fin d'avenant</SelectItem>
+                        <SelectItem value="review">Revue contractuelle</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="deadline-date">Date d'échéance</Label>
+                    <Input 
+                      id="deadline-date"
+                      type="date"
+                      value={deadlineForm.date}
+                      onChange={(e) => setDeadlineForm({...deadlineForm, date: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="deadline-bu">Business Unit</Label>
+                    <Select 
+                      value={deadlineForm.businessUnit}
+                      onValueChange={(v) => setDeadlineForm({...deadlineForm, businessUnit: v})}
+                    >
+                      <SelectTrigger id="deadline-bu">
+                        <SelectValue placeholder="Sélectionnez une BU" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="solutions_france">ENGIE Solutions France</SelectItem>
+                        <SelectItem value="green">ENGIE Green</SelectItem>
+                        <SelectItem value="gem">ENGIE Global Energy Management</SelectItem>
+                        <SelectItem value="flex">ENGIE Flex</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="deadline-responsible">Responsable</Label>
+                    <Input 
+                      id="deadline-responsible"
+                      value={deadlineForm.responsible}
+                      onChange={(e) => setDeadlineForm({...deadlineForm, responsible: e.target.value})}
+                      placeholder="Nom du responsable"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="deadline-channel">Canal d'alerte</Label>
+                    <Select 
+                      value={deadlineForm.alertChannel}
+                      onValueChange={(v) => setDeadlineForm({...deadlineForm, alertChannel: v})}
+                    >
+                      <SelectTrigger id="deadline-channel">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="teams">Teams</SelectItem>
+                        <SelectItem value="in-app">In-App</SelectItem>
+                        <SelectItem value="all">Tous les canaux</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="deadline-advance">Préavis (jours)</Label>
+                    <Select 
+                      value={deadlineForm.alertAdvance}
+                      onValueChange={(v) => setDeadlineForm({...deadlineForm, alertAdvance: v})}
+                    >
+                      <SelectTrigger id="deadline-advance">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 jour</SelectItem>
+                        <SelectItem value="7">7 jours</SelectItem>
+                        <SelectItem value="15">15 jours</SelectItem>
+                        <SelectItem value="30">30 jours</SelectItem>
+                        <SelectItem value="60">60 jours</SelectItem>
+                        <SelectItem value="90">90 jours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={() => {
+                    console.log('Création deadline:', deadlineForm);
+                    setShowCreateModal(false);
+                  }}>
+                    Créer l'échéance
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Modal de configuration des alertes */}
+            <Dialog open={showAlertConfigModal} onOpenChange={setShowAlertConfigModal}>
+              <DialogContent className="max-w-2xl" data-testid="alert-config-modal">
+                <DialogHeader>
+                  <DialogTitle>Configuration des alertes d'échéance</DialogTitle>
+                  <DialogDescription>
+                    Définissez comment et quand vous souhaitez être notifié des échéances
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">Canaux de notification</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="channel-email">Email</Label>
+                        <input 
+                          type="checkbox" 
+                          id="channel-email"
+                          checked={alertConfig.channels.email}
+                          onChange={(e) => setAlertConfig({...alertConfig, channels: {...alertConfig.channels, email: e.target.checked}})}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="channel-teams">Microsoft Teams</Label>
+                        <input 
+                          type="checkbox" 
+                          id="channel-teams"
+                          checked={alertConfig.channels.teams}
+                          onChange={(e) => setAlertConfig({...alertConfig, channels: {...alertConfig.channels, teams: e.target.checked}})}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="channel-app">Notifications in-app</Label>
+                        <input 
+                          type="checkbox" 
+                          id="channel-app"
+                          checked={alertConfig.channels.inApp}
+                          onChange={(e) => setAlertConfig({...alertConfig, channels: {...alertConfig.channels, inApp: e.target.checked}})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Périodes d'alerte</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="timing-j30">30 jours avant</Label>
+                        <input 
+                          type="checkbox" 
+                          id="timing-j30"
+                          checked={alertConfig.timing.j30}
+                          onChange={(e) => setAlertConfig({...alertConfig, timing: {...alertConfig.timing, j30: e.target.checked}})}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="timing-j7">7 jours avant</Label>
+                        <input 
+                          type="checkbox" 
+                          id="timing-j7"
+                          checked={alertConfig.timing.j7}
+                          onChange={(e) => setAlertConfig({...alertConfig, timing: {...alertConfig.timing, j7: e.target.checked}})}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="timing-j1">1 jour avant</Label>
+                        <input 
+                          type="checkbox" 
+                          id="timing-j1"
+                          checked={alertConfig.timing.j1}
+                          onChange={(e) => setAlertConfig({...alertConfig, timing: {...alertConfig.timing, j1: e.target.checked}})}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="timing-jplus">Après échéance</Label>
+                        <input 
+                          type="checkbox" 
+                          id="timing-jplus"
+                          checked={alertConfig.timing.jPlus}
+                          onChange={(e) => setAlertConfig({...alertConfig, timing: {...alertConfig.timing, jPlus: e.target.checked}})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Destinataires supplémentaires</h4>
+                    <div className="text-sm text-muted-foreground mb-2">
+                      En plus du responsable du contrat, notifier :
+                    </div>
+                    <Input 
+                      placeholder="Emails séparés par des virgules"
+                      onChange={(e) => setAlertConfig({...alertConfig, recipients: e.target.value.split(',').map(email => email.trim())})}
+                    />
+                  </div>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Les alertes sont envoyées à 8h00 (heure locale) pour chaque période configurée
+                    </AlertDescription>
+                  </Alert>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowAlertConfigModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={() => {
+                    console.log('Configuration alertes:', alertConfig);
+                    setShowAlertConfigModal(false);
+                  }}>
+                    Enregistrer la configuration
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </main>
-      </div>
     </div>
   );
 }

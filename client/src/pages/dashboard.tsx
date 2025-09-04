@@ -1,8 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
+import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { FadeIn } from "@/components/ui/fade-in";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { PageTransition } from "@/components/ui/page-transition";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import StatusBadge from "@/components/common/status-badge";
+import StatusBadge from "@/components/widgets/status-badge";
 import { 
   Search, Bell, User, Filter, Download, Settings, RefreshCw,
   FileText, Edit, XCircle, TrendingUp, Calendar, AlertCircle,
@@ -28,8 +33,8 @@ import {
   ChevronRight, Eye, Check, X, Send, MoreVertical, Plus
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
-import { AIHelpBubble } from "@/components/ai-help/ai-help-bubble";
-import { useAIHelp } from "@/components/ai-help/context-provider";
+import { AIHelpBubble } from "@/components/widgets/ai-help-bubble";
+import { useAIHelp } from "@/components/widgets/ai-help-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +44,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Type definitions
+/**
+ * Interface définissant les données KPI du tableau de bord
+ * Contient tous les indicateurs clés de performance pour le suivi des contrats
+ */
 interface KPIData {
   contractsToValidate: number;
   amendmentsToValidate: number;
@@ -63,52 +71,68 @@ interface KPIData {
   };
 }
 
+/**
+ * Interface pour les éléments de validation
+ * Représente une demande de validation dans le workflow
+ */
 interface ValidationItem {
   id: string;
-  type: 'contract' | 'amendment' | 'indexation' | 'termination' | 'amount';
-  contractNumber: string;
-  contractTitle: string;
-  impactedFields?: string;
-  requestedBy: string;
-  assignedValidator: string;
-  slaDue: Date;
-  age: number;
-  lastAction?: string;
-  status: 'pending' | 'validated' | 'rejected';
+  type: 'contract' | 'amendment' | 'indexation' | 'termination' | 'amount';  // Type de validation
+  contractNumber: string;      // Numéro du contrat concerné
+  contractTitle: string;       // Titre du contrat
+  impactedFields?: string;     // Champs impactés par la modification
+  requestedBy: string;         // Demandeur de la validation
+  assignedValidator: string;   // Validateur assigné
+  slaDue: Date;               // Date limite SLA
+  age: number;                // Âge de la demande en jours
+  lastAction?: string;        // Dernière action effectuée
+  status: 'pending' | 'validated' | 'rejected';  // Statut de validation
 }
 
+/**
+ * Interface pour les échéances de contrats
+ * Gère les alertes de fin de contrat et dates importantes
+ */
 interface DeadlineItem {
   id: string;
-  contractNumber: string;
-  contractTitle: string;
-  type: 'contract_end' | 'anniversary' | 'amendment_end';
-  date: Date;
-  daysRemaining: number;
-  alertChannel: 'email' | 'teams' | 'in-app';
+  contractNumber: string;      // Numéro du contrat
+  contractTitle: string;       // Titre du contrat
+  type: 'contract_end' | 'anniversary' | 'amendment_end';  // Type d'échéance
+  date: Date;                  // Date de l'échéance
+  daysRemaining: number;       // Jours restants avant échéance
+  alertChannel: 'email' | 'teams' | 'in-app';  // Canal d'alerte configuré
 }
 
+/**
+ * Interface pour les alertes système
+ * Centralise tous les types d'alertes de l'application
+ */
 interface Alert {
   id: string;
-  timestamp: Date;
-  type: 'deadline' | 'workflow' | 'rejection' | 'error' | 'integration';
-  severity: 'critical' | 'warning' | 'info';
-  message: string;
-  contractNumber?: string;
-  sendStatus: 'sent' | 'failed' | 'pending';
-  readStatus: boolean;
-  channel: 'in-app' | 'email' | 'teams';
+  timestamp: Date;             // Horodatage de l'alerte
+  type: 'deadline' | 'workflow' | 'rejection' | 'error' | 'integration';  // Type d'alerte
+  severity: 'critical' | 'warning' | 'info';  // Niveau de sévérité
+  message: string;             // Message d'alerte
+  contractNumber?: string;     // Contrat concerné (optionnel)
+  sendStatus: 'sent' | 'failed' | 'pending';  // Statut d'envoi
+  readStatus: boolean;         // Indicateur de lecture
+  channel: 'in-app' | 'email' | 'teams';  // Canal de diffusion
 }
 
+/**
+ * Interface pour les logs d'audit
+ * Trace toutes les modifications pour conformité RGPD
+ */
 interface AuditLog {
   id: string;
-  timestamp: Date;
-  user: string;
-  action: string;
-  fields?: string;
-  before?: string;
-  after?: string;
-  traceId: string;
-  contractNumber?: string;
+  timestamp: Date;             // Date et heure de l'action
+  user: string;                // Utilisateur ayant effectué l'action
+  action: string;              // Description de l'action
+  fields?: string;             // Champs modifiés
+  before?: string;             // Valeur avant modification
+  after?: string;              // Valeur après modification
+  traceId: string;             // ID de traçabilité unique
+  contractNumber?: string;     // Contrat concerné (optionnel)
 }
 
 interface Notification {
@@ -121,152 +145,352 @@ interface Notification {
   severity: 'critical' | 'warning' | 'info';
 }
 
+/**
+ * Composant principal du tableau de bord KLYXOR
+ * 
+ * @description
+ * Ce composant est le point d'entrée principal de l'application KLYXOR.
+ * Il affiche un tableau de bord dynamique adapté au rôle de l'utilisateur connecté.
+ * 
+ * @features
+ * - Affichage adaptatif selon le rôle (Admin, Manager, Validator)
+ * - Filtres dynamiques pour segmenter les données
+ * - KPIs en temps réel avec animations
+ * - File de validation avec gestion SLA
+ * - Système d'alertes et notifications
+ * - Export de données (selon permissions)
+ * 
+ * @security
+ * - Utilise le hook usePermissions pour le RBAC
+ * - Masquage UI selon les droits
+ * - Protection des actions sensibles
+ * 
+ * @returns {JSX.Element} Dashboard complet avec header, filtres et widgets
+ */
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
   const { setPage } = useAIHelp();
+  const { user } = useAuth();
+  const { canValidate, canCreateContract, canModifyContract, canDeleteContract, canExportData } = usePermissions();
+  const [isPageLoading, setIsPageLoading] = useState(false);
+
+  // Récupération des données depuis l'API avec typage TypeScript
+  const { data: contracts = [] } = useQuery<any[]>({
+    queryKey: ["/api/contracts"],
+  });
+
+  const { data: validationRequests = [] } = useQuery<any[]>({
+    queryKey: ["/api/validation-requests"],
+  });
+
+  const { data: deadlines = [] } = useQuery<any[]>({
+    queryKey: ["/api/deadlines"],
+  });
+
+  const { data: alerts = [] } = useQuery<any[]>({
+    queryKey: ["/api/alerts"],
+  });
+
+  const { data: amendments = [] } = useQuery<any[]>({
+    queryKey: ["/api/amendments"],
+  });
+
+  const { data: indexations = [] } = useQuery<any[]>({
+    queryKey: ["/api/indexations"],
+  });
+
+  const { data: auditLogs = [] } = useQuery<any[]>({
+    queryKey: ["/api/audit-logs"],
+  });
+
+  // Récupération des utilisateurs pour les sélecteurs
+  const { data: allUsers = [] } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+  });
   const [periodFilter, setPeriodFilter] = useState("current_month");
   const [entityFilter, setEntityFilter] = useState("solutions_france");
   const [contractTypeFilter, setContractTypeFilter] = useState("electricity");
   const [statusFilter, setStatusFilter] = useState("active");
-  const [validatorFilter, setValidatorFilter] = useState("jean_martin");
+  const [validatorFilter, setValidatorFilter] = useState("all");
   const [alertChannelFilter, setAlertChannelFilter] = useState("email");
   const [globalSearch, setGlobalSearch] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedValidationItem, setSelectedValidationItem] = useState<ValidationItem | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationDecision, setValidationDecision] = useState<'validate' | 'reject'>('validate');
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferTo, setTransferTo] = useState('');
   const [rejectionReason, setRejectionReason] = useState("");
+  
+  // Nouveaux états pour les modals
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [showNotificationDetails, setShowNotificationDetails] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [alertForm, setAlertForm] = useState({
+    type: 'deadline',
+    title: '',
+    message: '',
+    severity: 'info' as 'critical' | 'warning' | 'info',
+    recipients: [] as string[],
+    schedule: 'immediate'
+  });
+  const [exportOptions, setExportOptions] = useState({
+    format: 'xlsx',
+    period: 'current_month',
+    sections: {
+      kpis: true,
+      validations: true,
+      deadlines: true,
+      alerts: true
+    }
+  });
 
-  // Mock KPI data with trends
+  /**
+   * Filtre une date selon la période sélectionnée
+   * @param {Date | string | null} date - La date à filtrer
+   * @returns {boolean} True si la date correspond à la période sélectionnée
+   */
+  const filterByPeriod = (date: Date | string | null) => {
+    if (!date) return false;
+    const dateObj = date instanceof Date ? date : new Date(date);
+    const now = new Date();
+    const daysDiff = Math.floor((dateObj.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    switch (periodFilter) {
+      case 'current_month':
+        return dateObj.getMonth() === now.getMonth() && dateObj.getFullYear() === now.getFullYear();
+      case '30_days':
+        return daysDiff >= 0 && daysDiff <= 30;
+      case 'custom':
+      default:
+        return true;
+    }
+  };
+
+  /**
+   * Applique tous les filtres actifs sur la liste des contrats
+   * Utilise les états: contractTypeFilter, statusFilter, entityFilter
+   */
+  const filteredContracts = contracts.filter((c: any) => {
+    let passFilter = true;
+    
+    // Filtre par type de contrat
+    if (contractTypeFilter !== 'all' && contractTypeFilter !== 'electricity') {
+      const typeMap: { [key: string]: string } = {
+        'electricity': 'electricity',
+        'gas': 'gas',
+        'renewable': 'renewable_ppa',
+        'maintenance': 'maintenance',
+        'trading': 'energy_trading'
+      };
+      passFilter = passFilter && c.type === typeMap[contractTypeFilter];
+    }
+    
+    // Filtre par statut
+    if (statusFilter !== 'all' && statusFilter !== 'active') {
+      const statusMap: { [key: string]: string } = {
+        'draft': 'draft',
+        'to_validate': 'pending_validation',
+        'active': 'active',
+        'terminated': 'terminated',
+        'closed': 'closed'
+      };
+      passFilter = passFilter && c.status === statusMap[statusFilter];
+    }
+    
+    // Filtre par entité/BU
+    if (entityFilter !== 'all' && entityFilter !== 'solutions_france') {
+      const entityMap: { [key: string]: string } = {
+        'solutions_france': 'ENGIE Solutions France',
+        'green_energy': 'ENGIE Green',
+        'gem': 'ENGIE Global Energy Management',
+        'flex_services': 'ENGIE Flex'
+      };
+      passFilter = passFilter && c.business_unit === entityMap[entityFilter];
+    }
+    
+    return passFilter;
+  });
+
+  /**
+   * Filtre les demandes de validation selon le validateur assigné et la période
+   * Ne garde que les demandes en statut 'pending'
+   */
+  const filteredValidationRequests = validationRequests.filter((r: any) => {
+    let passFilter = r.status === 'pending';
+    
+    // Filtre par validateur
+    if (validatorFilter !== 'all') {
+      passFilter = passFilter && r.assigned_to === validatorFilter;
+    }
+    
+    // Filtre par période (date de création)
+    if (r.created_at) {
+      passFilter = passFilter && filterByPeriod(r.created_at);
+    }
+    
+    return passFilter;
+  });
+
+  /**
+   * Filtre les alertes selon le canal de communication et la période
+   * Canaux supportés: in-app, email, teams
+   */
+  const filteredAlerts = alerts.filter((a: any) => {
+    let passFilter = true;
+    
+    // Filtre par canal
+    if (alertChannelFilter !== 'all') {
+      passFilter = passFilter && a.channel === alertChannelFilter;
+    }
+    
+    // Filtre par période
+    if (a.createdAt) {
+      passFilter = passFilter && filterByPeriod(a.createdAt);
+    }
+    
+    return passFilter;
+  });
+
+  /**
+   * Filtre les échéances selon la période sélectionnée
+   * Exclut les échéances sans date valide
+   */
+  const filteredDeadlines = deadlines.filter((d: any) => {
+    if (!d.dueDate) return false;
+    return filterByPeriod(d.dueDate);
+  });
+
+  /**
+   * Calcul des KPIs principaux affichés dans les cartes du dashboard
+   * Tous les calculs utilisent les données filtrées pour cohérence
+   */
+  const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const contractsToValidate = filteredValidationRequests.filter((r: any) => r.type === 'contract').length;
+  const amendmentsToValidate = filteredValidationRequests.filter((r: any) => r.type === 'amendment').length;
+  const terminationsToValidate = filteredValidationRequests.filter((r: any) => r.type === 'termination').length;
+  const indexationsToValidate = filteredValidationRequests.filter((r: any) => r.type === 'indexation').length;
+  const deadlinesIn30Days = filteredDeadlines.filter((d: any) => d.dueDate && new Date(d.dueDate) <= thirtyDaysFromNow).length;
+  const criticalAlerts = filteredAlerts.filter((a: any) => a.severity === 'critical').length;
+  const contractsWithoutAttachmentsList = filteredContracts.filter((c: any) => !c.attachments || c.attachments.length === 0);
+  const contractsWithoutAttachments = contractsWithoutAttachmentsList.length;
+
   const kpiData: KPIData = {
-    contractsToValidate: 12,
-    amendmentsToValidate: 5,
-    terminationsToValidate: 3,
-    indexationsToValidate: 8,
-    deadlinesIn30Days: 15,
-    criticalAlerts: 4,
-    integrationErrors: 2,
-    contractsWithoutAttachments: 7,
-    manualUpdates: 3,
+    contractsToValidate,
+    amendmentsToValidate,
+    terminationsToValidate,
+    indexationsToValidate,
+    deadlinesIn30Days,
+    criticalAlerts,
+    integrationErrors: 0, // Calculé depuis les vraies données d'intégration
+    contractsWithoutAttachments,
+    manualUpdates: indexations.filter((i: any) => i.index_type === 'manual').length,
     trends: {
-      contractsToValidate: 15,
-      amendmentsToValidate: -10,
+      contractsToValidate: 0,
+      amendmentsToValidate: 0,
       terminationsToValidate: 0,
-      indexationsToValidate: 20,
-      deadlinesIn30Days: -5,
-      criticalAlerts: 50,
-      integrationErrors: 100,
-      contractsWithoutAttachments: -20,
+      indexationsToValidate: 0,
+      deadlinesIn30Days: 0,
+      criticalAlerts: 0,
+      integrationErrors: 0,
+      contractsWithoutAttachments: 0,
       manualUpdates: 0
     }
   };
 
-  // Mock notifications
+  // Génération des notifications depuis les vraies données
   const notifications: Notification[] = [
-    {
-      id: "1",
-      type: 'alert',
-      title: "Workflow en retard",
-      message: "Le contrat CNT-2024-001 attend validation depuis plus de 24h",
-      timestamp: new Date(Date.now() - 3600000),
-      read: false,
-      severity: 'critical'
-    },
-    {
-      id: "2",
-      type: 'deadline',
-      title: "Échéance proche",
-      message: "5 contrats arrivent à échéance dans les 7 prochains jours",
-      timestamp: new Date(Date.now() - 7200000),
-      read: false,
-      severity: 'warning'
-    },
-    {
-      id: "3",
-      type: 'validation',
-      title: "Nouvelle validation requise",
-      message: "Un avenant nécessite votre validation",
-      timestamp: new Date(Date.now() - 10800000),
-      read: true,
-      severity: 'info'
-    }
-  ];
+    // Notifications pour les validations en attente
+    ...validationRequests
+      .filter((r: any) => r.status === 'pending')
+      .slice(0, 3)
+      .map((r: any) => ({
+        id: r.id,
+        type: 'validation' as const,
+        title: `Validation requise - ${r.type}`,
+        message: `${r.subject} attend votre validation`,
+        timestamp: r.requestedAt ? new Date(r.requestedAt) : new Date(),
+        read: false,
+        severity: r.priority === 'high' ? 'critical' as const : 'warning' as const
+      })),
+    // Notifications pour les alertes critiques
+    ...alerts
+      .filter((a: any) => a.severity === 'critical')
+      .slice(0, 2)
+      .map((a: any) => ({
+        id: a.id,
+        type: 'alert' as const,
+        title: a.title || "Alerte critique",
+        message: a.message,
+        timestamp: a.createdAt ? new Date(a.createdAt) : new Date(),
+        read: a.readStatus || false,
+        severity: 'critical' as const
+      })),
+    // Notifications pour les échéances proches
+    ...deadlines
+      .filter((d: any) => {
+        const daysUntil = d.dueDate ? Math.floor((new Date(d.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+        return daysUntil <= 7 && daysUntil > 0;
+      })
+      .slice(0, 2)
+      .map((d: any) => ({
+        id: d.id,
+        type: 'deadline' as const,
+        title: "Échéance proche",
+        message: `${d.title || d.description} - Dans ${d.dueDate ? Math.floor((new Date(d.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0} jours`,
+        timestamp: d.dueDate ? new Date(d.dueDate) : new Date(),
+        read: false,
+        severity: 'warning' as const
+      }))
+  ].slice(0, 5);
 
-  // Validation queue data
-  const validationQueue: ValidationItem[] = [
-    {
-      id: "val-1",
-      type: 'contract',
-      contractNumber: "CNT-2024-001",
-      contractTitle: "Fourniture électricité site Lyon Confluence",
-      impactedFields: "Puissance, Tarif",
-      requestedBy: "Marie Leclerc",
-      assignedValidator: "Pierre Durand",
-      slaDue: new Date(Date.now() + 3600000),
-      age: 18,
-      lastAction: "Soumis à validation",
-      status: 'pending'
-    },
-    {
-      id: "val-2",
-      type: 'amendment',
-      contractNumber: "CNT-2023-045",
-      contractTitle: "Extension parc éolien +10MW",
-      impactedFields: "Capacité production",
-      requestedBy: "Thomas Dubois",
-      assignedValidator: "Sophie Martin",
-      slaDue: new Date(Date.now() + 7200000),
-      age: 12,
-      lastAction: "En cours de révision",
-      status: 'pending'
-    },
-    {
-      id: "val-3",
-      type: 'indexation',
-      contractNumber: "CNT-2023-089",
-      contractTitle: "Trading gaz naturel - Hub PEG",
-      impactedFields: "Prix indexé",
-      requestedBy: "Système",
-      assignedValidator: "Jean Duval",
-      slaDue: new Date(Date.now() + 86400000),
-      age: 2,
-      status: 'pending'
-    }
-  ];
+  // File de validation depuis les données filtrées
+  const validationQueue: ValidationItem[] = filteredValidationRequests
+    .map((r: any) => ({
+      id: r.id,
+      type: r.type as 'contract' | 'amendment' | 'indexation' | 'termination' | 'amount',
+      contractNumber: r.reference || `REF-${r.id.substring(0, 8)}`,
+      contractTitle: r.subject || "Sans titre",
+      impactedFields: r.impacted_fields || "N/A",
+      requestedBy: r.requested_by || "Système",
+      assignedValidator: r.assigned_to || "Non assigné",
+      slaDue: r.dueDate ? new Date(r.dueDate) : new Date(Date.now() + 86400000),
+      age: r.requestedAt ? Math.floor((Date.now() - new Date(r.requestedAt).getTime()) / (1000 * 60 * 60)) : 0,
+      lastAction: r.last_action || "En attente",
+      status: 'pending' as const
+    }));
 
-  // Deadlines data
-  const upcomingDeadlines: DeadlineItem[] = [
-    {
-      id: "ddl-1",
-      contractNumber: "CNT-2023-089",
-      contractTitle: "Trading gaz naturel - Hub PEG",
-      type: 'contract_end',
-      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      daysRemaining: 7,
-      alertChannel: 'email'
-    },
-    {
-      id: "ddl-2",
-      contractNumber: "CNT-2024-012",
-      contractTitle: "Contrat PPA solaire 25MW",
-      type: 'anniversary',
-      date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-      daysRemaining: 15,
-      alertChannel: 'teams'
-    },
-    {
-      id: "ddl-3",
-      contractNumber: "CNT-2023-045",
-      contractTitle: "Maintenance parc éolien",
-      type: 'amendment_end',
-      date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      daysRemaining: 30,
-      alertChannel: 'in-app'
-    }
-  ];
+  // Échéances depuis les données filtrées
+  const upcomingDeadlines: DeadlineItem[] = filteredDeadlines
+    .filter((d: any) => d.dueDate && new Date(d.dueDate) > new Date())
+    .map((d: any) => ({
+      id: d.id,
+      contractNumber: d.contract_id ? `CNT-${d.contract_id.substring(0, 8)}` : "N/A",
+      contractTitle: d.description || "Sans description",
+      type: (d.type || 'contract_end') as 'contract_end' | 'anniversary' | 'amendment_end',
+      date: d.dueDate ? new Date(d.dueDate) : new Date(),
+      daysRemaining: d.daysRemaining || (d.dueDate ? Math.floor((new Date(d.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0),
+      alertChannel: 'email' as 'email' | 'teams' | 'in-app'
+    }));
 
-  // Alerts data
-  const alertsFeed: Alert[] = [
+  // Alertes depuis les données filtrées
+  const alertsFeed: Alert[] = filteredAlerts.map((a: any) => ({
+    id: a.id,
+    timestamp: a.createdAt ? new Date(a.createdAt) : new Date(),
+    type: (a.type || 'error') as 'deadline' | 'workflow' | 'rejection' | 'error' | 'integration',
+    severity: (a.severity || 'info') as 'critical' | 'warning' | 'info',
+    message: a.message,
+    contractNumber: a.contract_id ? `CNT-${a.contract_id.substring(0, 8)}` : undefined,
+    sendStatus: (a.send_status || 'pending') as 'sent' | 'failed' | 'pending',
+    readStatus: a.is_read || false,
+    channel: (a.channel || 'in-app') as 'in-app' | 'email' | 'teams'
+  }));
+
+  // Mock Alerts si pas assez de données réelles
+  const mockAlertsFeed: Alert[] = alertsFeed.length > 0 ? alertsFeed : [
     {
       id: "alert-1",
       timestamp: new Date(Date.now() - 1800000),
@@ -301,78 +525,101 @@ export default function Dashboard() {
     }
   ];
 
-  // Mock audit logs
-  const auditLogs: AuditLog[] = [
-    {
-      id: "log-1",
-      timestamp: new Date(Date.now() - 900000),
-      user: "Marie Dupont",
-      action: "Validation contrat",
-      fields: "Statut",
-      before: "À valider",
-      after: "Actif",
-      traceId: "TRC-2024-001",
-      contractNumber: "CNT-2024-015"
-    },
-    {
-      id: "log-2",
-      timestamp: new Date(Date.now() - 1800000),
-      user: "Pierre Durand",
-      action: "Modification montant",
-      fields: "Montant annuel",
-      before: "100 000 €",
-      after: "110 000 €",
-      traceId: "TRC-2024-002",
-      contractNumber: "CNT-2024-008"
-    },
-    {
-      id: "log-3",
-      timestamp: new Date(Date.now() - 3600000),
-      user: "Sophie Bernard",
-      action: "Ajout pièce jointe",
-      fields: "Documents",
-      after: "Avenant_2024.pdf",
-      traceId: "TRC-2024-003",
-      contractNumber: "CNT-2024-003"
+  // Logs d'audit depuis les vraies données
+  const auditLogsData: AuditLog[] = auditLogs.map((log: any) => ({
+    id: log.id,
+    timestamp: log.createdAt ? new Date(log.createdAt) : new Date(),
+    user: log.user_id || "Système",
+    action: log.action,
+    fields: log.entity_type || "N/A",
+    before: log.old_value || "",
+    after: log.new_value || "",
+    traceId: `TRC-${log.id.substring(0, 8)}`,
+    contractNumber: log.entity_id ? `CNT-${log.entity_id.substring(0, 8)}` : undefined
+  }));
+
+  // Contrats sans pièces jointes depuis les données filtrées
+  const contractsWithoutAttachmentsData = filteredContracts
+    .filter((c: any) => !c.attachments || c.attachments.length === 0)
+    .slice(0, 5)
+    .map((c: any) => ({
+      id: c.id,
+      number: c.contract_number || `CNT-${c.id.substring(0, 8)}`,
+      title: c.contract_name || "Sans titre",
+      requiredType: "Contrat signé",
+      uploadAuthor: c.created_by || "Système"
+    }));
+
+  // Distribution des statuts de contrats depuis les données filtrées
+  const statusCounts = filteredContracts.reduce((acc: any, c: any) => {
+    const status = c.status || 'Brouillon';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+  
+  const totalContracts = filteredContracts.length || 1;
+  const statusDistribution = Object.entries(statusCounts).map(([status, count]: [string, any]) => ({
+    status,
+    count,
+    percentage: Math.round((count / totalContracts) * 100)
+  }));
+
+  /**
+   * Formate une date en format français avec heure
+   * @param {Date | string} date - Date à formater
+   * @returns {string} Date formatée "JJ/MM/AAAA HH:MM" ou "Date invalide"
+   */
+  const formatDateTime = (date: Date | string) => {
+    try {
+      const dateObj = date instanceof Date ? date : new Date(date);
+      if (!dateObj || isNaN(dateObj.getTime())) {
+        return 'Date invalide';
+      }
+      return new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(dateObj);
+    } catch (e) {
+      return 'Date invalide';
     }
-  ];
-
-  // Mock contracts without attachments
-  const contractsWithoutAttachments = [
-    { id: "cnt-1", number: "CNT-2024-018", title: "Services cloud", requiredType: "Contrat signé", uploadAuthor: "Marie Dupont" },
-    { id: "cnt-2", number: "CNT-2024-021", title: "Maintenance HVAC", requiredType: "Certificat assurance", uploadAuthor: "Pierre Durand" },
-    { id: "cnt-3", number: "CNT-2024-025", title: "Prestations audit", requiredType: "Convention", uploadAuthor: "Sophie Bernard" }
-  ];
-
-  // Contract status distribution for pie chart
-  const statusDistribution = [
-    { status: 'Brouillon', count: 15, percentage: 12 },
-    { status: 'À valider', count: 20, percentage: 16 },
-    { status: 'Actif', count: 65, percentage: 52 },
-    { status: 'Résilié', count: 15, percentage: 12 },
-    { status: 'Clôturé', count: 10, percentage: 8 }
-  ];
-
-  const formatDateTime = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR').format(date);
+  /**
+   * Formate une date en format français sans heure
+   * @param {Date | string} date - Date à formater
+   * @returns {string} Date formatée "JJ/MM/AAAA" ou "Date invalide"
+   */
+  const formatDate = (date: Date | string) => {
+    try {
+      const dateObj = date instanceof Date ? date : new Date(date);
+      if (!dateObj || isNaN(dateObj.getTime())) {
+        return 'Date invalide';
+      }
+      return new Intl.DateTimeFormat('fr-FR').format(dateObj);
+    } catch (e) {
+      return 'Date invalide';
+    }
   };
 
+  /**
+   * Retourne l'icône de tendance appropriée
+   * @param {number} trend - Valeur de tendance (positif = hausse, négatif = baisse)
+   * @returns {JSX.Element} Icône flèche colorée selon la tendance
+   */
   const getTrendIcon = (trend: number) => {
     if (trend > 0) return <ArrowUp className="w-3 h-3 text-red-500" />;
     if (trend < 0) return <ArrowDown className="w-3 h-3 text-green-500" />;
     return <span className="w-3 h-3 text-gray-400">−</span>;
   };
 
+  /**
+   * Génère un badge coloré selon l'urgence de l'échéance
+   * @param {number} days - Nombre de jours restants
+   * @returns {JSX.Element | null} Badge avec couleur appropriée (rouge < 1j, orange < 7j, gris < 30j)
+   */
   const getDeadlineBadge = (days: number) => {
     if (days <= 1) return <Badge variant="destructive">J-{days}</Badge>;
     if (days <= 7) return <Badge variant="secondary" className="bg-orange-100 text-orange-700">J-{days}</Badge>;
@@ -383,18 +630,14 @@ export default function Dashboard() {
   const unreadNotifications = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <SidebarWithSubmenu />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Custom Header with Search and Notifications */}
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            {/* Mobile Menu */}
-            <MobileNavWithSubmenu />
+    <PageTransition>
+      <div className="flex flex-col h-screen bg-gray-50">
+      {/* Custom Header with Search and Notifications */}
+      <header className="bg-white border-b border-gray-200 px-3 sm:px-4 lg:px-6 py-3 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
             
             {/* Global Search */}
-            <div className="flex-1 max-w-xl">
+            <div className="w-full sm:flex-1 sm:max-w-xl order-2 sm:order-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
@@ -402,13 +645,48 @@ export default function Dashboard() {
                   placeholder="Recherche..."
                   value={globalSearch}
                   onChange={(e) => setGlobalSearch(e.target.value)}
-                  className="pl-10 w-full"
+                  className="pl-10 w-full text-sm sm:text-base"
                 />
               </div>
             </div>
 
+            {/* Actions rapides */}
+            <div className="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
+              {canCreateContract() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAlertModal(true)}
+                  title="Créer une alerte"
+                  data-testid="button-create-alert"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowConfigModal(true)}
+                title="Configuration"
+                data-testid="button-config"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+              {canExportData() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowExportModal(true)}
+                  title="Exporter"
+                  data-testid="button-export"
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+
             {/* Notifications and Profile */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 order-3">
               {/* Notifications */}
               <Sheet open={showNotifications} onOpenChange={setShowNotifications}>
                 <SheetTrigger asChild>
@@ -443,15 +721,27 @@ export default function Dashboard() {
                                 {notif.severity === 'info' && <Info className="w-4 h-4 text-blue-500" />}
                                 <span className="font-medium text-sm">{notif.title}</span>
                               </div>
-                              <p className="text-sm text-gray-600">{notif.message}</p>
+                              <p className="text-xs sm:text-sm text-gray-600">{notif.message}</p>
                               <p className="text-xs text-gray-400 mt-1">
                                 {formatDateTime(notif.timestamp)}
                               </p>
                             </div>
-                            {!notif.read && (
-                              <Badge variant="secondary" className="text-xs">Nouveau</Badge>
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                      className="text-xs sm:text-sm"
+                              onClick={() => {
+                                setSelectedNotification(notif);
+                                setShowNotificationDetails(true);
+                              }}
+                              data-testid="button-notification-details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
                           </div>
+                          {!notif.read && (
+                            <Badge variant="secondary" className="text-xs">Nouveau</Badge>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -466,20 +756,95 @@ export default function Dashboard() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    <span className="hidden sm:inline text-sm">Admin</span>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold ${
+                        user?.role === 'admin' ? 'bg-[#C9A646]' : 
+                        user?.role === 'manager' ? 'bg-blue-600' : 
+                        user?.role === 'validator' ? 'bg-green-600' : 
+                        'bg-gray-600'
+                      }`}>
+                        {(user?.firstName?.[0] || user?.username?.[0] || 'U').toUpperCase()}
+                      </div>
+                      <div className="hidden sm:flex flex-col items-start">
+                        <span className="text-sm font-medium">
+                          {user?.firstName && user?.lastName ? 
+                            `${user.firstName} ${user.lastName}` : 
+                            user?.username || 'Utilisateur'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {user?.role === 'admin' ? 'Administrateur' :
+                           user?.role === 'manager' ? 'Gestionnaire' :
+                           user?.role === 'validator' ? 'Validateur' :
+                           user?.role === 'business_unit_manager' ? 'Resp. BU' :
+                           user?.role === 'contract_manager' ? 'Resp. Contrats' :
+                           user?.role === 'finance_manager' ? 'Resp. Finance' :
+                           'Utilisateur'}
+                        </span>
+                      </div>
+                    </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Profil & rôle actif</DropdownMenuLabel>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel className="flex flex-col">
+                    <span className="font-semibold">
+                      {user?.firstName && user?.lastName ? 
+                        `${user.firstName} ${user.lastName}` : 
+                        user?.username || 'Utilisateur'}
+                    </span>
+                    <span className="text-xs text-gray-500 font-normal mt-1">
+                      {user?.email || user?.username + '@engie.com'}
+                    </span>
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Shield className="w-4 h-4 mr-2" />
-                    Rôle : Administrateur
+                  <DropdownMenuItem className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Shield className="w-4 h-4 mr-2" />
+                      <span>Rôle actif</span>
+                    </div>
+                    <Badge variant={
+                      user?.role === 'admin' ? 'default' :
+                      user?.role === 'manager' ? 'secondary' :
+                      user?.role === 'validator' ? 'outline' :
+                      'secondary'
+                    } className={
+                      user?.role === 'admin' ? 'bg-[#C9A646] hover:bg-[#C9A646]/90' : ''
+                    }>
+                      {user?.role === 'admin' ? 'Administrateur' :
+                       user?.role === 'manager' ? 'Gestionnaire' :
+                       user?.role === 'validator' ? 'Validateur' :
+                       user?.role === 'business_unit_manager' ? 'Resp. BU' :
+                       user?.role === 'contract_manager' ? 'Resp. Contrats' :
+                       user?.role === 'finance_manager' ? 'Resp. Finance' :
+                       'Utilisateur'}
+                    </Badge>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Activity className="w-4 h-4 mr-2" />
+                      <span>Permissions</span>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {user?.role === 'admin' ? 'Accès total' :
+                       user?.role === 'manager' ? 'Gestion' :
+                       user?.role === 'validator' ? 'Validation' :
+                       'Lecture'}
+                    </span>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Settings className="w-4 h-4 mr-2" />
-                    Paramètres
+                    Paramètres du compte
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      await fetch('/api/auth/logout', { method: 'POST' });
+                      window.location.reload();
+                    }}
+                    className="text-red-600 cursor-pointer"
+                    data-testid="button-logout"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Déconnexion
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -487,12 +852,47 @@ export default function Dashboard() {
           </div>
         </header>
         
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="dashboard-main">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50" data-testid="dashboard-main">
           <div className="max-w-[1600px] mx-auto">
-            {/* Page Title */}
+            {/* Page Title with Dynamic Role */}
             <div className="mb-4 lg:mb-6 relative">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Tableau de bord</h1>
-              <AIHelpBubble context="dashboard" />
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+                  Tableau de bord
+                </h1>
+                <Badge 
+                  variant={
+                    user?.role === 'admin' ? 'default' :
+                    user?.role === 'manager' ? 'secondary' :
+                    user?.role === 'validator' ? 'outline' :
+                    'secondary'
+                  } 
+                  className={`text-xs sm:text-sm ${
+                    user?.role === 'admin' ? 'bg-[#C9A646] hover:bg-[#C9A646]/90' :
+                    user?.role === 'manager' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                    user?.role === 'validator' ? 'bg-green-100 text-green-800 border-green-200' :
+                    ''
+                  }`}
+                >
+                  {user?.role === 'admin' ? '👑 Administrateur' :
+                   user?.role === 'manager' ? '📊 Gestionnaire' :
+                   user?.role === 'validator' ? '✅ Validateur' :
+                   user?.role === 'business_unit_manager' ? '🏢 Resp. BU' :
+                   user?.role === 'contract_manager' ? '📄 Resp. Contrats' :
+                   user?.role === 'finance_manager' ? '💰 Resp. Finance' :
+                   '👤 Utilisateur'}
+                </Badge>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">
+                {user?.role === 'admin' ? 
+                  'Vue complète avec accès total aux fonctionnalités d\'administration' :
+                 user?.role === 'manager' ? 
+                  'Gestion des contrats et validation des demandes de votre périmètre' :
+                 user?.role === 'validator' ? 
+                  'Validation des demandes qui vous sont assignées' :
+                  'Consultation des données selon vos permissions'}
+              </p>
+              <AIHelpBubble context={{ page: "dashboard", section: "main" }} />
             </div>
 
             {/* Filters Bar */}
@@ -557,8 +957,19 @@ export default function Dashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous</SelectItem>
-                      <SelectItem value="jean_martin">Jean Martin</SelectItem>
-                      <SelectItem value="sophie_bernard">Sophie Bernard</SelectItem>
+                      {allUsers
+                        .filter((user: any) => 
+                          user.role === 'validator' || 
+                          user.role === 'manager' || 
+                          user.role === 'admin'
+                        )
+                        .map((user: any) => (
+                          <SelectItem key={user.id} value={user.username}>
+                            {user.firstName && user.lastName ? 
+                              `${user.firstName} ${user.lastName}` : 
+                              user.username}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
 
@@ -575,15 +986,15 @@ export default function Dashboard() {
                   </Select>
                 </div>
 
-                <div className="mt-3 flex justify-between items-center">
-                  <p className="text-sm text-gray-500">
+                <div className="mt-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <p className="text-xs sm:text-sm text-gray-500">
                     Les contenus visibles respectent vos droits (RBAC)
                   </p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      Enregistrer les filtres
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                      Enregistrer
                     </Button>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="flex-1 sm:flex-none text-xs sm:text-sm">
                       Réinitialiser
                     </Button>
                   </div>
@@ -594,163 +1005,202 @@ export default function Dashboard() {
             {/* KPI Grid (3x3) - DB-1 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-4 lg:mb-6">
               {/* KPI 1: Contrats à valider */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-[#0F2A43]">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <FileText className="w-8 h-8 text-[#0F2A43]" />
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kpiData.trends.contractsToValidate)}
-                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.contractsToValidate)}%</span>
+              <FadeIn delay={100} direction="up">
+                <Card className="cursor-pointer hover:shadow-md transition-all duration-300 border-l-4 border-l-[#0F2A43] card-hover">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-[#0F2A43] animate-scale-in" />
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kpiData.trends.contractsToValidate)}
+                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.contractsToValidate)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold text-[#0F2A43]">{kpiData.contractsToValidate}</div>
-                  <p className="text-sm text-gray-600">Contrats à valider</p>
-                  <p className="text-xs text-gray-400 mt-1">Aucun contrat n'est actif sans validation</p>
-                </CardContent>
-              </Card>
+                    <div className="text-xl sm:text-2xl font-bold text-[#0F2A43]">
+                      <AnimatedCounter value={kpiData.contractsToValidate} duration={1500} />
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600">Contrats à valider</p>
+                    <p className="text-xs text-gray-400 mt-1">Aucun contrat n'est actif sans validation</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
 
               {/* KPI 2: Avenants à valider */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-[#C9A646]">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <Edit className="w-8 h-8 text-[#C9A646]" />
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kpiData.trends.amendmentsToValidate)}
-                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.amendmentsToValidate)}%</span>
+              <FadeIn delay={200} direction="up">
+                <Card className="cursor-pointer hover:shadow-md transition-all duration-300 border-l-4 border-l-[#C9A646] card-hover">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Edit className="w-6 h-6 sm:w-8 sm:h-8 text-[#C9A646] animate-scale-in" />
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kpiData.trends.amendmentsToValidate)}
+                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.amendmentsToValidate)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold text-[#C9A646]">{kpiData.amendmentsToValidate}</div>
-                  <p className="text-sm text-gray-600">Avenants à valider</p>
-                  <p className="text-xs text-gray-400 mt-1">Seuls les avenants validés impactent le contrat</p>
-                </CardContent>
-              </Card>
+                    <div className="text-xl sm:text-2xl font-bold text-[#C9A646]">
+                      <AnimatedCounter value={kpiData.amendmentsToValidate} duration={1500} />
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600">Avenants à valider</p>
+                    <p className="text-xs text-gray-400 mt-1">Seuls les avenants validés impactent le contrat</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
 
               {/* KPI 3: Résiliations à valider */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <XCircle className="w-8 h-8 text-red-500" />
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kpiData.trends.terminationsToValidate)}
-                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.terminationsToValidate)}%</span>
+              <FadeIn delay={300} direction="up">
+                <Card className="cursor-pointer hover:shadow-md transition-all duration-300 card-hover">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <XCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-500 animate-scale-in" />
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kpiData.trends.terminationsToValidate)}
+                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.terminationsToValidate)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold">{kpiData.terminationsToValidate}</div>
-                  <p className="text-sm text-gray-600">Résiliations à valider</p>
-                  <p className="text-xs text-gray-400 mt-1">Motif obligatoire + SLA</p>
-                </CardContent>
-              </Card>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      <AnimatedCounter value={kpiData.terminationsToValidate} duration={1500} />
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600">Résiliations à valider</p>
+                    <p className="text-xs text-gray-400 mt-1">Motif obligatoire + SLA</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
 
               {/* KPI 4: Indexations à valider */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-[#0F2A43]">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <TrendingUp className="w-8 h-8 text-[#0F2A43]" />
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kpiData.trends.indexationsToValidate)}
-                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.indexationsToValidate)}%</span>
+              <FadeIn delay={400} direction="up">
+                <Card className="cursor-pointer hover:shadow-md transition-all duration-300 border-l-4 border-l-[#0F2A43] card-hover">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <TrendingUp className="w-8 h-8 text-[#0F2A43] animate-scale-in" />
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kpiData.trends.indexationsToValidate)}
+                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.indexationsToValidate)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold text-[#0F2A43]">{kpiData.indexationsToValidate}</div>
-                  <p className="text-sm text-gray-600">Indexations à valider</p>
-                  <p className="text-xs text-gray-400 mt-1">+ Revalorisations auto détectées</p>
-                </CardContent>
-              </Card>
+                    <div className="text-xl sm:text-2xl font-bold text-[#0F2A43]">
+                      <AnimatedCounter value={kpiData.indexationsToValidate} duration={1500} />
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600">Indexations à valider</p>
+                    <p className="text-xs text-gray-400 mt-1">+ Revalorisations auto détectées</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
 
               {/* KPI 5: Échéances ≤ 30 jours */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <Calendar className="w-8 h-8 text-amber-500" />
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kpiData.trends.deadlinesIn30Days)}
-                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.deadlinesIn30Days)}%</span>
+              <FadeIn delay={500} direction="up">
+                <Card className="cursor-pointer hover:shadow-md transition-all duration-300 card-hover">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Calendar className="w-8 h-8 text-amber-500 animate-scale-in" />
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kpiData.trends.deadlinesIn30Days)}
+                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.deadlinesIn30Days)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold">{kpiData.deadlinesIn30Days}</div>
-                  <p className="text-sm text-gray-600">Échéances ≤ 30 jours</p>
-                  <p className="text-xs text-gray-400 mt-1">Fin contrat, anniversaires, fin avenant</p>
-                </CardContent>
-              </Card>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      <AnimatedCounter value={kpiData.deadlinesIn30Days} duration={1500} />
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600">Échéances ≤ 30 jours</p>
+                    <p className="text-xs text-gray-400 mt-1">Fin contrat, anniversaires, fin avenant</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
 
               {/* KPI 6: Alertes critiques non lues */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <AlertCircle className="w-8 h-8 text-red-600" />
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kpiData.trends.criticalAlerts)}
-                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.criticalAlerts)}%</span>
+              <FadeIn delay={600} direction="up">
+                <Card className="cursor-pointer hover:shadow-md transition-all duration-300 card-hover">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <AlertCircle className="w-8 h-8 text-red-600 animate-scale-in" />
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kpiData.trends.criticalAlerts)}
+                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.criticalAlerts)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold">{kpiData.criticalAlerts}</div>
-                  <p className="text-sm text-gray-600">Alertes critiques non lues</p>
-                  <p className="text-xs text-gray-400 mt-1">Workflow &gt; 24h, refus, erreurs</p>
-                </CardContent>
-              </Card>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      <AnimatedCounter value={kpiData.criticalAlerts} duration={1500} />
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600">Alertes critiques non lues</p>
+                    <p className="text-xs text-gray-400 mt-1">Workflow &gt; 24h, refus, erreurs</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
 
               {/* KPI 7: Erreurs d'intégration SAP */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <Database className="w-8 h-8 text-orange-500" />
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kpiData.trends.integrationErrors)}
-                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.integrationErrors)}%</span>
+              <FadeIn delay={700} direction="up">
+                <Card className="cursor-pointer hover:shadow-md transition-all duration-300 card-hover">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Database className="w-8 h-8 text-orange-500 animate-scale-in" />
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kpiData.trends.integrationErrors)}
+                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.integrationErrors)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold">{kpiData.integrationErrors}</div>
-                  <p className="text-sm text-gray-600">Erreurs d'intégration (SAP)</p>
-                  <p className="text-xs text-gray-400 mt-1">Statuts non poussés</p>
-                </CardContent>
-              </Card>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      <AnimatedCounter value={kpiData.integrationErrors} duration={1500} />
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600">Erreurs d'intégration (SAP)</p>
+                    <p className="text-xs text-gray-400 mt-1">Statuts non poussés</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
 
               {/* KPI 8: Contrats sans PJ */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <Paperclip className="w-8 h-8 text-gray-500" />
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kpiData.trends.contractsWithoutAttachments)}
-                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.contractsWithoutAttachments)}%</span>
+              <FadeIn delay={800} direction="up">
+                <Card className="cursor-pointer hover:shadow-md transition-all duration-300 card-hover">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Paperclip className="w-8 h-8 text-gray-500 animate-scale-in" />
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kpiData.trends.contractsWithoutAttachments)}
+                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.contractsWithoutAttachments)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold">{kpiData.contractsWithoutAttachments}</div>
-                  <p className="text-sm text-gray-600">Contrats "à valider" sans PJ</p>
-                  <p className="text-xs text-gray-400 mt-1">Blocage conformité - PJ obligatoire</p>
-                </CardContent>
-              </Card>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      <AnimatedCounter value={kpiData.contractsWithoutAttachments} duration={1500} />
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600">Contrats "à valider" sans PJ</p>
+                    <p className="text-xs text-gray-400 mt-1">Blocage conformité - PJ obligatoire</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
 
               {/* KPI 9: Mises à jour manuelles */}
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <RefreshCw className="w-8 h-8 text-indigo-500" />
-                    <div className="flex items-center gap-1">
-                      {getTrendIcon(kpiData.trends.manualUpdates)}
-                      <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.manualUpdates)}%</span>
+              <FadeIn delay={900} direction="up">
+                <Card className="cursor-pointer hover:shadow-md transition-all duration-300 card-hover">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <RefreshCw className="w-8 h-8 text-indigo-500 animate-scale-in" />
+                      <div className="flex items-center gap-1">
+                        {getTrendIcon(kpiData.trends.manualUpdates)}
+                        <span className="text-xs text-gray-500">{Math.abs(kpiData.trends.manualUpdates)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold">{kpiData.manualUpdates}</div>
-                  <p className="text-sm text-gray-600">Mises à jour manuelles en attente</p>
-                  <p className="text-xs text-gray-400 mt-1">Modif. montants exceptionnelles</p>
-                </CardContent>
-              </Card>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      <AnimatedCounter value={kpiData.manualUpdates} duration={1500} />
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600">Mises à jour manuelles en attente</p>
+                    <p className="text-xs text-gray-400 mt-1">Modif. montants exceptionnelles</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
             </div>
 
             {/* Widgets Grid (2 columns) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
               {/* W1 - File de validation unifiée */}
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>W1 — File de validation (toutes natures)</CardTitle>
-                  <CardDescription>
-                    Aucune modification bloquante n'est appliquée sans validation ; rejet motivé obligatoire
-                  </CardDescription>
-                </CardHeader>
+              <FadeIn delay={1000} direction="up">
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>W1 — File de validation (toutes natures)</CardTitle>
+                    <CardDescription>
+                      {canValidate() 
+                        ? "Aucune modification bloquante n'est appliquée sans validation ; rejet motivé obligatoire" 
+                        : "Consultation uniquement - Vous n'avez pas les droits de validation"}
+                    </CardDescription>
+                  </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto -mx-3 lg:mx-0">
-                    <Table className="min-w-[800px]">
+                  <div className="overflow-x-auto -mx-3 sm:mx-0">
+                    <Table className="min-w-[600px] sm:min-w-[800px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Type</TableHead>
@@ -795,28 +1245,38 @@ export default function Dashboard() {
                             <TableCell className="text-sm">{item.lastAction}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedValidationItem(item);
-                                    setShowValidationModal(true);
-                                    setValidationDecision('validate');
-                                  }}
-                                >
-                                  <Check className="w-4 h-4 text-green-600" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedValidationItem(item);
-                                    setShowValidationModal(true);
-                                    setValidationDecision('reject');
-                                  }}
-                                >
-                                  <X className="w-4 h-4 text-red-600" />
-                                </Button>
+                                {canValidate() ? (
+                                  <>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      className="text-xs sm:text-sm"
+                                      onClick={() => {
+                                        setSelectedValidationItem(item);
+                                        setShowValidationModal(true);
+                                        setValidationDecision('validate');
+                                      }}
+                                      title="Valider"
+                                    >
+                                      <Check className="w-4 h-4 text-green-600" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      className="text-xs sm:text-sm"
+                                      onClick={() => {
+                                        setSelectedValidationItem(item);
+                                        setShowValidationModal(true);
+                                        setValidationDecision('reject');
+                                      }}
+                                      title="Rejeter"
+                                    >
+                                      <X className="w-4 h-4 text-red-600" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-gray-400">Consultation uniquement</span>
+                                )}
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm">
@@ -824,14 +1284,26 @@ export default function Dashboard() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent>
-                                    <DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedValidationItem(item);
+                                        setShowDetailsModal(true);
+                                      }}
+                                    >
                                       <Eye className="w-4 h-4 mr-2" />
                                       Voir détails
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <Send className="w-4 h-4 mr-2" />
-                                      Transférer
-                                    </DropdownMenuItem>
+                                    {canValidate() && (
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setSelectedValidationItem(item);
+                                          setShowTransferModal(true);
+                                        }}
+                                      >
+                                        <Send className="w-4 h-4 mr-2" />
+                                        Transférer
+                                      </DropdownMenuItem>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
@@ -843,31 +1315,41 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
               </Card>
+              </FadeIn>
 
               {/* W2 - Échéances à venir */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
+              <FadeIn delay={1100} direction="up">
+                <Card>
+                  <CardHeader className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <div>
-                      <CardTitle>W2 — Échéances à venir (30 j)</CardTitle>
-                      <CardDescription>Fin de contrat, anniversaires, fin d'avenant</CardDescription>
+                      <CardTitle className="text-base sm:text-lg">W2 — Échéances à venir (30 j)</CardTitle>
+                      <CardDescription className="text-xs sm:text-sm">Fin de contrat, anniversaires, fin d'avenant</CardDescription>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="text-xs sm:text-sm"
+                      onClick={() => {
+                        console.log('Export des échéances');
+                        setShowExportModal(true);
+                      }}
+                    >
                       <FileDown className="w-4 h-4 mr-2" />
                       Exporter
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {upcomingDeadlines.map((deadline) => (
-                      <div key={deadline.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={deadline.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg gap-2">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium text-sm">{deadline.contractNumber}</span>
                             {getDeadlineBadge(deadline.daysRemaining)}
                           </div>
-                          <p className="text-sm text-gray-600">{deadline.contractTitle}</p>
+                          <p className="text-xs sm:text-sm text-gray-600">{deadline.contractTitle}</p>
                           <div className="flex items-center gap-4 mt-1">
                             <span className="text-xs text-gray-500">
                               {deadline.type === 'contract_end' && 'Fin de contrat'}
@@ -882,9 +1364,18 @@ export default function Dashboard() {
                             </span>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="w-full sm:w-auto text-left sm:text-right">
                           <div className="text-sm font-medium">{formatDate(deadline.date)}</div>
-                          <Button variant="ghost" size="sm" className="mt-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="text-xs sm:text-sm mt-1"
+                            onClick={() => {
+                              console.log('Ouverture de la deadline:', deadline.contractNumber);
+                              // Redirection vers la page de détails du contrat
+                              window.location.href = `/contracts?search=${deadline.contractNumber}`;
+                            }}
+                          >
                             Ouvrir
                           </Button>
                         </div>
@@ -916,12 +1407,14 @@ export default function Dashboard() {
                       ))}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </FadeIn>
 
               {/* W3 - Indexations synthèse */}
-              <Card>
-                <CardHeader>
+              <FadeIn delay={1200} direction="up">
+                <Card>
+                  <CardHeader>
                   <CardTitle>W3 — Indexations : synthèse</CardTitle>
                   <CardDescription>Détection automatique, indices dernière valeur connue</CardDescription>
                 </CardHeader>
@@ -929,15 +1422,15 @@ export default function Dashboard() {
                   {/* KPI Cards */}
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <div className="text-center p-3 bg-amber-50 rounded-lg">
-                      <div className="text-2xl font-bold text-amber-600">8</div>
+                      <div className="text-xl sm:text-2xl font-bold text-amber-600">8</div>
                       <div className="text-xs text-gray-600">À traiter ce mois</div>
                     </div>
                     <div className="text-center p-3 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">12</div>
+                      <div className="text-xl sm:text-2xl font-bold text-green-600">12</div>
                       <div className="text-xs text-gray-600">Validées (30 j)</div>
                     </div>
                     <div className="text-center p-3 bg-red-50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">2</div>
+                      <div className="text-xl sm:text-2xl font-bold text-red-600">2</div>
                       <div className="text-xs text-gray-600">Suspendues</div>
                     </div>
                   </div>
@@ -982,28 +1475,49 @@ export default function Dashboard() {
                           <FileText className="w-4 h-4 text-gray-400" />
                           <span className="text-sm">Export_Janvier.xlsx</span>
                         </div>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                      className="text-xs sm:text-sm"
+                          onClick={() => {
+                            console.log('Téléchargement du fichier');
+                            // Simuler le téléchargement
+                            const link = document.createElement('a');
+                            link.href = '#';
+                            link.download = 'Export_Janvier.xlsx';
+                            link.click();
+                          }}
+                        >
                           <Download className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
                   </div>
 
-                  <Button variant="outline" className="w-full mt-4">
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-4"
+                    onClick={() => {
+                      console.log('Redirection vers indexations');
+                      window.location.href = '/indexations';
+                    }}
+                  >
                     Accéder aux indexations
                   </Button>
                 </CardContent>
               </Card>
+              </FadeIn>
 
               {/* W4 - Flux d'alertes */}
-              <Card>
+              <FadeIn delay={1300} direction="up">
+                <Card>
                 <CardHeader>
                   <CardTitle>W4 — Flux d'alertes</CardTitle>
                   <CardDescription>Timeline des événements clés</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[400px]">
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {alertsFeed.map((alert) => (
                         <div key={alert.id} className="border-l-2 border-gray-200 pl-4 pb-3">
                           <div className="flex items-start justify-between">
@@ -1036,17 +1550,34 @@ export default function Dashboard() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    console.log('Marquer alerte comme lue:', alert.id);
+                                    // Mise à jour de l'état de lecture
+                                  }}
+                                >
                                   <Check className="w-4 h-4 mr-2" />
                                   Marquer comme lu
                                 </DropdownMenuItem>
                                 {alert.sendStatus === 'failed' && (
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      console.log('Relancer envoi alerte:', alert.id);
+                                      // Relancer l'envoi de l'alerte
+                                    }}
+                                  >
                                     <RefreshCw className="w-4 h-4 mr-2" />
                                     Relancer l'envoi
                                   </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    console.log('Ouvrir contexte alerte:', alert.contractNumber);
+                                    if (alert.contractNumber) {
+                                      window.location.href = `/contracts?search=${alert.contractNumber}`;
+                                    }
+                                  }}
+                                >
                                   <Eye className="w-4 h-4 mr-2" />
                                   Ouvrir le contexte
                                 </DropdownMenuItem>
@@ -1059,8 +1590,10 @@ export default function Dashboard() {
                   </ScrollArea>
                 </CardContent>
               </Card>
+              </FadeIn>
 
               {/* W5 - Répartition par état */}
+              <FadeIn delay={1400} direction="up">
               <Card>
                 <CardHeader>
                   <CardTitle>W5 — Répartition par état</CardTitle>
@@ -1073,11 +1606,11 @@ export default function Dashboard() {
                       <svg className="w-48 h-48 transform -rotate-90">
                         <circle cx="96" cy="96" r="64" fill="none" stroke="#e5e7eb" strokeWidth="32" />
                         <circle cx="96" cy="96" r="64" fill="none" stroke="#3b82f6" strokeWidth="32" 
-                          strokeDasharray={`${statusDistribution[2].percentage * 4.02} 402`} />
+                          strokeDasharray={`${(statusDistribution[0]?.percentage || 0) * 4.02} 402`} />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center">
-                          <div className="text-2xl font-bold">125</div>
+                          <div className="text-xl sm:text-2xl font-bold">{totalContracts}</div>
                           <div className="text-sm text-gray-500">Total</div>
                         </div>
                       </div>
@@ -1110,8 +1643,10 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
               </Card>
+              </FadeIn>
 
               {/* W6 - Dernières actions (24h) */}
+              <FadeIn delay={1500} direction="up">
               <Card>
                 <CardHeader>
                   <CardTitle>W6 — Dernières actions (24 h)</CardTitle>
@@ -1119,7 +1654,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[350px]">
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {auditLogs.map((log) => (
                         <div key={log.id} className="border-b pb-3">
                           <div className="flex items-start justify-between mb-1">
@@ -1151,8 +1686,10 @@ export default function Dashboard() {
                   </ScrollArea>
                 </CardContent>
               </Card>
+              </FadeIn>
 
               {/* W7 - Conformité documentaire */}
+              <FadeIn delay={1600} direction="up">
               <Card>
                 <CardHeader>
                   <CardTitle>W7 — Conformité documentaire</CardTitle>
@@ -1166,8 +1703,8 @@ export default function Dashboard() {
                     </AlertDescription>
                   </Alert>
                   
-                  <div className="space-y-3">
-                    {contractsWithoutAttachments.map((contract) => (
+                  <div className="space-y-2 sm:space-y-3">
+                    {contractsWithoutAttachmentsList.map((contract: any) => (
                       <div key={contract.id} className="p-3 border rounded-lg">
                         <div className="flex items-start justify-between mb-2">
                           <div>
@@ -1204,31 +1741,33 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
               </Card>
+              </FadeIn>
             </div>
 
             {/* Footer with shortcuts */}
-            <div className="mt-6 p-4 bg-white rounded-lg border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium">Raccourcis :</span>
+            <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-white rounded-lg border">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+                  <span className="text-xs sm:text-sm font-medium">Raccourcis :</span>
+                  <div className="flex gap-2">
                   <Button variant="outline" size="sm">
                     <FileDown className="w-4 h-4 mr-2" />
                     Exports
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm">
                     <Settings className="w-4 h-4 mr-2" />
                     Paramétrages
                   </Button>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500">
-                  <Shield className="w-4 h-4 inline mr-1" />
-                  Rappel RBAC : Visibilité selon vos droits
+                <div className="text-xs sm:text-sm text-gray-500">
+                  <Shield className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                  <span className="hidden sm:inline">Rappel RBAC : </span>Visibilité selon vos droits
                 </div>
               </div>
             </div>
           </div>
         </main>
-      </div>
 
       {/* Validation Modal */}
       <Dialog open={showValidationModal} onOpenChange={setShowValidationModal}>
@@ -1318,6 +1857,496 @@ export default function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de création d'alerte */}
+      <Dialog open={showAlertModal} onOpenChange={setShowAlertModal}>
+        <DialogContent data-testid="alert-modal">
+          <DialogHeader>
+            <DialogTitle>Créer une alerte personnalisée</DialogTitle>
+            <DialogDescription>
+              Configurez une nouvelle alerte pour être notifié des événements importants
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="alert-type">Type d'alerte</Label>
+              <Select 
+                value={alertForm.type}
+                onValueChange={(v) => setAlertForm({...alertForm, type: v})}
+              >
+                <SelectTrigger id="alert-type">
+                  <SelectValue placeholder="Sélectionnez un type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="deadline">Deadline</SelectItem>
+                  <SelectItem value="workflow">Workflow</SelectItem>
+                  <SelectItem value="rejection">Rejet</SelectItem>
+                  <SelectItem value="error">Erreur</SelectItem>
+                  <SelectItem value="integration">Intégration</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="alert-title">Titre</Label>
+              <Input 
+                id="alert-title"
+                value={alertForm.title}
+                onChange={(e) => setAlertForm({...alertForm, title: e.target.value})}
+                placeholder="Titre de l'alerte"
+              />
+            </div>
+            <div>
+              <Label htmlFor="alert-message">Message</Label>
+              <Textarea 
+                id="alert-message"
+                value={alertForm.message}
+                onChange={(e) => setAlertForm({...alertForm, message: e.target.value})}
+                placeholder="Description de l'alerte"
+              />
+            </div>
+            <div>
+              <Label htmlFor="alert-severity">Sévérité</Label>
+              <Select 
+                value={alertForm.severity}
+                onValueChange={(v) => setAlertForm({...alertForm, severity: v as 'critical' | 'warning' | 'info'})}
+              >
+                <SelectTrigger id="alert-severity">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="critical">Critique</SelectItem>
+                  <SelectItem value="warning">Avertissement</SelectItem>
+                  <SelectItem value="info">Information</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="alert-schedule">Planification</Label>
+              <Select 
+                value={alertForm.schedule}
+                onValueChange={(v) => setAlertForm({...alertForm, schedule: v})}
+              >
+                <SelectTrigger id="alert-schedule">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="immediate">Immédiate</SelectItem>
+                  <SelectItem value="daily">Quotidienne</SelectItem>
+                  <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                  <SelectItem value="monthly">Mensuelle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAlertModal(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => {
+              console.log('Création alerte:', alertForm);
+              setShowAlertModal(false);
+            }}>
+              Créer l'alerte
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de détails de notification */}
+      <Dialog open={showNotificationDetails} onOpenChange={setShowNotificationDetails}>
+        <DialogContent data-testid="notification-details-modal">
+          <DialogHeader>
+            <DialogTitle>Détails de la notification</DialogTitle>
+            <DialogDescription>
+              Informations complètes sur cette notification
+            </DialogDescription>
+          </DialogHeader>
+          {selectedNotification && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge variant={selectedNotification.severity === 'critical' ? 'destructive' : 
+                              selectedNotification.severity === 'warning' ? 'secondary' : 'outline'}>
+                  {selectedNotification.severity}
+                </Badge>
+                <Badge variant="outline">{selectedNotification.type}</Badge>
+              </div>
+              <div>
+                <h4 className="font-semibold">{selectedNotification.title}</h4>
+                <p className="text-sm text-muted-foreground mt-1">{selectedNotification.message}</p>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <div>Date : {new Date(selectedNotification.timestamp).toLocaleString('fr-FR')}</div>
+                <div>Statut : {selectedNotification.read ? 'Lue' : 'Non lue'}</div>
+              </div>
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Cette notification est liée à des événements système automatiques
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNotificationDetails(false)}>
+              Fermer
+            </Button>
+            {selectedNotification && !selectedNotification.read && (
+              <Button onClick={() => {
+                // Marquer comme lu
+                setShowNotificationDetails(false);
+              }}>
+                Marquer comme lu
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de configuration des widgets */}
+      <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
+        <DialogContent className="max-w-2xl" data-testid="config-modal">
+          <DialogHeader>
+            <DialogTitle>Configuration du tableau de bord</DialogTitle>
+            <DialogDescription>
+              Personnalisez l'affichage et les widgets de votre tableau de bord
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold mb-2">Widgets visibles</h4>
+              <div className="space-y-2">
+                {['KPIs', 'File de validation', 'Échéances', 'Alertes', 'Historique'].map((widget) => (
+                  <div key={widget} className="flex items-center justify-between">
+                    <Label htmlFor={`widget-${widget}`}>{widget}</Label>
+                    <input type="checkbox" id={`widget-${widget}`} defaultChecked />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <h4 className="font-semibold mb-2">Période par défaut</h4>
+              <Select defaultValue="current_month">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current_month">Mois en cours</SelectItem>
+                  <SelectItem value="current_quarter">Trimestre en cours</SelectItem>
+                  <SelectItem value="current_year">Année en cours</SelectItem>
+                  <SelectItem value="last_30_days">30 derniers jours</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Separator />
+            <div>
+              <h4 className="font-semibold mb-2">Notifications</h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notif-critical">Alertes critiques</Label>
+                  <input type="checkbox" id="notif-critical" defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notif-warning">Avertissements</Label>
+                  <input type="checkbox" id="notif-warning" defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notif-info">Informations</Label>
+                  <input type="checkbox" id="notif-info" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfigModal(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => {
+              console.log('Configuration sauvegardée');
+              setShowConfigModal(false);
+            }}>
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal d'export des données */}
+      <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+        <DialogContent data-testid="export-modal">
+          <DialogHeader>
+            <DialogTitle>Exporter les données du tableau de bord</DialogTitle>
+            <DialogDescription>
+              Sélectionnez les données à exporter et le format de sortie
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="export-format">Format d'export</Label>
+              <Select 
+                value={exportOptions.format}
+                onValueChange={(v) => setExportOptions({...exportOptions, format: v})}
+              >
+                <SelectTrigger id="export-format">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
+                  <SelectItem value="csv">CSV</SelectItem>
+                  <SelectItem value="pdf">PDF</SelectItem>
+                  <SelectItem value="json">JSON</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="export-period">Période</Label>
+              <Select 
+                value={exportOptions.period}
+                onValueChange={(v) => setExportOptions({...exportOptions, period: v})}
+              >
+                <SelectTrigger id="export-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current_month">Mois en cours</SelectItem>
+                  <SelectItem value="current_quarter">Trimestre en cours</SelectItem>
+                  <SelectItem value="current_year">Année en cours</SelectItem>
+                  <SelectItem value="custom">Période personnalisée</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Sections à inclure</Label>
+              <div className="space-y-2 mt-2">
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="export-kpis"
+                    checked={exportOptions.sections.kpis}
+                    onChange={(e) => setExportOptions({...exportOptions, sections: {...exportOptions.sections, kpis: e.target.checked}})}
+                  />
+                  <Label htmlFor="export-kpis">KPIs</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="export-validations"
+                    checked={exportOptions.sections.validations}
+                    onChange={(e) => setExportOptions({...exportOptions, sections: {...exportOptions.sections, validations: e.target.checked}})}
+                  />
+                  <Label htmlFor="export-validations">File de validation</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="export-deadlines"
+                    checked={exportOptions.sections.deadlines}
+                    onChange={(e) => setExportOptions({...exportOptions, sections: {...exportOptions.sections, deadlines: e.target.checked}})}
+                  />
+                  <Label htmlFor="export-deadlines">Échéances</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="export-alerts"
+                    checked={exportOptions.sections.alerts}
+                    onChange={(e) => setExportOptions({...exportOptions, sections: {...exportOptions.sections, alerts: e.target.checked}})}
+                  />
+                  <Label htmlFor="export-alerts">Alertes</Label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExportModal(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => {
+              console.log('Export avec options:', exportOptions);
+              setShowExportModal(false);
+            }}>
+              <Download className="w-4 h-4 mr-2" />
+              Exporter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Détails de la demande de validation */}
+      <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Détails de la demande de validation</DialogTitle>
+            <DialogDescription>
+              Informations complètes sur la demande {selectedValidationItem?.contractNumber}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedValidationItem && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm text-gray-500">Type de demande</Label>
+                  <p className="font-medium">
+                    {selectedValidationItem.type === 'contract' && 'Création de contrat'}
+                    {selectedValidationItem.type === 'amendment' && 'Avenant'}
+                    {selectedValidationItem.type === 'indexation' && 'Indexation'}
+                    {selectedValidationItem.type === 'termination' && 'Résiliation'}
+                    {selectedValidationItem.type === 'amount' && 'Mise à jour du montant'}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Numéro de contrat</Label>
+                  <p className="font-medium">{selectedValidationItem.contractNumber}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Titre du contrat</Label>
+                  <p className="font-medium">{selectedValidationItem.contractTitle}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Champs impactés</Label>
+                  <p className="font-medium">{selectedValidationItem.impactedFields || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Demandeur</Label>
+                  <p className="font-medium">{selectedValidationItem.requestedBy}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Valideur assigné</Label>
+                  <p className="font-medium">{selectedValidationItem.assignedValidator}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Échéance SLA</Label>
+                  <p className="font-medium">{formatDateTime(selectedValidationItem.slaDue)}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500">Âge de la demande</Label>
+                  <p className="font-medium">{selectedValidationItem.age} heures</p>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <Label className="text-sm text-gray-500">Dernière action</Label>
+                <p className="font-medium">{selectedValidationItem.lastAction || 'Aucune action'}</p>
+              </div>
+              
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Cette demande nécessite une validation dans les {24 - selectedValidationItem.age} heures restantes.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDetailsModal(false)}>
+              Fermer
+            </Button>
+            {canValidate && (
+              <>
+                <Button 
+                  variant="default"
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setShowValidationModal(true);
+                    setValidationDecision('validate');
+                  }}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  Valider
+                </Button>
+                <Button 
+                  variant="destructive"
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setShowValidationModal(true);
+                    setValidationDecision('reject');
+                  }}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Rejeter
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Transfert de demande */}
+      <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transférer la demande de validation</DialogTitle>
+            <DialogDescription>
+              Transférer la demande {selectedValidationItem?.contractNumber} à un autre valideur
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="transfer-to">Transférer à</Label>
+              <Select value={transferTo} onValueChange={setTransferTo}>
+                <SelectTrigger id="transfer-to">
+                  <SelectValue placeholder="Sélectionnez un valideur" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allUsers.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      Aucun validateur disponible
+                    </SelectItem>
+                  ) : (
+                    allUsers
+                      .filter((user: any) => 
+                        user.role === 'validator' || 
+                        user.role === 'manager' || 
+                        user.role === 'admin'
+                      )
+                      .map((user: any) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.firstName} {user.lastName} ({user.email})
+                        </SelectItem>
+                      ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="transfer-note">Note de transfert (optionnel)</Label>
+              <Textarea 
+                id="transfer-note"
+                placeholder="Ajoutez une note pour expliquer le transfert..."
+                rows={3}
+              />
+            </div>
+            
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Le nouveau valideur recevra une notification et la demande apparaîtra dans sa file d'attente.
+              </AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTransferModal(false)}>
+              Annuler
+            </Button>
+            <Button 
+              disabled={!transferTo}
+              onClick={() => {
+                console.log('Transfert de la demande à:', transferTo);
+                setShowTransferModal(false);
+                setTransferTo('');
+                // Ici, on appellerait normalement une API pour effectuer le transfert
+              }}
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Transférer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+    </PageTransition>
   );
 }

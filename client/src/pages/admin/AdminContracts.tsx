@@ -126,11 +126,19 @@ export function AdminContracts() {
   const indexationFormula = form.watch("indexationFormula");
 
   const createContractMutation = useMutation({
-    mutationFn: (data: ContractFormData) => 
-      apiRequest("/api/admin/contracts", {
+    mutationFn: async (data: ContractFormData) => {
+      const response = await fetch("/api/admin/contracts", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data)
-      }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to create contract");
+      }
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contracts"] });
       setShowContractForm(false);
@@ -154,7 +162,7 @@ export function AdminContracts() {
     return (
       <div className="flex items-center gap-2">
         <span className="text-sm">{type}</span>
-        <Badge variant={days <= 7 ? "destructive" : days <= 30 ? "warning" : "secondary"}>
+        <Badge variant={days <= 7 ? "destructive" : days <= 30 ? "outline" : "secondary"}>
           J-{days}
         </Badge>
       </div>
@@ -482,7 +490,7 @@ export function AdminContracts() {
                     <SelectValue placeholder="Tous les types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tous</SelectItem>
+                    <SelectItem value="all">Tous</SelectItem>
                     {contractTypes.map(type => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
@@ -502,7 +510,7 @@ export function AdminContracts() {
                     <SelectValue placeholder="Tous les statuts" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tous</SelectItem>
+                    <SelectItem value="all">Tous</SelectItem>
                     <SelectItem value="draft">Brouillon</SelectItem>
                     <SelectItem value="pending_validation">En validation</SelectItem>
                     <SelectItem value="active">Actif</SelectItem>
@@ -521,7 +529,7 @@ export function AdminContracts() {
                     <SelectValue placeholder="Toutes les BU" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Toutes</SelectItem>
+                    <SelectItem value="all">Toutes</SelectItem>
                     <SelectItem value="ENGIE Solutions France">ENGIE Solutions France</SelectItem>
                     <SelectItem value="ENGIE Green">ENGIE Green</SelectItem>
                     <SelectItem value="ENGIE Global Energy Management">ENGIE Global Energy Management</SelectItem>
@@ -572,7 +580,7 @@ export function AdminContracts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contracts?.map((contract: any) => (
+                {contracts && Array.isArray(contracts) ? contracts.map((contract: any) => (
                   <TableRow key={contract.id}>
                     <TableCell>
                       <div>
@@ -585,8 +593,8 @@ export function AdminContracts() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={
-                        contract.status === "active" ? "success" :
-                        contract.status === "pending_validation" ? "warning" :
+                        contract.status === "active" ? "default" :
+                        contract.status === "pending_validation" ? "outline" :
                         "secondary"
                       }>
                         {contract.status === "pending_validation" ? "En validation" :
@@ -623,7 +631,7 @@ export function AdminContracts() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : null}
               </TableBody>
             </Table>
             {isLoading && (
@@ -631,7 +639,7 @@ export function AdminContracts() {
                 Chargement des contrats...
               </div>
             )}
-            {!isLoading && (!contracts || contracts.length === 0) && (
+            {!isLoading && (!contracts || !Array.isArray(contracts) || contracts.length === 0) && (
               <div className="text-center py-8 text-gray-500">
                 Aucun contrat trouvé
               </div>

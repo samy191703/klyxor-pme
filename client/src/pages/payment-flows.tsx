@@ -1,6 +1,6 @@
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { 
   TrendingUp, 
   Search,
@@ -25,15 +27,17 @@ import {
 
 interface PaymentFlow {
   id: string;
-  planId: string;
-  contractId: string;
-  contractName: string;
-  dueDate: string;
-  amount: number;
-  currency: string;
-  invoiceRef: string;
-  status: "generated" | "exported_erp" | "completed" | "blocked";
-  lastERPEvent: string;
+  planId?: string;
+  contractId?: string;
+  contractNumber?: string;
+  contractName?: string;
+  contractTitle?: string;
+  dueDate?: string;
+  amount?: number;
+  currency?: string;
+  invoiceRef?: string;
+  status?: "generated" | "exported_erp" | "completed" | "blocked";
+  lastERPEvent?: string;
   blockReason?: string;
 }
 
@@ -42,64 +46,71 @@ export default function PaymentFlows() {
   const [selectedFlow, setSelectedFlow] = useState<PaymentFlow | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  
+  // Permissions
+  const { hasPermission } = usePermissions();
+  const canBlockFlow = hasPermission("/payment-flows");
+  const canExportFlow = hasPermission("/payment-flows");
 
-  const flows: PaymentFlow[] = [
-    {
-      id: "FLX-2025-001",
-      planId: "PF-2025-001",
-      contractId: "KLX-2024-034",
-      contractName: "Maintenance Éolienne Normandie",
-      dueDate: "2025-02-01",
-      amount: 20000,
-      currency: "EUR",
-      invoiceRef: "INV-2025-0145",
-      status: "generated",
-      lastERPEvent: "2025-01-20 15:45 - Créé"
+  /**
+   * Hook pour récupérer les flux de paiement depuis l'API
+   * @description Récupère dynamiquement les flux de paiement depuis la base de données.
+   * Les données sont automatiquement rafraîchies toutes les 30 secondes pour garantir
+   * que l'interface affiche toujours l'état actuel des flux (générés, exportés SAP, bloqués, etc.)
+   * 
+   * @returns {PaymentFlow[]} flowsData - Tableau des flux de paiement
+   * @returns {boolean} flowsLoading - État de chargement des données
+   */
+  const { data: flowsData = [], isLoading: flowsLoading } = useQuery<PaymentFlow[]>({
+    queryKey: ["/api/admin/billing/flows"],
+    refetchInterval: 30000, // Rafraîchir toutes les 30 secondes pour suivre l'état SAP en temps réel
+  });
+
+  /**
+   * Mutation pour bloquer un flux de paiement
+   * @description Permet de bloquer un flux de paiement lorsqu'un montant est modifié sans approbation.
+   * Cette action empêche l'export vers SAP jusqu'à validation du nouveau montant.
+   */
+  const blockFlowMutation = useMutation({
+    mutationFn: async ({ flowId, oldAmount, newAmount, reason }: any) => {
+      return await apiRequest("POST", `/api/payment-flows/${flowId}/block`, {
+        oldAmount,
+        newAmount,
+        reason,
+        modifiedBy: "Admin"
+      });
     },
-    {
-      id: "FLX-2025-002",
-      planId: "PF-2025-001",
-      contractId: "KLX-2024-034",
-      contractName: "Maintenance Éolienne Normandie",
-      dueDate: "2025-03-01",
-      amount: 20000,
-      currency: "EUR",
-      invoiceRef: "INV-2025-0246",
-      status: "exported_erp",
-      lastERPEvent: "2025-01-21 09:00 - Export SAP réussi"
+    onSuccess: () => {
+      toast({
+        title: "Flux bloqué",
+        description: "Le flux de paiement a été bloqué",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing/flows"] });
     },
-    {
-      id: "FLX-2024-998",
-      planId: "PF-2024-098",
-      contractId: "KLX-2024-012",
-      contractName: "PPA Solaire Marseille",
-      dueDate: "2024-12-01",
-      amount: 30000,
-      currency: "EUR",
-      invoiceRef: "INV-2024-9876",
-      status: "completed",
-      lastERPEvent: "2024-12-05 14:30 - Paiement confirmé"
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de bloquer le flux",
+        variant: "destructive",
+      });
     },
-    {
-      id: "FLX-2025-003",
-      planId: "PF-2025-002",
-      contractId: "KLX-2024-089",
-      contractName: "Fourniture Gaz Site Lyon",
-      dueDate: "2025-02-01",
-      amount: 45000,
-      currency: "EUR",
-      invoiceRef: "INV-2025-0147",
-      status: "blocked",
-      lastERPEvent: "2025-01-22 10:15 - Blocage détecté",
-      blockReason: "Montant modifié non approuvé"
-    }
-  ];
+  });
+
+  /**
+   * Flux de paiement réels depuis la base de données
+   * @description Utilise directement les données retournées par l'API sans aucun fallback mocké.
+   * Ceci garantit que l'interface affiche uniquement des données réelles provenant de PostgreSQL.
+   * Si aucune donnée n'est disponible, un tableau vide est utilisé plutôt que des données fictives.
+   */
+  const flows: PaymentFlow[] = flowsData || [];
 
   const filteredFlows = flows.filter(flow => {
     const matchesStatus = statusFilter === "all" || flow.status === statusFilter;
-    const matchesSearch = flow.contractName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          flow.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          flow.invoiceRef.toLowerCase().includes(searchQuery.toLowerCase());
+    const contractDisplay = flow.contractName || flow.contractTitle || "";
+    const matchesSearch = contractDisplay.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (flow.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (flow.invoiceRef || "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -119,25 +130,10 @@ export default function PaymentFlows() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <SidebarWithSubmenu />
-      
-      {/* Main content */}
-      <div className="flex-1 flex flex-col">
-        {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b">
-          <MobileNavWithSubmenu />
-          <img 
-            src="/klyxor-logo.jpeg" 
-            alt="KLYXOR Logo"
-            className="w-10 h-10 object-contain rounded-lg shadow"
-          />
-        </div>
-        
-        {/* Page content */}
-        <div className="flex-1 overflow-auto">
-          <div className="container mx-auto py-6 px-4 lg:px-8 xl:px-12 space-y-6 max-w-[1600px]">
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* Page content */}
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto py-6 px-4 lg:px-8 xl:px-12 space-y-6 max-w-[1600px]">
       {/* En-tête */}
       <div className="flex justify-between items-center">
         <div>
@@ -416,7 +412,6 @@ export default function PaymentFlows() {
           )}
         </SheetContent>
       </Sheet>
-          </div>
         </div>
       </div>
     </div>

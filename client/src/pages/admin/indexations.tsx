@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import AdminLayout from "@/components/layout/admin-layout";
 import { 
   Calculator, CheckCircle, XCircle, AlertTriangle, 
@@ -634,6 +634,9 @@ export default function AdminIndexations() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Validation de l'indexation</DialogTitle>
+            <DialogDescription>
+              Vérifiez et validez les calculs d'indexation
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {selectedIndexation && (

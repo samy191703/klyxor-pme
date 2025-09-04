@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Alert } from "@/components/ui/alert";
 import AdminLayout from "@/components/layout/admin-layout";
 import { 
   Search, FileText, Plus, Eye, Edit2, RefreshCw,
@@ -373,6 +374,9 @@ export default function AdminContracts() {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nouveau contrat</DialogTitle>
+            <DialogDescription>
+              Créez un nouveau contrat avec toutes les informations nécessaires
+            </DialogDescription>
           </DialogHeader>
           <ContractForm 
             contractType={contractType}
@@ -641,7 +645,7 @@ function ContractForm({
                 <SelectItem value="none">Pas d'indexation</SelectItem>
                 <SelectItem value="simple">Simple : P = P₀ × (ICHTREV / ICHT₀)</SelectItem>
                 <SelectItem value="type2a">Type 2.A : Montant_n = Montant_0 × (0,15 + 0,55 × (ICHT_rev/ICHT_0) + 0,3 × (FMOA_rev/FMOA_0))</SelectItem>
-                <SelectItem value="type2b">Type 2.B : Montant_n = Montant_{n-1} × (0,15 + 0,55 × (ICHT_rev/ICHT_0) + 0,3 × (FMOA_rev/FMOA_0))</SelectItem>
+                <SelectItem value="type2b">Type 2.B : Montant_n = Montant_n-1 × (0,15 + 0,55 × (ICHT_rev/ICHT_0) + 0,3 × (FMOA_rev/FMOA_0))</SelectItem>
                 <SelectItem value="type3">Type 3 : Montant_n = Montant_0 × (1 + (CPI/CPI_0))</SelectItem>
                 <SelectItem value="cpi_simple">CPI Simple : P = P₋₁ × (1 + CPI)</SelectItem>
               </SelectContent>

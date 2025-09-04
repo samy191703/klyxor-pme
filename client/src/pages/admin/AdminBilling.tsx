@@ -160,7 +160,7 @@ export function AdminBilling() {
                         <SelectValue placeholder="Tous les types" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Tous</SelectItem>
+                        <SelectItem value="all">Tous</SelectItem>
                         <SelectItem value="OMSA">OMSA</SelectItem>
                         <SelectItem value="LTSA">LTSA</SelectItem>
                         <SelectItem value="OMGC">OMGC</SelectItem>
@@ -179,7 +179,7 @@ export function AdminBilling() {
                         <SelectValue placeholder="Toutes" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Toutes</SelectItem>
+                        <SelectItem value="all">Toutes</SelectItem>
                         <SelectItem value="mensuelle">Mensuelle</SelectItem>
                         <SelectItem value="trimestrielle">Trimestrielle</SelectItem>
                         <SelectItem value="semestrielle">Semestrielle</SelectItem>
@@ -198,7 +198,7 @@ export function AdminBilling() {
                         <SelectValue placeholder="Tous" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Tous</SelectItem>
+                        <SelectItem value="all">Tous</SelectItem>
                         <SelectItem value="avance">À avance</SelectItem>
                         <SelectItem value="echu">À échoir</SelectItem>
                       </SelectContent>

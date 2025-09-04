@@ -1,6 +1,6 @@
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,20 +9,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { useModal } from "@/components/modals/modal-provider";
+import { UserManagementModal } from "@/components/modals/user-management-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { 
   Shield, Lock, AlertTriangle, User, Activity, Download, Info, 
   Users, FileText, Settings, Eye, Edit, Trash2, Copy, Clock,
   CheckCircle, XCircle, Search, Filter, RefreshCw, Plus, Mail,
   AlertCircle, Database, Key, UserCheck, UserX, ChevronRight,
   MoreVertical, Archive, FileDown, Calendar, Hash, Globe,
-  MessageSquare, Bell, ExternalLink, Folder, LogOut, History, Save
+  MessageSquare, Bell, ExternalLink, Folder, LogOut, History, Save,
+  Check, ChevronsUpDown
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,15 +47,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Security() {
   const [activeTab, setActiveTab] = useState("users");
-  const [showUserDetails, setShowUserDetails] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [showLogDetails, setShowLogDetails] = useState(false);
   const [selectedLog, setSelectedLog] = useState<any>(null);
-  const [showGDPRRequestModal, setShowGDPRRequestModal] = useState(false);
   const [selectedGDPRRequest, setSelectedGDPRRequest] = useState<any>(null);
+  const { openModal, closeModal } = useModal();
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [userModalMode, setUserModalMode] = useState<'create' | 'edit'>('create');
+  const [editingUser, setEditingUser] = useState<any>(null);
   
   // Filters
   const [roleFilter, setRoleFilter] = useState("all");
@@ -52,147 +68,111 @@ export default function Security() {
   const [alertTypeFilter, setAlertTypeFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [auditSearchOpen, setAuditSearchOpen] = useState(false);
+  const [auditSearchValue, setAuditSearchValue] = useState("");
   
   const { toast } = useToast();
 
-  // Mock data
-  const users = [
-    {
-      id: "user-1",
-      name: "Marie Dupont",
-      email: "marie.dupont@company.com",
-      roles: ["Administrateur", "Valideur"],
-      modules: ["Contrats", "Avenants", "Indexations", "Échéances", "Exports"],
-      status: "active",
-      lastAction: "Validation contrat CNT-2024-001",
-      lastActionDate: new Date("2024-02-15T10:30:00"),
-      createdBy: "System Admin",
-      createdDate: new Date("2023-01-15"),
-      lastLogin: new Date("2024-02-15T09:00:00"),
-      perimeter: "Toutes entités"
-    },
-    {
-      id: "user-2",
-      name: "Pierre Durand",
-      email: "pierre.durand@company.com",
-      roles: ["Valideur"],
-      modules: ["Contrats", "Avenants"],
-      status: "active",
-      lastAction: "Modification montant CNT-2024-008",
-      lastActionDate: new Date("2024-02-14T14:15:00"),
-      createdBy: "Marie Dupont",
-      createdDate: new Date("2023-06-20"),
-      lastLogin: new Date("2024-02-14T08:30:00"),
-      perimeter: "BU France"
-    },
-    {
-      id: "user-3",
-      name: "Sophie Bernard",
-      email: "sophie.bernard@company.com",
-      roles: ["Opérateur"],
-      modules: ["Contrats", "Documents"],
-      status: "active",
-      lastAction: "Ajout pièce jointe CNT-2024-003",
-      lastActionDate: new Date("2024-02-13T16:45:00"),
-      createdBy: "Marie Dupont",
-      createdDate: new Date("2023-09-10"),
-      lastLogin: new Date("2024-02-13T08:00:00"),
-      perimeter: "BU International"
-    },
-    {
-      id: "user-4",
-      name: "Jean Martin",
-      email: "jean.martin@company.com",
-      roles: ["Administrateur"],
-      modules: ["Tous modules"],
-      status: "inactive",
-      lastAction: "Paramétrage alertes",
-      lastActionDate: new Date("2024-01-30T11:00:00"),
-      createdBy: "System Admin",
-      createdDate: new Date("2022-11-05"),
-      lastLogin: new Date("2024-01-30T09:00:00"),
-      perimeter: "Toutes entités"
-    }
-  ];
+  // Permissions
+  const { hasPermission } = usePermissions();
+  const canCreateUser = hasPermission("user:create");
+  const canEditUser = hasPermission("user:update");
+  const canDeleteUser = hasPermission("user:delete");
+  const canExportData = hasPermission("export:create");
+  const canManageGDPR = hasPermission("gdpr:manage");
 
-  const auditLogs = [
-    {
-      id: "log-1",
-      timestamp: new Date("2024-02-15T11:00:00"),
-      user: "Marie Dupont",
-      action: "Validation",
-      object: "Contrat",
-      objectId: "CNT-2024-015",
-      fields: "Statut",
-      before: "À valider",
-      after: "Actif",
-      traceId: "TRC-2024-001",
-      result: "success"
-    },
-    {
-      id: "log-2",
-      timestamp: new Date("2024-02-15T10:30:00"),
-      user: "Pierre Durand",
-      action: "Modification",
-      object: "Avenant",
-      objectId: "AVK-2024-008",
-      fields: "Montant annuel",
-      before: "100 000 €",
-      after: "110 000 €",
-      traceId: "TRC-2024-002",
-      result: "success"
-    },
-    {
-      id: "log-3",
-      timestamp: new Date("2024-02-15T09:45:00"),
-      user: "Sophie Bernard",
-      action: "Création",
-      object: "Indexation",
-      objectId: "IDX-2024-003",
-      fields: "Nouveau record",
-      before: "-",
-      after: "Créé",
-      traceId: "TRC-2024-003",
-      result: "success"
-    },
-    {
-      id: "log-4",
-      timestamp: new Date("2024-02-15T09:15:00"),
-      user: "Marie Dupont",
-      action: "Rejet",
-      object: "Validation",
-      objectId: "VAL-2024-022",
-      fields: "Statut",
-      before: "En attente",
-      after: "Rejeté",
-      traceId: "TRC-2024-004",
-      result: "success"
-    },
-    {
-      id: "log-5",
-      timestamp: new Date("2024-02-14T17:00:00"),
-      user: "System",
-      action: "Suppression",
-      object: "Document",
-      objectId: "DOC-2024-101",
-      fields: "Fichier",
-      before: "contract_v1.pdf",
-      after: "Supprimé",
-      traceId: "TRC-2024-005",
-      result: "success"
-    }
-  ];
+  // Fetch users from API
+  const { data: users = [], isLoading: usersLoading } = useQuery({
+    queryKey: ["/api/users"],
+  });
 
-  const sensitiveDataAccess = [
-    {
-      id: "access-1",
-      date: new Date("2024-02-15T10:00:00"),
-      user: "Marie Dupont",
-      dataType: "PII",
-      object: "Contrat CNT-2024-001",
-      action: "Lecture",
-      channel: "UI"
-    },
+  // Fetch audit logs from API
+  const { data: auditLogs = [], isLoading: auditLoading } = useQuery<any[]>({
+    queryKey: ["/api/audit-logs"],
+  });
+
+  // Fetch sensitive data access logs
+  const { data: sensitiveDataAccess = [], isLoading: sensitiveLoading } = useQuery<any[]>({
+    queryKey: ["/api/security/sensitive-access"],
+  });
+
+  // Fetch GDPR data
+  const { data: gdprData, isLoading: gdprLoading } = useQuery({
+    queryKey: ["/api/security/gdpr"],
+  });
+
+  // Fetch security alerts
+  const { data: securityAlerts = [], isLoading: alertsLoading } = useQuery({
+    queryKey: ["/api/security/alerts"],
+  });
+
+  // Mock data for users display format
+  const formattedUsers = (users as any[]).map((user: any) => ({
+    id: user.id,
+    username: user.username,
+    name: user.name || user.username,
+    email: user.email,
+    roles: [user.role === 'admin' ? 'Administrateur' : user.role === 'validator' ? 'Valideur' : 'Opérateur'],
+    modules: user.role === 'admin' ? ['Tous modules'] : ['Contrats', 'Avenants', 'Documents'],
+    status: 'active',
+    lastAction: 'Connexion système',
+    lastActionDate: new Date(),
+    createdBy: 'System Admin',
+    createdDate: new Date(),
+    lastLogin: new Date(),
+    perimeter: user.role === 'admin' ? 'Toutes entités' : 'BU France'
+  }));
+
+  // Formater les données d'audit logs depuis l'API
+  const formattedAuditLogs = auditLogs.map((log: any) => ({
+    id: log.id,
+    timestamp: log.timestamp || log.createdAt,
+    user: log.user || "Système",
+    action: log.action || "N/A",
+    object: log.contractNumber ? "Contrat" : log.description ? "Paramètre" : "Donnée",
+    objectId: log.contractNumber || (log.traceId ? log.traceId.substring(0, 12) : "N/A"),
+    fields: log.fields || "N/A",
+    before: log.before || "-",
+    after: log.after || "-",
+    traceId: log.traceId || `TRC-${log.id.substring(0, 8)}`,
+    result: "success",
+    description: log.description || ""
+  }));
+
+  // Créer la liste des options pour la recherche (Trace-ID et N° contrat uniques)
+  const searchOptions = Array.from(new Set([
+    ...formattedAuditLogs.map(log => log.traceId).filter(id => id !== "N/A"),
+    ...formattedAuditLogs.map(log => log.objectId).filter(id => id !== "N/A" && !id.startsWith('TRC-')),
+    ...auditLogs.map((log: any) => log.contractNumber).filter(Boolean)
+  ])).map(value => ({
+    value,
+    label: value,
+    type: value.startsWith('TRC-') ? 'Trace-ID' : 'Contrat'
+  }));
+
+  // Filtrer les logs selon la recherche
+  const filteredAuditLogs = formattedAuditLogs.filter(log => {
+    const matchesSearch = !auditSearchValue || 
+      log.traceId.toLowerCase().includes(auditSearchValue.toLowerCase()) ||
+      log.objectId.toLowerCase().includes(auditSearchValue.toLowerCase());
+    const matchesAction = actionTypeFilter === "all" || 
+      log.action.toLowerCase() === actionTypeFilter.toLowerCase();
+    return matchesSearch && matchesAction;
+  });
+
+  // Utilisation des vraies données d'accès sensibles
+  const sensitiveDataAccessData = sensitiveDataAccess.map((access: any) => ({
+    id: access.id,
+    date: new Date(access.created_at),
+    user: access.user_id || "Système",
+    dataType: access.data_type || "PII",
+    object: access.resource || "N/A",
+    action: access.action || "Lecture",
+    channel: access.channel || "UI"
+  }));
+
+  // Données d'exemple si pas de données réelles
+  const mockSensitiveDataAccess = sensitiveDataAccessData.length > 0 ? sensitiveDataAccessData : [
     {
       id: "access-2",
       date: new Date("2024-02-15T09:30:00"),
@@ -249,14 +229,35 @@ export default function Security() {
     }
   ];
 
-  const securityAlerts = [
+  // Récupération des alertes de sécurité depuis l'API
+  const { data: alerts = [] } = useQuery<any[]>({
+    queryKey: ["/api/alerts"],
+  });
+
+  // Alertes de sécurité depuis les vraies données
+  const securityAlertsData = alerts.filter((a: any) => 
+    a.type === 'security' || a.severity === 'critical'
+  ).map((a: any) => ({
+    id: a.id,
+    timestamp: new Date(a.created_at),
+    type: a.title || "Alerte sécurité",
+    severity: a.severity || "warning",
+    message: a.message,
+    object: a.description || "N/A",
+    channel: a.channel || "In-app",
+    sendStatus: a.is_sent ? "sent" : "pending",
+    read: a.is_read || false
+  }));
+
+  // Données d'exemple si pas de données réelles
+  const mockSecurityAlerts = securityAlertsData.length > 0 ? securityAlertsData : [
     {
       id: "alert-1",
-      timestamp: new Date("2024-02-15T11:30:00"),
-      type: "Accès non autorisé",
-      severity: "critical",
-      message: "Tentative d'accès refusée au module Exports",
-      object: "Module Export",
+      timestamp: new Date(),
+      type: "Exemple alerte",
+      severity: "info",
+      message: "Aucune alerte de sécurité active",
+      object: "N/A",
       channel: "In-app",
       sendStatus: "sent",
       read: false
@@ -296,22 +297,36 @@ export default function Security() {
     }
   ];
 
-  const formatDateTime = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+  const formatDateTime = (date: Date | string | null | undefined) => {
+    if (!date) return '-';
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return '-';
+      return new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(dateObj);
+    } catch {
+      return '-';
+    }
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(date);
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return '-';
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return '-';
+      return new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(dateObj);
+    } catch {
+      return '-';
+    }
   };
 
   const getSeverityColor = (severity: string) => {
@@ -325,33 +340,105 @@ export default function Security() {
 
   const handleUserClick = (user: any) => {
     setSelectedUser(user);
-    setShowUserDetails(true);
+    setUserModalMode('edit');
+    
+    // Déterminer le rôle principal
+    const role = user.roles.includes('Administrateur') ? 'admin' : 
+                 user.roles.includes('Valideur') ? 'valideur' : 'gestionnaire';
+    
+    // Construire les modules avec permissions
+    const userModules = user.modules.map((moduleName: string) => ({
+      name: moduleName,
+      permissions: {
+        read: true,
+        write: role === 'gestionnaire',
+        validate: role === 'valideur',
+        delete: role === 'admin'
+      }
+    }));
+    
+    setEditingUser({
+      id: user.id,
+      username: user.username || '',
+      firstName: user.name?.split(' ')[0] || '',
+      lastName: user.name?.split(' ').slice(1).join(' ') || '',
+      email: user.email,
+      role: role,
+      modules: userModules,
+      status: user.status === 'active' ? 'active' : 'inactive'
+    });
+    setShowUserModal(true);
+  };
+
+  // Mutation pour créer un utilisateur
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: any) => {
+      const res = await apiRequest("POST", "/api/users", userData);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Utilisateur créé",
+        description: "L'utilisateur a été créé avec succès",
+      });
+      setShowUserModal(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer l'utilisateur",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Mutation pour modifier un utilisateur
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ id, ...userData }: any) => {
+      const res = await apiRequest("PUT", `/api/users/${id}`, userData);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Utilisateur modifié",
+        description: "L'utilisateur a été modifié avec succès",
+      });
+      setShowUserModal(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier l'utilisateur",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleSaveUser = (userData: any) => {
+    if (userModalMode === 'create') {
+      createUserMutation.mutate(userData);
+    } else {
+      updateUserMutation.mutate({ ...userData, id: editingUser?.id });
+    }
   };
 
   const handleLogClick = (log: any) => {
     setSelectedLog(log);
-    setShowLogDetails(true);
+    openModal("log-details", { log });
   };
 
   const handleGDPRRequestClick = (request: any) => {
     setSelectedGDPRRequest(request);
-    setShowGDPRRequestModal(true);
-  };
-
-  const handleSaveUserRoles = () => {
-    toast({
-      title: "Rôles enregistrés",
-      description: "Les modifications ont été sauvegardées et journalisées",
-    });
-    setShowUserDetails(false);
-  };
-
-  const handleProcessGDPR = () => {
-    toast({
-      title: "Demande traitée",
-      description: "La demande GDPR a été marquée comme traitée",
-    });
-    setShowGDPRRequestModal(false);
+    openModal("gdpr", { request },
+      () => {
+        toast({
+          title: "Demande traitée",
+          description: "La demande GDPR a été marquée comme traitée",
+        });
+      }
+    );
   };
 
   const handleMarkAlertAsRead = (alertId: string) => {
@@ -370,19 +457,10 @@ export default function Security() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <SidebarWithSubmenu />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 lg:hidden">
-          <div className="flex items-center justify-between">
-            <MobileNavWithSubmenu />
-            <h1 className="text-lg font-semibold">Sécurité & Conformité</h1>
-          </div>
-        </header>
-        
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="security-main">
-          <div className="max-w-[1600px] mx-auto">
+    <>
+    <div className="flex flex-col h-full bg-gray-50">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="security-main">
+        <div className="max-w-[1600px] mx-auto">
             {/* Page Header */}
             <div className="mb-4 lg:mb-6">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 hidden lg:block">Sécurité & Conformité</h1>
@@ -394,17 +472,17 @@ export default function Security() {
                 <TabsTrigger value="users" className="text-xs sm:text-sm">
                   <Users className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">Rôles & accès</span>
-                  <span className="sm:hidden">Rôles</span>
+                  <span className="inline sm:hidden">Rôles</span>
                 </TabsTrigger>
                 <TabsTrigger value="audit" className="text-xs sm:text-sm">
                   <Activity className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">Journal d'audit</span>
-                  <span className="sm:hidden">Audit</span>
+                  <span className="inline sm:hidden">Audit</span>
                 </TabsTrigger>
                 <TabsTrigger value="sensitive" className="text-xs sm:text-sm">
                   <Database className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">Données sensibles</span>
-                  <span className="sm:hidden">Données</span>
+                  <span className="inline sm:hidden">Données</span>
                 </TabsTrigger>
                 <TabsTrigger value="gdpr" className="text-xs sm:text-sm">
                   <FileText className="w-4 h-4 mr-1" />
@@ -413,7 +491,7 @@ export default function Security() {
                 <TabsTrigger value="settings" className="text-xs sm:text-sm">
                   <Settings className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">Paramètres</span>
-                  <span className="sm:hidden">Params</span>
+                  <span className="inline sm:hidden">Params</span>
                 </TabsTrigger>
                 <TabsTrigger value="alerts" className="text-xs sm:text-sm">
                   <AlertCircle className="w-4 h-4 mr-1" />
@@ -435,7 +513,7 @@ export default function Security() {
                   </CardHeader>
                   <CardContent>
                     {/* Filters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 sm:mb-6">
                       <Select value={roleFilter} onValueChange={setRoleFilter}>
                         <SelectTrigger>
                           <SelectValue placeholder="Rôle" />
@@ -466,10 +544,20 @@ export default function Security() {
                         className="col-span-1 sm:col-span-2 lg:col-span-2"
                       />
 
-                      <Button variant="outline" className="w-full">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Créer utilisateur
-                      </Button>
+                      {canCreateUser && (
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => {
+                            setUserModalMode('create');
+                            setEditingUser(null);
+                            setShowUserModal(true);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Créer utilisateur
+                        </Button>
+                      )}
                     </div>
 
                     {/* Users table - responsive */}
@@ -477,7 +565,7 @@ export default function Security() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Nom & email</TableHead>
+                            <TableHead>Utilisateur</TableHead>
                             <TableHead>Rôles</TableHead>
                             <TableHead>Modules autorisés</TableHead>
                             <TableHead>Dernière action</TableHead>
@@ -486,12 +574,13 @@ export default function Security() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {users.map((user) => (
+                          {formattedUsers.map((user) => (
                             <TableRow key={user.id}>
                               <TableCell>
                                 <div>
                                   <p className="font-medium">{user.name}</p>
-                                  <p className="text-sm text-gray-500">{user.email}</p>
+                                  <p className="text-sm text-gray-500">@{user.username}</p>
+                                  <p className="text-xs text-gray-400">{user.email}</p>
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -521,20 +610,24 @@ export default function Security() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleUserClick(user)}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={user.status === 'active' ? 'text-orange-600' : 'text-green-600'}
-                                  >
-                                    {user.status === 'active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                                  </Button>
+                                  {canEditUser && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleUserClick(user)}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  {canEditUser && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className={user.status === 'active' ? 'text-orange-600' : 'text-green-600'}
+                                    >
+                                      {user.status === 'active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                                    </Button>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -545,7 +638,7 @@ export default function Security() {
 
                     {/* Mobile view */}
                     <div className="md:hidden space-y-3">
-                      {users.map((user) => (
+                      {formattedUsers.map((user) => (
                         <Card key={user.id}>
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start mb-3">
@@ -604,7 +697,7 @@ export default function Security() {
                   </CardHeader>
                   <CardContent>
                     {/* Filters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mb-4 sm:mb-6">
                       <Select value={periodFilter} onValueChange={setPeriodFilter}>
                         <SelectTrigger>
                           <SelectValue placeholder="Période" />
@@ -632,10 +725,63 @@ export default function Security() {
                         </SelectContent>
                       </Select>
 
-                      <Input
-                        placeholder="Trace-ID, N° contrat"
-                        className="col-span-1 sm:col-span-2 lg:col-span-2"
-                      />
+                      <Popover open={auditSearchOpen} onOpenChange={setAuditSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={auditSearchOpen}
+                            className="col-span-1 sm:col-span-2 lg:col-span-2 justify-between font-normal"
+                          >
+                            {auditSearchValue
+                              ? searchOptions.find((option) => option.value === auditSearchValue)?.label
+                              : "Trace-ID, N° contrat"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0">
+                          <Command>
+                            <CommandInput placeholder="Rechercher..." />
+                            <CommandEmpty>Aucun résultat trouvé.</CommandEmpty>
+                            <CommandGroup>
+                              {searchOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  value={option.value}
+                                  onSelect={(currentValue) => {
+                                    setAuditSearchValue(currentValue === auditSearchValue ? "" : currentValue);
+                                    setAuditSearchOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      auditSearchValue === option.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <span className="flex-1">{option.label}</span>
+                                  <Badge variant="outline" className="ml-2 text-xs">
+                                    {option.type}
+                                  </Badge>
+                                </CommandItem>
+                              ))}
+                              {auditSearchValue && (
+                                <CommandItem
+                                  value="clear"
+                                  onSelect={() => {
+                                    setAuditSearchValue("");
+                                    setAuditSearchOpen(false);
+                                  }}
+                                  className="text-muted-foreground"
+                                >
+                                  <XCircle className="mr-2 h-4 w-4" />
+                                  Effacer la recherche
+                                </CommandItem>
+                              )}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
 
                       <Button variant="outline" className="w-full">
                         <Download className="w-4 h-4 mr-2" />
@@ -659,7 +805,7 @@ export default function Security() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {auditLogs.map((log) => (
+                          {filteredAuditLogs.map((log: any) => (
                             <TableRow key={log.id}>
                               <TableCell className="whitespace-nowrap">
                                 {formatDateTime(log.timestamp)}
@@ -713,7 +859,7 @@ export default function Security() {
 
                     {/* Tablet/Mobile view */}
                     <div className="lg:hidden space-y-3">
-                      {auditLogs.map((log) => (
+                      {filteredAuditLogs.map((log: any) => (
                         <Card key={log.id}>
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start mb-3">
@@ -789,7 +935,7 @@ export default function Security() {
                   </CardHeader>
                   <CardContent>
                     {/* Filters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 sm:mb-6">
                       <Select value={periodFilter} onValueChange={setPeriodFilter}>
                         <SelectTrigger>
                           <SelectValue placeholder="Période" />
@@ -845,7 +991,7 @@ export default function Security() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {sensitiveDataAccess.map((access) => (
+                          {(sensitiveDataAccess as any[]).map((access: any) => (
                             <TableRow key={access.id}>
                               <TableCell>{formatDateTime(access.date)}</TableCell>
                               <TableCell>{access.user}</TableCell>
@@ -863,7 +1009,7 @@ export default function Security() {
 
                     {/* Mobile view */}
                     <div className="md:hidden space-y-3">
-                      {sensitiveDataAccess.map((access) => (
+                      {(sensitiveDataAccess as any[]).map((access: any) => (
                         <Card key={access.id}>
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start mb-2">
@@ -892,7 +1038,7 @@ export default function Security() {
                   </CardHeader>
                   <CardContent>
                     {/* Filters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 sm:mb-6">
                       <Select value={gdprTypeFilter} onValueChange={setGdprTypeFilter}>
                         <SelectTrigger>
                           <SelectValue placeholder="Type" />
@@ -1183,7 +1329,7 @@ export default function Security() {
                   </CardHeader>
                   <CardContent>
                     {/* Filters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 sm:mb-6">
                       <Select value={alertTypeFilter} onValueChange={setAlertTypeFilter}>
                         <SelectTrigger>
                           <SelectValue placeholder="Type" />
@@ -1249,7 +1395,7 @@ export default function Security() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {securityAlerts.map((alert) => (
+                          {(securityAlerts as any[]).map((alert: any) => (
                             <TableRow key={alert.id} className={alert.read ? '' : 'bg-blue-50'}>
                               <TableCell className="whitespace-nowrap">
                                 {formatDateTime(alert.timestamp)}
@@ -1313,7 +1459,7 @@ export default function Security() {
 
                     {/* Mobile/Tablet view */}
                     <div className="lg:hidden space-y-3">
-                      {securityAlerts.map((alert) => (
+                      {(securityAlerts as any[]).map((alert: any) => (
                         <Card key={alert.id} className={alert.read ? '' : 'border-blue-200 bg-blue-50'}>
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start mb-3">
@@ -1368,254 +1514,16 @@ export default function Security() {
         </main>
       </div>
 
-      {/* SC-2: User Details Sheet */}
-      <Sheet open={showUserDetails} onOpenChange={setShowUserDetails}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Détail utilisateur & affectation des rôles</SheetTitle>
-          </SheetHeader>
-          {selectedUser && (
-            <div className="mt-6 space-y-6">
-              {/* User identity */}
-              <div>
-                <h3 className="font-semibold mb-3">Identité</h3>
-                <div className="space-y-2">
-                  <p><span className="text-gray-600">Nom:</span> {selectedUser.name}</p>
-                  <p><span className="text-gray-600">Email:</span> {selectedUser.email}</p>
-                  <p><span className="text-gray-600">Statut:</span> 
-                    <Badge 
-                      className={selectedUser.status === 'active' ? 'bg-green-500 text-white ml-2' : 'ml-2'}
-                      variant="secondary"
-                    >
-                      {selectedUser.status === 'active' ? 'Actif' : 'Désactivé'}
-                    </Badge>
-                  </p>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Roles */}
-              <div>
-                <h3 className="font-semibold mb-3">Rôles attribués</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="role-admin" defaultChecked={selectedUser.roles.includes('Administrateur')} />
-                    <Label htmlFor="role-admin">Administrateur</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="role-validator" defaultChecked={selectedUser.roles.includes('Valideur')} />
-                    <Label htmlFor="role-validator">Valideur</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="role-operator" defaultChecked={selectedUser.roles.includes('Opérateur')} />
-                    <Label htmlFor="role-operator">Opérateur</Label>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Modules & actions */}
-              <div>
-                <h3 className="font-semibold mb-3">Modules & actions autorisés</h3>
-                <div className="space-y-3">
-                  {['Contrats', 'Avenants', 'Indexations', 'Échéances', 'Exports', 'Alertes', 'Paramètres'].map((module) => (
-                    <div key={module} className="p-3 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="font-medium">{module}</Label>
-                        <Checkbox defaultChecked={selectedUser.modules.includes(module)} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="flex items-center space-x-1">
-                          <Checkbox id={`${module}-read`} defaultChecked />
-                          <Label htmlFor={`${module}-read`} className="text-xs">Lecture</Label>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Checkbox id={`${module}-write`} />
-                          <Label htmlFor={`${module}-write`} className="text-xs">Écriture</Label>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Checkbox id={`${module}-validate`} />
-                          <Label htmlFor={`${module}-validate`} className="text-xs">Validation</Label>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Checkbox id={`${module}-delete`} />
-                          <Label htmlFor={`${module}-delete`} className="text-xs">Suppression</Label>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Restrictions */}
-              <div>
-                <h3 className="font-semibold mb-3">Restrictions & visibilité des données</h3>
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Masquage des modules non autorisés et <strong>impossibilité de dépasser ses droits</strong> (même via URL).
-                  </AlertDescription>
-                </Alert>
-              </div>
-
-              <Separator />
-
-              {/* Traceability */}
-              <div>
-                <h3 className="font-semibold mb-3">Traçabilité (lecture seule)</h3>
-                <div className="space-y-2 text-sm">
-                  <p><span className="text-gray-600">Dernière connexion:</span> {formatDateTime(selectedUser.lastLogin)}</p>
-                  <p><span className="text-gray-600">Dernière action:</span> {selectedUser.lastAction}</p>
-                  <p><span className="text-gray-600">Date action:</span> {formatDateTime(selectedUser.lastActionDate)}</p>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowUserDetails(false)}>
-                  Annuler
-                </Button>
-                <Button onClick={handleSaveUserRoles}>
-                  Enregistrer
-                </Button>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* SC-4: Log Details Sheet */}
-      <Sheet open={showLogDetails} onOpenChange={setShowLogDetails}>
-        <SheetContent className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Détail du log</SheetTitle>
-          </SheetHeader>
-          {selectedLog && (
-            <div className="mt-6 space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">Type d'action</p>
-                <Badge variant={selectedLog.action === 'Rejet' ? 'destructive' : 'secondary'}>
-                  {selectedLog.action}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Horodatage</p>
-                <p className="font-medium">{formatDateTime(selectedLog.timestamp)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Utilisateur</p>
-                <p className="font-medium">{selectedLog.user}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Trace-ID</p>
-                <div className="flex items-center gap-2">
-                  <code className="bg-gray-100 px-2 py-1 rounded text-sm">{selectedLog.traceId}</code>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleCopyTraceId(selectedLog.traceId)}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-              <Separator />
-              <div>
-                <h4 className="font-semibold mb-2">Objet</h4>
-                <p className="text-sm text-gray-600">Type: {selectedLog.object}</p>
-                <p className="text-sm text-gray-600">Identifiant: {selectedLog.objectId}</p>
-                <Button variant="link" className="p-0 h-auto text-sm">
-                  Voir l'objet <ExternalLink className="w-3 h-3 ml-1" />
-                </Button>
-              </div>
-              <Separator />
-              <div>
-                <h4 className="font-semibold mb-2">Champs & valeurs</h4>
-                <p className="text-sm text-gray-600 mb-2">Champs impactés: {selectedLog.fields}</p>
-                <div className="space-y-2">
-                  <div className="p-2 bg-red-50 rounded">
-                    <p className="text-xs text-gray-600">Valeur avant</p>
-                    <p className="text-sm">{selectedLog.before}</p>
-                  </div>
-                  <div className="p-2 bg-green-50 rounded">
-                    <p className="text-xs text-gray-600">Valeur après</p>
-                    <p className="text-sm font-medium">{selectedLog.after}</p>
-                  </div>
-                </div>
-              </div>
-              {selectedLog.action === 'Rejet' && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-semibold mb-2">Chaîne de validation</h4>
-                    <Alert>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        Motif de rejet obligatoire en cas de refus
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* GDPR Request Modal */}
-      <Dialog open={showGDPRRequestModal} onOpenChange={setShowGDPRRequestModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Traiter la demande RGPD</DialogTitle>
-            <DialogDescription>
-              {selectedGDPRRequest?.reference}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedGDPRRequest && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">Demandeur</p>
-                <p className="font-medium">{selectedGDPRRequest.requester}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Type de demande</p>
-                <Badge variant={selectedGDPRRequest.type === 'Export' ? 'secondary' : 'destructive'}>
-                  {selectedGDPRRequest.type}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Portée</p>
-                <p className="font-medium">{selectedGDPRRequest.scope}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Date limite légale</p>
-                <p className="font-medium">{formatDate(selectedGDPRRequest.deadline)}</p>
-              </div>
-              {selectedGDPRRequest.status === 'À traiter' && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Cette action sera journalisée avec preuve d'exécution dans les logs.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowGDPRRequestModal(false)}>
-              Annuler
-            </Button>
-            {selectedGDPRRequest?.status === 'À traiter' && (
-              <Button onClick={handleProcessGDPR}>
-                {selectedGDPRRequest.type === 'Export' ? 'Générer l\'export' : 'Marquer comme traité'}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+      {/* Modals are now handled by global provider */}
+      
+      {/* Modal de gestion des utilisateurs */}
+      <UserManagementModal
+        isOpen={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        onSave={handleSaveUser}
+        userData={editingUser}
+        mode={userModalMode}
+      />
+    </>
   );
 }

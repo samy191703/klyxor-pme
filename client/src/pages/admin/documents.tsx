@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import AdminLayout from "@/components/layout/admin-layout";
 import { 
   FolderOpen, FileText, Upload, Download, Eye, 
@@ -355,6 +355,9 @@ export default function AdminDocuments() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Ajouter un document</DialogTitle>
+            <DialogDescription>
+              Téléchargez un document et associez-le à un contrat
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { 
   Ban, 
   CheckCircle, 
@@ -25,18 +27,20 @@ import {
 
 interface PaymentBlock {
   id: string;
-  flowId: string;
-  contractId: string;
-  contractName: string;
-  amountBefore: number;
-  amountAfter: number;
-  currency: string;
-  blockDate: string;
-  modifiedBy: string;
+  flowId?: string;
+  contractId?: string;
+  contractNumber?: string;
+  contractName?: string;
+  contractTitle?: string;
+  amountBefore?: number;
+  amountAfter?: number;
+  currency?: string;
+  blockDate?: string;
+  modifiedBy?: string;
   decisionMaker?: string;
-  decisionStatus: "to_validate" | "validated" | "rejected";
-  reason: string;
-  dueDate: string;
+  decisionStatus?: "to_validate" | "validated" | "rejected";
+  reason?: string;
+  dueDate?: string;
 }
 
 export default function PaymentBlocks() {
@@ -45,8 +49,66 @@ export default function PaymentBlocks() {
   const [statusFilter, setStatusFilter] = useState("to_validate");
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const { toast } = useToast();
+  
+  // Permissions
+  const { hasPermission } = usePermissions();
+  const canValidateBlock = hasPermission("/payment-blocks");
+  const canRejectBlock = hasPermission("/payment-blocks");
 
-  const blocks: PaymentBlock[] = [
+  // Récupération des blocs de paiement depuis l'API
+  const { data: blocksData = [], isLoading: blocksLoading } = useQuery<PaymentBlock[]>({
+    queryKey: ["/api/payment-blocks"],
+  });
+
+  // Mutation pour valider un bloc
+  const validateBlockMutation = useMutation({
+    mutationFn: async (blockId: string) => {
+      return await apiRequest("POST", `/api/payment-blocks/${blockId}/validate`, {
+        validatedBy: "Admin"
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Bloc validé",
+        description: "Le bloc de paiement a été validé",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/payment-blocks"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider le bloc",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation pour rejeter un bloc
+  const rejectBlockMutation = useMutation({
+    mutationFn: async ({ blockId, reason }: any) => {
+      return await apiRequest("PUT", `/api/payment-blocks/${blockId}`, {
+        decisionStatus: "rejected",
+        rejectReason: reason
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Bloc rejeté",
+        description: "Le bloc de paiement a été rejeté",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/payment-blocks"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de rejeter le bloc",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const blocks: PaymentBlock[] = blocksData.length > 0 ? blocksData : [
     {
       id: "BLK-2025-001",
       flowId: "FLX-2025-003",
@@ -130,25 +192,12 @@ export default function PaymentBlocks() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <SidebarWithSubmenu />
-      
-      {/* Main content */}
-      <div className="flex-1 flex flex-col">
-        {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b">
-          <MobileNavWithSubmenu />
-          <img 
-            src="/klyxor-logo.jpeg" 
-            alt="KLYXOR Logo"
-            className="w-10 h-10 object-contain rounded-lg shadow"
-          />
-        </div>
-        
-        {/* Page content */}
-        <div className="flex-1 overflow-auto">
-          <div className="container mx-auto py-6 px-4 lg:px-8 xl:px-12 space-y-6 max-w-[1600px]">
+    <div className="flex flex-col h-full bg-gray-50">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="payment-blocks-main">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900">Blocages de paiement</h1>
+          </div>
       {/* En-tête */}
       <div className="flex justify-between items-center">
         <div>
@@ -460,9 +509,8 @@ export default function PaymentBlocks() {
           </Card>
         </div>
       )}
-          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

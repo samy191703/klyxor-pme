@@ -1,23 +1,60 @@
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   FileText, Upload, Download, Trash2, AlertCircle, Eye, FileImage,
-  FileSpreadsheet, File, X, ZoomIn, ZoomOut, Maximize2
+  FileSpreadsheet, File, X, ZoomIn, ZoomOut, Maximize2, Edit
 } from "lucide-react";
+import { ConfirmModal } from "@/components/common/confirm-modal";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+// Types pour les documents et contrats
+interface Document {
+  id: string;
+  file_name?: string;
+  document_type?: string;
+  contract_id?: string;
+  created_at: string;
+  uploaded_by?: string;
+  file_size?: string;
+  status?: string;
+  is_mandatory?: boolean;
+}
+
+interface Contract {
+  id: string;
+  contract_number?: string;
+  contract_name?: string;
+}
 
 export default function Documents() {
+  const { toast } = useToast();
+  
+  // Récupération des documents depuis l'API
+  const { data: documentsData = [] } = useQuery<Document[]>({
+    queryKey: ["/api/documents"],
+  });
+
+  const { data: contracts = [] } = useQuery<Contract[]>({
+    queryKey: ["/api/contracts"],
+  });
+
+  // Récupération des utilisateurs pour les sélecteurs
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [formatFilter, setFormatFilter] = useState<string>("all");
@@ -28,68 +65,61 @@ export default function Documents() {
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [uploadForm, setUploadForm] = useState({
     type: "",
-    label: "",
+    name: "",
+    category: "administrative",
+    contractId: "",
     description: "",
     file: null as File | null
   });
+  
+  // Nouveaux états pour les modals
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    type: "",
+    label: "",
+    description: "",
+    contractNumber: "",
+    mandatory: false
+  });
 
-  // Mock data for documents (GD-1)
-  const documents = [
+  // Documents depuis les vraies données avec enrichissement
+  const documents = documentsData.length > 0 ? documentsData.map((doc: Document) => {
+    const contract = contracts.find((c: Contract) => c.id === doc.contract_id);
+    const fileExt = doc.file_name ? doc.file_name.split('.').pop()?.toUpperCase() : 'PDF';
+    
+    return {
+      id: doc.id,
+      fileName: doc.file_name || `document_${doc.id.substring(0, 8)}.pdf`,
+      type: doc.document_type || "Document",
+      format: fileExt,
+      contractNumber: contract?.contract_number || `CNT-${doc.contract_id?.substring(0, 8) || 'NA'}`,
+      contractTitle: contract?.contract_name || "Sans titre",
+      uploadDate: new Date(doc.created_at),
+      uploadedBy: doc.uploaded_by || "Système",
+      size: doc.file_size || "N/A",
+      status: doc.status || "ok",
+      mandatory: doc.is_mandatory || false
+    };
+  }) : [
+    // Données d'exemple si pas de documents en base
     {
-      id: "doc-1",
-      fileName: "contrat_signe_2024_001.pdf",
+      id: "example-1",
+      fileName: "exemple_contrat.pdf",
       type: "Contrat",
       format: "PDF",
-      contractNumber: "CNT-2024-001",
-      contractTitle: "Services informatiques",
-      uploadDate: new Date("2024-01-15T10:30:00"),
-      uploadedBy: "Marie Martin",
-      size: "2.5 MB",
+      contractNumber: "CNT-EXEMPLE",
+      contractTitle: "Contrat exemple",
+      uploadDate: new Date(),
+      uploadedBy: "Système",
+      size: "1.5 MB",
       status: "ok",
       mandatory: true
-    },
-    {
-      id: "doc-2",
-      fileName: "avenant_modification_2024.docx",
-      type: "Avenant",
-      format: "DOCX",
-      contractNumber: "CNT-2024-001",
-      contractTitle: "Services informatiques",
-      uploadDate: new Date("2024-01-20T14:15:00"),
-      uploadedBy: "Pierre Durand",
-      size: "1.2 MB",
-      status: "ok",
-      mandatory: false
-    },
-    {
-      id: "doc-3",
-      fileName: "justificatif_assurance.pdf",
-      type: "Justificatif",
-      format: "PDF",
-      contractNumber: "CNT-2024-002",
-      contractTitle: "Maintenance équipements",
-      uploadDate: new Date("2024-02-01T09:00:00"),
-      uploadedBy: "Sophie Laurent",
-      size: "856 KB",
-      status: "ok",
-      mandatory: true
-    },
-    {
-      id: "doc-4",
-      fileName: "tableau_indexation.xlsx",
-      type: "Annexe",
-      format: "XLSX",
-      contractNumber: "CNT-2024-003",
-      contractTitle: "Location bureaux",
-      uploadDate: new Date("2024-02-05T11:30:00"),
-      uploadedBy: "Jean Dupont",
-      size: "3.1 MB",
-      status: "ok",
-      mandatory: false
     }
   ];
 
-  const filteredDocuments = documents.filter(doc => {
+  const filteredDocuments = documents.filter((doc: any) => {
     const matchesSearch = doc.fileName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === "all" || doc.type === typeFilter;
     const matchesFormat = formatFilter === "all" || doc.format === formatFilter;
@@ -124,11 +154,63 @@ export default function Documents() {
     }
   };
 
-  const handleAddDocument = () => {
-    // Logique d'upload et de traçabilité
-    console.log("Document ajouté:", uploadForm);
-    setShowAddModal(false);
-    setUploadForm({ type: "", label: "", description: "", file: null });
+  // Mutation pour enregistrer le document après upload
+  const saveDocumentMutation = useMutation({
+    mutationFn: async (documentData: any) => {
+      return await apiRequest("PUT", "/api/documents/upload", documentData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Document uploadé",
+        description: "Le document a été ajouté avec succès",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      setShowAddModal(false);
+      setUploadForm({ 
+        type: "", 
+        name: "", 
+        category: "administrative",
+        contractId: "",
+        description: "", 
+        file: null 
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter le document",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("POST", "/api/objects/upload");
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = async (result: any) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploaded = result.successful[0];
+      await saveDocumentMutation.mutateAsync({
+        documentURL: uploaded.uploadURL,
+        contractId: uploadForm.contractId,
+        name: uploadForm.name || uploaded.name,
+        type: uploadForm.type,
+        category: uploadForm.category,
+        size: uploaded.size,
+        mimeType: uploaded.type,
+        description: uploadForm.description,
+        metadata: {
+          originalName: uploaded.name,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+    }
   };
 
   const handleShowDetails = (doc: any) => {
@@ -141,34 +223,9 @@ export default function Documents() {
     setShowPreview(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const allowedFormats = ['pdf', 'docx', 'xlsx', 'odt', 'jpg', 'png'];
-      const fileExt = file.name.split('.').pop()?.toLowerCase();
-      
-      if (fileExt && !allowedFormats.includes(fileExt)) {
-        alert("Format non autorisé. Formats acceptés: PDF, DOCX, XLSX, ODT, JPG, PNG");
-        return;
-      }
-      
-      setUploadForm({ ...uploadForm, file });
-    }
-  };
-
   return (
-    <div className="flex h-screen bg-gray-50">
-      <SidebarWithSubmenu />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 lg:hidden">
-          <div className="flex items-center justify-between">
-            <MobileNavWithSubmenu />
-            <h1 className="text-lg font-semibold">Gestion documentaire (GED)</h1>
-          </div>
-        </header>
-        
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="documents-main">
+    <div className="flex flex-col h-full bg-gray-50">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="documents-main">
           <div className="max-w-7xl mx-auto">
             {/* GD-1: En-tête de page */}
             <div className="mb-6">
@@ -222,10 +279,11 @@ export default function Documents() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tous les auteurs</SelectItem>
-                        <SelectItem value="Marie Martin">Marie Martin</SelectItem>
-                        <SelectItem value="Pierre Durand">Pierre Durand</SelectItem>
-                        <SelectItem value="Sophie Laurent">Sophie Laurent</SelectItem>
-                        <SelectItem value="Jean Dupont">Jean Dupont</SelectItem>
+                        {users.map((user: any) => (
+                          <SelectItem key={user.id} value={`${user.firstName} ${user.lastName}`}>
+                            {user.firstName} {user.lastName}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 
@@ -270,7 +328,7 @@ export default function Documents() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredDocuments.map((doc) => (
+                        filteredDocuments.map((doc: any) => (
                           <TableRow 
                             key={doc.id} 
                             data-testid={`row-document-${doc.id}`}
@@ -310,6 +368,24 @@ export default function Documents() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditForm({
+                                      type: doc.type,
+                                      label: doc.fileName,
+                                      description: (doc as any).description || '',
+                                      contractNumber: doc.contractNumber,
+                                      mandatory: doc.mandatory || false
+                                    });
+                                    setShowEditModal(true);
+                                  }}
+                                  data-testid={`button-edit-${doc.id}`}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
                                   data-testid={`button-download-${doc.id}`}
                                 >
                                   <Download className="w-4 h-4" />
@@ -318,6 +394,11 @@ export default function Documents() {
                                   variant="ghost" 
                                   size="sm" 
                                   className="text-red-600 hover:text-red-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDocumentToDelete(doc);
+                                    setShowDeleteModal(true);
+                                  }}
                                   data-testid={`button-delete-${doc.id}`}
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -358,6 +439,9 @@ export default function Documents() {
               <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Ajouter un document</DialogTitle>
+                  <DialogDescription>
+                    Téléchargez un document et associez-le à un contrat
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
@@ -381,44 +465,54 @@ export default function Documents() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="file-upload">Fichier</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                      <input
-                        id="file-upload"
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.docx,.xlsx,.odt,.jpg,.png"
-                        onChange={handleFileChange}
-                      />
-                      <label htmlFor="file-upload" className="cursor-pointer">
-                        <Upload className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-600">
-                          Glisser-déposer ou <span className="text-primary font-medium">parcourir</span>
-                        </p>
-                        {uploadForm.file && (
-                          <p className="mt-2 text-sm text-green-600">
-                            Fichier sélectionné: {uploadForm.file.name}
-                          </p>
-                        )}
-                      </label>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Formats acceptés: PDF, DOCX, XLSX, ODT, JPG, PNG
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Le fichier sera horodaté et non modifiable après upload. Suppression réservée à l'admin.
-                    </p>
+                    <Label htmlFor="contract-select" className="required">
+                      Contrat associé <span className="text-red-500">*</span>
+                    </Label>
+                    <Select 
+                      value={uploadForm.contractId} 
+                      onValueChange={(value) => setUploadForm({...uploadForm, contractId: value})}
+                    >
+                      <SelectTrigger id="contract-select">
+                        <SelectValue placeholder="Sélectionner un contrat" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {contracts.map((contract: any) => (
+                          <SelectItem key={contract.id} value={contract.id}>
+                            {contract.number} - {contract.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="doc-label">Libellé (facultatif)</Label>
+                    <Label htmlFor="doc-name">Nom du document</Label>
                     <Input
-                      id="doc-label"
-                      value={uploadForm.label}
-                      onChange={(e) => setUploadForm({...uploadForm, label: e.target.value})}
-                      placeholder="Libellé court du document"
+                      id="doc-name"
+                      value={uploadForm.name}
+                      onChange={(e) => setUploadForm({...uploadForm, name: e.target.value})}
+                      placeholder="Nom du document"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="doc-category">Catégorie</Label>
+                    <Select 
+                      value={uploadForm.category} 
+                      onValueChange={(value) => setUploadForm({...uploadForm, category: value})}
+                    >
+                      <SelectTrigger id="doc-category">
+                        <SelectValue placeholder="Sélectionner une catégorie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="legal">Juridique</SelectItem>
+                        <SelectItem value="financial">Financier</SelectItem>
+                        <SelectItem value="technical">Technique</SelectItem>
+                        <SelectItem value="administrative">Administratif</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
 
                   <div className="space-y-2">
                     <Label htmlFor="doc-description">Description (facultatif)</Label>
@@ -435,9 +529,15 @@ export default function Documents() {
                   <Button variant="outline" onClick={() => setShowAddModal(false)}>
                     Annuler
                   </Button>
-                  <Button onClick={handleAddDocument} disabled={!uploadForm.type || !uploadForm.file}>
-                    Téléverser
-                  </Button>
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={52428800} // 50MB
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleUploadComplete}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Téléverser le document
+                  </ObjectUploader>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -538,6 +638,9 @@ export default function Documents() {
                           </Button>
                         </div>
                       </DialogTitle>
+                      <DialogDescription>
+                        Visualisez le document avant de le télécharger
+                      </DialogDescription>
                     </DialogHeader>
                     
                     <div className="flex-1 overflow-auto mt-4">
@@ -574,9 +677,105 @@ export default function Documents() {
                 )}
               </DialogContent>
             </Dialog>
+
+            {/* Modal de confirmation de suppression */}
+            <ConfirmModal
+              open={showDeleteModal}
+              onOpenChange={setShowDeleteModal}
+              title="Supprimer le document"
+              description={`Êtes-vous sûr de vouloir supprimer le document "${documentToDelete?.fileName}" ? Cette action est irréversible.`}
+              confirmText="Supprimer"
+              cancelText="Annuler"
+              variant="destructive"
+              onConfirm={() => {
+                console.log('Suppression du document:', documentToDelete);
+                setDocumentToDelete(null);
+                setShowDeleteModal(false);
+              }}
+            />
+
+            {/* Modal de modification des métadonnées */}
+            <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+              <DialogContent data-testid="edit-document-modal">
+                <DialogHeader>
+                  <DialogTitle>Modifier les métadonnées du document</DialogTitle>
+                  <DialogDescription>
+                    Modifiez les informations associées à ce document
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="edit-type">Type de document</Label>
+                    <Select 
+                      value={editForm.type}
+                      onValueChange={(v) => setEditForm({...editForm, type: v})}
+                    >
+                      <SelectTrigger id="edit-type">
+                        <SelectValue placeholder="Sélectionnez un type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Contrat">Contrat</SelectItem>
+                        <SelectItem value="Avenant">Avenant</SelectItem>
+                        <SelectItem value="Justificatif">Justificatif</SelectItem>
+                        <SelectItem value="Annexe">Annexe</SelectItem>
+                        <SelectItem value="Autre">Autre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-label">Libellé</Label>
+                    <Input 
+                      id="edit-label"
+                      value={editForm.label}
+                      onChange={(e) => setEditForm({...editForm, label: e.target.value})}
+                      placeholder="Libellé du document"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-description">Description</Label>
+                    <Textarea 
+                      id="edit-description"
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                      placeholder="Description du document"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-contract">Contrat associé</Label>
+                    <Input 
+                      id="edit-contract"
+                      value={editForm.contractNumber}
+                      onChange={(e) => setEditForm({...editForm, contractNumber: e.target.value})}
+                      placeholder="Numéro du contrat"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox"
+                      id="edit-mandatory"
+                      checked={editForm.mandatory}
+                      onChange={(e) => setEditForm({...editForm, mandatory: e.target.checked})}
+                    />
+                    <Label htmlFor="edit-mandatory" className="cursor-pointer">
+                      Document obligatoire
+                    </Label>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowEditModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={() => {
+                    console.log('Modification métadonnées:', editForm);
+                    setShowEditModal(false);
+                  }}>
+                    Enregistrer les modifications
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </main>
-      </div>
     </div>
   );
 }

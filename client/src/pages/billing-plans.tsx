@@ -1,6 +1,6 @@
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 import { 
   FileText, 
   CheckCircle, 
@@ -35,20 +37,22 @@ import {
 
 interface BillingPlan {
   id: string;
-  contractId: string;
-  contractName: string;
-  contractType: string;
-  period: { start: string; end: string };
-  periodicity: string;
-  term: string;
-  linesCount: number;
-  totalAmount: number;
-  currency: string;
-  status: "to_validate" | "validated" | "rejected" | "sap_pending" | "sap_error";
-  lastAction: string;
-  flowsToCreate: number;
-  creator: string;
-  createdAt: string;
+  contractId?: string;
+  contractNumber?: string;
+  contractName?: string;
+  contractTitle?: string;
+  contractType?: string;
+  period?: { start: string; end: string };
+  periodicity?: string;
+  term?: string;
+  linesCount?: number;
+  totalAmount?: number;
+  currency?: string;
+  status?: "to_validate" | "validated" | "rejected" | "sap_pending" | "sap_error";
+  lastAction?: string;
+  flowsToCreate?: number;
+  creator?: string;
+  createdAt?: string;
   indexationFormula?: string;
   sapStatus?: string;
   sapCode?: string;
@@ -62,9 +66,83 @@ export default function BillingPlans() {
   const [showSimulation, setShowSimulation] = useState(false);
   const [statusFilter, setStatusFilter] = useState("to_validate");
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  
+  // Permissions
+  const { hasPermission } = usePermissions();
+  const canCreatePlan = hasPermission("/billing-plans");
+  const canValidatePlan = hasPermission("/billing-plans");
+  const canExportPlan = hasPermission("/billing-plans");
+  const canGenerateFlows = hasPermission("/payment-flows");
 
-  // Données exemple enrichies
-  const plans: BillingPlan[] = [
+  // Récupération des plans de facturation depuis l'API
+  const { data: plansData = [], isLoading: plansLoading } = useQuery<BillingPlan[]>({
+    queryKey: ["/api/admin/billing/plans"],
+  });
+
+  // Mutation pour générer les flux de paiement
+  const generateFlowsMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      return await apiRequest("POST", `/api/billing-plans/${planId}/generate-flows`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Flux générés",
+        description: "Les flux de paiement ont été générés avec succès",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing/plans"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer les flux de paiement",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation pour valider un plan
+  const validatePlanMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      return await apiRequest("PUT", `/api/billing-plans/${planId}`, {
+        status: "validated"
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Plan validé",
+        description: "Le plan de facturation a été validé",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing/plans"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider le plan",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Export des données
+  const handleExport = async () => {
+    try {
+      const response = await apiRequest("GET", "/api/admin/billing/plans/export");
+      toast({
+        title: "Export réussi",
+        description: "Les données ont été exportées",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'exporter les données",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Données exemple enrichies (fallback si pas de données API)
+  const plans: BillingPlan[] = plansData.length > 0 ? plansData : [
     {
       id: "PF-2025-001",
       contractId: "AUX89",
@@ -155,9 +233,11 @@ export default function BillingPlans() {
 
   const filteredPlans = plans.filter(plan => {
     const matchesStatus = statusFilter === "all" || plan.status === statusFilter;
-    const matchesSearch = plan.contractName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          plan.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          plan.contractId.toLowerCase().includes(searchQuery.toLowerCase());
+    const contractDisplay = plan.contractName || plan.contractTitle || "";
+    const contractIdDisplay = plan.contractId || plan.contractNumber || "";
+    const matchesSearch = contractDisplay.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (plan.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          contractIdDisplay.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -185,25 +265,10 @@ export default function BillingPlans() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <SidebarWithSubmenu />
-      
-      {/* Main content */}
-      <div className="flex-1 flex flex-col">
-        {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b">
-          <MobileNavWithSubmenu />
-          <img 
-            src="/klyxor-logo.jpeg" 
-            alt="KLYXOR Logo"
-            className="w-10 h-10 object-contain rounded-lg shadow"
-          />
-        </div>
-        
-        {/* Page content */}
-        <div className="flex-1 overflow-auto">
-          <div className="container mx-auto py-6 px-4 lg:px-8 xl:px-12 space-y-6 max-w-[1600px]">
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* Page content */}
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto py-6 px-4 lg:px-8 xl:px-12 space-y-6 max-w-[1600px]">
       {/* En-tête */}
       <div className="flex justify-between items-center">
         <div>
@@ -323,26 +388,26 @@ export default function BillingPlans() {
                     <td className="px-4 py-3 text-sm font-medium text-[#0F2A43]">{plan.id}</td>
                     <td className="px-4 py-3 text-sm">
                       <div>
-                        <div className="font-medium">{plan.contractId}</div>
-                        <div className="text-gray-500 text-xs">{plan.contractName}</div>
+                        <div className="font-medium">{plan.contractId || plan.contractNumber || "N/A"}</div>
+                        <div className="text-gray-500 text-xs">{plan.contractName || plan.contractTitle || "N/A"}</div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      <Badge variant="outline">{plan.contractType}</Badge>
+                      <Badge variant="outline">{plan.contractType || "N/A"}</Badge>
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {new Date(plan.period.start).toLocaleDateString('fr-FR')} - {new Date(plan.period.end).toLocaleDateString('fr-FR')}
+                      {plan.period?.start ? new Date(plan.period.start).toLocaleDateString('fr-FR') : "N/A"} - {plan.period?.end ? new Date(plan.period.end).toLocaleDateString('fr-FR') : "N/A"}
                     </td>
-                    <td className="px-4 py-3 text-sm">{plan.periodicity}</td>
+                    <td className="px-4 py-3 text-sm">{plan.periodicity || "N/A"}</td>
                     <td className="px-4 py-3 text-sm font-medium">
-                      {plan.totalAmount.toLocaleString('fr-FR')} {plan.currency}
+                      {(plan.totalAmount || 0).toLocaleString('fr-FR')} {plan.currency || "EUR"}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       {plan.indexationFormula && (
                         <Badge variant="secondary">{plan.indexationFormula}</Badge>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm">{getStatusBadge(plan.status)}</td>
+                    <td className="px-4 py-3 text-sm">{getStatusBadge(plan.status || "to_validate")}</td>
                     <td className="px-4 py-3 text-sm">
                       {plan.sapCode ? (
                         <div className="flex items-center gap-1">
@@ -570,6 +635,5 @@ export default function BillingPlans() {
         </div>
       </div>
     </div>
-  </div>
   );
 }

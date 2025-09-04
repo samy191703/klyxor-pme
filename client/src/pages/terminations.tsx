@@ -1,6 +1,7 @@
 import { useState } from "react";
-import SidebarWithSubmenu from "@/components/layout/sidebar-with-submenu";
-import MobileNavWithSubmenu from "@/components/layout/mobile-nav-with-submenu";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import StatusBadge from "@/components/common/status-badge";
+import StatusBadge from "@/components/widgets/status-badge";
 import { 
   XCircle, Plus, Eye, Check, X, Calendar, FileText, 
   AlertCircle, Clock, Search, Filter, Download, 
@@ -78,6 +79,7 @@ interface NotificationTemplate {
 }
 
 export default function Terminations() {
+  const { toast } = useToast();
   const [activeView, setActiveView] = useState<'list' | 'history' | 'settings'>('list');
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [periodFilter, setPeriodFilter] = useState<string>("all");
@@ -91,6 +93,42 @@ export default function Terminations() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [showError, setShowError] = useState<string | null>(null);
+
+  // Query pour récupérer les contrats actifs
+  const { data: contracts = [] } = useQuery<any[]>({
+    queryKey: ["/api/contracts"],
+    enabled: showNewTerminationDialog // Only fetch when dialog is open
+  });
+
+  // Mutation pour créer une demande de résiliation
+  const createTerminationMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch("/api/validation-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error("Failed to create termination request");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/validation-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      toast({
+        title: "Demande de résiliation créée",
+        description: "La demande de résiliation a été envoyée pour validation."
+      });
+      setShowNewTerminationDialog(false);
+      resetNewTerminationForm();
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer la demande de résiliation.",
+        variant: "destructive"
+      });
+    }
+  });
 
   // Settings states
   const [slaEnabled, setSlaEnabled] = useState(true);
@@ -323,17 +361,8 @@ export default function Terminations() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <SidebarWithSubmenu />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 lg:hidden">
-          <div className="flex items-center justify-between">
-            <MobileNavWithSubmenu />
-            <h1 className="text-lg font-semibold">Résiliations</h1>
-          </div>
-        </header>
-        
+    <>
+      <div className="flex flex-col h-full bg-gray-50">
         <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="terminations-main">
           <div className="max-w-7xl mx-auto">
             {/* Page Header - RE-1 */}
@@ -573,7 +602,7 @@ export default function Terminations() {
                                       text={getStatusLabel(termination.status)}
                                     />
                                     {termination.sla && termination.sla < 24 && (
-                                      <Badge variant="warning" className="text-xs">
+                                      <Badge variant="default" className="text-xs bg-yellow-50 text-yellow-800 border-yellow-200">
                                         <Timer className="w-3 h-3 mr-1" />
                                         {termination.sla}h
                                       </Badge>
@@ -854,7 +883,7 @@ export default function Terminations() {
                           <div key={template.id} className="border rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <Badge variant={template.type === 'validated' ? 'success' : template.type === 'rejected' ? 'destructive' : 'secondary'}>
+                                <Badge variant={template.type === 'validated' ? 'default' : template.type === 'rejected' ? 'destructive' : 'secondary'} className={template.type === 'validated' ? 'bg-green-50 text-green-800 border-green-200' : ''}>
                                   {template.type === 'submitted' && 'Soumise'}
                                   {template.type === 'validated' && 'Validée'}
                                   {template.type === 'rejected' && 'Rejetée'}
@@ -953,7 +982,6 @@ export default function Terminations() {
             )}
           </div>
         </main>
-      </div>
 
       {/* RE-3 - New Termination Dialog (Assistant) */}
       <Dialog open={showNewTerminationDialog} onOpenChange={setShowNewTerminationDialog}>
@@ -968,26 +996,58 @@ export default function Terminations() {
             <div className="space-y-4">
               <h3 className="font-medium">Étape 1 - Sélection du contrat</h3>
               <div>
-                <Label htmlFor="contract-search">Recherche contrat</Label>
-                <Input 
-                  id="contract-search"
-                  placeholder="N° ou intitulé du contrat"
-                  value={newTermination.contractNumber}
-                  onChange={(e) => setNewTermination({...newTermination, contractNumber: e.target.value})}
-                />
+                <Label htmlFor="contract-select">Sélectionner un contrat</Label>
+                <Select
+                  value={newTermination.contractId}
+                  onValueChange={(value) => {
+                    const selectedContract = contracts.find((c: any) => c.id === value);
+                    if (selectedContract) {
+                      setNewTermination({
+                        ...newTermination,
+                        contractId: value,
+                        contractNumber: selectedContract.number,
+                        contractTitle: selectedContract.title
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger id="contract-select">
+                    <SelectValue placeholder="Sélectionner un contrat actif..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contracts.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        Aucun contrat disponible
+                      </SelectItem>
+                    ) : (
+                      contracts
+                        .filter((contract: any) => contract.status !== 'terminated' && contract.status !== 'expired')
+                        .map((contract: any) => (
+                          <SelectItem key={contract.id} value={contract.id}>
+                            {contract.number} - {contract.title}
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
                 <p className="text-xs text-gray-500 mt-1">
                   Seuls les contrats "Actifs" et non déjà résiliés sont sélectionnables
                 </p>
               </div>
-              {newTermination.contractNumber && (
+              {newTermination.contractId && (
                 <Card>
                   <CardContent className="p-4">
                     <h4 className="font-medium mb-2">Contrat sélectionné</h4>
                     <div className="text-sm space-y-1">
-                      <div>N°: CNT-2024-001</div>
-                      <div>Titre: Maintenance informatique</div>
-                      <div>Statut: <Badge variant="success">Actif</Badge></div>
-                      <div>Dates: 01/01/2024 - 31/12/2024</div>
+                      <div>N°: {newTermination.contractNumber}</div>
+                      <div>Titre: {newTermination.contractTitle}</div>
+                      <div>Statut: <Badge variant="default" className="bg-green-50 text-green-800 border-green-200">Actif</Badge></div>
+                      {(() => {
+                        const contract = contracts.find((c: any) => c.id === newTermination.contractId);
+                        return contract ? (
+                          <div>Dates: {new Date(contract.startDate).toLocaleDateString('fr-FR')} - {new Date(contract.endDate).toLocaleDateString('fr-FR')}</div>
+                        ) : null;
+                      })()}
                     </div>
                   </CardContent>
                 </Card>
@@ -1131,9 +1191,33 @@ export default function Terminations() {
                 ) : (
                   <Button 
                     onClick={() => {
+                      // Créer la demande de résiliation
+                      if (!newTermination.contractId || !newTermination.reason) {
+                        toast({
+                          title: "Erreur",
+                          description: "Veuillez sélectionner un contrat et fournir un motif",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+                      
                       // Submit for validation
-                      setShowNewTerminationDialog(false);
-                      resetNewTerminationForm();
+                      const terminationData = {
+                        type: 'termination',
+                        contractId: newTermination.contractId,
+                        title: `Résiliation - ${newTermination.contractNumber}`,
+                        description: newTermination.reason,
+                        targetDate: newTermination.effectiveDate || new Date().toISOString().split('T')[0],
+                        priority: 'high',
+                        metadata: {
+                          contractNumber: newTermination.contractNumber,
+                          contractTitle: newTermination.contractTitle,
+                          effectiveDate: newTermination.effectiveDate,
+                          reason: newTermination.reason
+                        }
+                      };
+                      
+                      createTerminationMutation.mutate(terminationData);
                     }}
                   >
                     Soumettre à validation
@@ -1339,6 +1423,9 @@ export default function Terminations() {
             <DialogTitle>
               {validationDecision === 'validate' ? 'Valider' : 'Rejeter'} la résiliation
             </DialogTitle>
+            <DialogDescription>
+              Examinez les détails de la demande de résiliation et prenez une décision
+            </DialogDescription>
           </DialogHeader>
 
           {selectedTermination && (
@@ -1414,6 +1501,7 @@ export default function Terminations() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }
