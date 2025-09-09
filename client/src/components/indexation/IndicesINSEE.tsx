@@ -4,9 +4,23 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, TrendingUp, TrendingDown, RefreshCw, Activity, Calendar } from "lucide-react";
+import {
+  AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  RefreshCw,
+  Activity,
+  Calendar,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -19,7 +33,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from "recharts";
 
 interface EconomicIndex {
@@ -35,28 +49,31 @@ interface EconomicIndex {
   source: string;
   createdAt: string;
   updatedAt: string;
+  status?: "R" | "P" | "A"; // R = Révisé, P = Provisoire, A = Arrêté
 }
 
 export function IndicesINSEE() {
-  const [selectedINSEECode, setSelectedINSEECode] = useState<string>("IPC");
+  const [selectedINSEECode, setSelectedINSEECode] = useState<string>("ICHT");
 
   // Requêtes pour les indices INSEE
-  const { data: indicesINSEE = [], isLoading: isLoadingINSEE } = useQuery<EconomicIndex[]>({
+  const { data: indicesINSEE = [], isLoading: isLoadingINSEE } = useQuery<
+    EconomicIndex[]
+  >({
     queryKey: ["/api/economic-indices"],
   });
 
-  const { data: latestIPC } = useQuery<EconomicIndex>({
-    queryKey: [`/api/economic-indices/latest/IPC`],
-    enabled: indicesINSEE.length > 0,
-  });
-
-  const { data: latestICHT } = useQuery<EconomicIndex>({
+  const { data: latestCPI } = useQuery<EconomicIndex>({
     queryKey: [`/api/economic-indices/latest/ICHT`],
     enabled: indicesINSEE.length > 0,
   });
 
-  const { data: latestIPPAP } = useQuery<EconomicIndex>({
-    queryKey: [`/api/economic-indices/latest/IPPAP`],
+  const { data: latestICHT } = useQuery<EconomicIndex>({
+    queryKey: [`/api/economic-indices/latest/FMOA`],
+    enabled: indicesINSEE.length > 0,
+  });
+
+  const { data: latestFMOA } = useQuery<EconomicIndex>({
+    queryKey: [`/api/economic-indices/latest/CPI`],
     enabled: indicesINSEE.length > 0,
   });
 
@@ -89,7 +106,7 @@ export function IndicesINSEE() {
 
   const getIndicesByCode = (code: string) => {
     return indicesINSEE
-      .filter(index => index.code === code)
+      .filter((index) => index.code === code)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
@@ -97,7 +114,7 @@ export function IndicesINSEE() {
     const data = getIndicesByCode(code)
       .slice(0, 12)
       .reverse()
-      .map(index => ({
+      .map((index) => ({
         date: format(new Date(index.date), "MMM yyyy", { locale: fr }),
         valeur: parseFloat(index.value),
         mois: `${index.month}/${index.year}`,
@@ -136,7 +153,7 @@ export function IndicesINSEE() {
     <>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Indices économiques INSEE</h3>
-        <Button 
+        <Button
           onClick={() => syncMutation.mutate()}
           disabled={syncMutation.isPending}
           size="sm"
@@ -160,42 +177,58 @@ export function IndicesINSEE() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Aucun indice INSEE disponible. Cliquez sur "Synchroniser INSEE" pour récupérer les derniers indices.
+            Aucun indice INSEE disponible. Cliquez sur "Synchroniser INSEE" pour
+            récupérer les derniers indices.
           </AlertDescription>
         </Alert>
       ) : (
         <>
           {/* Cartes récapitulatives */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {latestIPC && (
+            {latestCPI && (
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center justify-between">
-                    <span>IPC</span>
-                    <Badge variant="outline" className="text-xs">Base {latestIPC.base}</Badge>
+                    <span>CPI</span>
+                    <Badge variant="outline" className="text-xs">
+                      Base {latestCPI.base}
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">{latestIPC.value}</div>
+                  <div className="text-xl font-bold">{latestCPI.value}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(latestIPC.date), "MMMM yyyy", { locale: fr })}
+                    {format(new Date(latestCPI.date), "MMMM yyyy", {
+                      locale: fr,
+                    })}
                   </p>
-                  {indicesINSEE.filter(i => i.code === "IPC").length > 1 && (
-                    <div className={`flex items-center mt-2 ${getVariationColor(
-                      parseFloat(calculateVariation(
-                        latestIPC.value,
-                        indicesINSEE.filter(i => i.code === "IPC")[1].value
-                      ))
-                    )}`}>
-                      {getVariationIcon(parseFloat(calculateVariation(
-                        latestIPC.value,
-                        indicesINSEE.filter(i => i.code === "IPC")[1].value
-                      )))}
+                  {indicesINSEE.filter((i) => i.code === "CPI").length > 1 && (
+                    <div
+                      className={`flex items-center mt-2 ${getVariationColor(
+                        parseFloat(
+                          calculateVariation(
+                            latestCPI.value,
+                            indicesINSEE.filter((i) => i.code === "CPI")[1]
+                              .value
+                          )
+                        )
+                      )}`}
+                    >
+                      {getVariationIcon(
+                        parseFloat(
+                          calculateVariation(
+                            latestCPI.value,
+                            indicesINSEE.filter((i) => i.code === "CPI")[1]
+                              .value
+                          )
+                        )
+                      )}
                       <span className="ml-1 text-xs">
                         {calculateVariation(
-                          latestIPC.value,
-                          indicesINSEE.filter(i => i.code === "IPC")[1].value
-                        )}%
+                          latestCPI.value,
+                          indicesINSEE.filter((i) => i.code === "CPI")[1].value
+                        )}
+                        %
                       </span>
                     </div>
                   )}
@@ -208,30 +241,45 @@ export function IndicesINSEE() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center justify-between">
                     <span>ICHT</span>
-                    <Badge variant="outline" className="text-xs">Base {latestICHT.base}</Badge>
+                    <Badge variant="outline" className="text-xs">
+                      Base {latestICHT.base}
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-xl font-bold">{latestICHT.value}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(latestICHT.date), "MMMM yyyy", { locale: fr })}
+                    {format(new Date(latestICHT.date), "MMMM yyyy", {
+                      locale: fr,
+                    })}
                   </p>
-                  {indicesINSEE.filter(i => i.code === "ICHT").length > 1 && (
-                    <div className={`flex items-center mt-2 ${getVariationColor(
-                      parseFloat(calculateVariation(
-                        latestICHT.value,
-                        indicesINSEE.filter(i => i.code === "ICHT")[1].value
-                      ))
-                    )}`}>
-                      {getVariationIcon(parseFloat(calculateVariation(
-                        latestICHT.value,
-                        indicesINSEE.filter(i => i.code === "ICHT")[1].value
-                      )))}
+                  {indicesINSEE.filter((i) => i.code === "ICHT").length > 1 && (
+                    <div
+                      className={`flex items-center mt-2 ${getVariationColor(
+                        parseFloat(
+                          calculateVariation(
+                            latestICHT.value,
+                            indicesINSEE.filter((i) => i.code === "ICHT")[1]
+                              .value
+                          )
+                        )
+                      )}`}
+                    >
+                      {getVariationIcon(
+                        parseFloat(
+                          calculateVariation(
+                            latestICHT.value,
+                            indicesINSEE.filter((i) => i.code === "ICHT")[1]
+                              .value
+                          )
+                        )
+                      )}
                       <span className="ml-1 text-xs">
                         {calculateVariation(
                           latestICHT.value,
-                          indicesINSEE.filter(i => i.code === "ICHT")[1].value
-                        )}%
+                          indicesINSEE.filter((i) => i.code === "ICHT")[1].value
+                        )}
+                        %
                       </span>
                     </div>
                   )}
@@ -239,35 +287,50 @@ export function IndicesINSEE() {
               </Card>
             )}
 
-            {latestIPPAP && (
+            {latestFMOA && (
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center justify-between">
-                    <span>IPPAP</span>
-                    <Badge variant="outline" className="text-xs">Base {latestIPPAP.base}</Badge>
+                    <span>FMOA</span>
+                    <Badge variant="outline" className="text-xs">
+                      Base {latestFMOA.base}
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold">{latestIPPAP.value}</div>
+                  <div className="text-xl font-bold">{latestFMOA.value}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(latestIPPAP.date), "MMMM yyyy", { locale: fr })}
+                    {format(new Date(latestFMOA.date), "MMMM yyyy", {
+                      locale: fr,
+                    })}
                   </p>
-                  {indicesINSEE.filter(i => i.code === "IPPAP").length > 1 && (
-                    <div className={`flex items-center mt-2 ${getVariationColor(
-                      parseFloat(calculateVariation(
-                        latestIPPAP.value,
-                        indicesINSEE.filter(i => i.code === "IPPAP")[1].value
-                      ))
-                    )}`}>
-                      {getVariationIcon(parseFloat(calculateVariation(
-                        latestIPPAP.value,
-                        indicesINSEE.filter(i => i.code === "IPPAP")[1].value
-                      )))}
+                  {indicesINSEE.filter((i) => i.code === "FMOA").length > 1 && (
+                    <div
+                      className={`flex items-center mt-2 ${getVariationColor(
+                        parseFloat(
+                          calculateVariation(
+                            latestFMOA.value,
+                            indicesINSEE.filter((i) => i.code === "FMOA")[1]
+                              .value
+                          )
+                        )
+                      )}`}
+                    >
+                      {getVariationIcon(
+                        parseFloat(
+                          calculateVariation(
+                            latestFMOA.value,
+                            indicesINSEE.filter((i) => i.code === "FMOA")[1]
+                              .value
+                          )
+                        )
+                      )}
                       <span className="ml-1 text-xs">
                         {calculateVariation(
-                          latestIPPAP.value,
-                          indicesINSEE.filter(i => i.code === "IPPAP")[1].value
-                        )}%
+                          latestFMOA.value,
+                          indicesINSEE.filter((i) => i.code === "FMOA")[1].value
+                        )}
+                        %
                       </span>
                     </div>
                   )}
@@ -279,34 +342,43 @@ export function IndicesINSEE() {
           {/* Graphique et tableau */}
           <Tabs value={selectedINSEECode} onValueChange={setSelectedINSEECode}>
             <TabsList className="grid w-full grid-cols-3 max-w-[300px]">
-              <TabsTrigger value="IPC">IPC</TabsTrigger>
               <TabsTrigger value="ICHT">ICHT</TabsTrigger>
-              <TabsTrigger value="IPPAP">IPPAP</TabsTrigger>
+              <TabsTrigger value="FMOA">FMOA</TabsTrigger>
+
+              <TabsTrigger value="CPI">CPI</TabsTrigger>
             </TabsList>
 
-            {["IPC", "ICHT", "IPPAP"].map((code) => (
-              <TabsContent key={code} value={code} className="space-y-4">
+            {[
+              { code: "CPI", label: "CPI" },
+              { code: "ICHT", label: "ICHT" },
+              { code: "FMOA", label: "FMOA" },
+            ].map((item) => (
+              <TabsContent
+                key={item.label}
+                value={item.code}
+                className="space-y-4"
+              >
                 {/* Graphique */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm flex items-center">
                       <Activity className="mr-2 h-4 w-4" />
-                      Évolution de l'indice {code}
+                      Évolution de l'indice {item.label}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={250}>
-                      <LineChart data={prepareChartData(code)}>
+                      <LineChart data={prepareChartData(item.code)}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="date" />
                         <YAxis />
                         <Tooltip />
                         <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="valeur" 
-                          stroke="#8884d8" 
-                          name={`Indice ${code}`}
+                        <Line
+                          type="monotone"
+                          dataKey="valeur"
+                          stroke="#8884d8"
+                          name={`Indice ${item.label}`}
                           strokeWidth={2}
                         />
                       </LineChart>
@@ -328,39 +400,65 @@ export function IndicesINSEE() {
                         <TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Valeur</TableHead>
-                          <TableHead>Base</TableHead>
+                          <TableHead>Type</TableHead>
                           <TableHead>Variation</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {getIndicesByCode(code).slice(0, 8).map((index, idx) => {
-                          const prevIndex = getIndicesByCode(code)[idx + 1];
-                          const variation = prevIndex 
-                            ? parseFloat(calculateVariation(index.value, prevIndex.value))
-                            : 0;
-                          
-                          return (
-                            <TableRow key={index.id} data-testid={`row-index-${index.id}`}>
-                              <TableCell className="text-sm">
-                                {format(new Date(index.date), "MMMM yyyy", { locale: fr })}
-                              </TableCell>
-                              <TableCell className="font-medium text-sm">
-                                {index.value}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="text-xs">Base {index.base}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                {prevIndex && (
-                                  <div className={`flex items-center ${getVariationColor(variation)}`}>
-                                    {getVariationIcon(variation)}
-                                    <span className="ml-1 text-sm">{variation.toFixed(2)}%</span>
-                                  </div>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
+                        {getIndicesByCode(item.code)
+                          .slice(0, 8)
+                          .map((index, idx) => {
+                            const prevIndex = getIndicesByCode(item.code)[
+                              idx + 1
+                            ];
+                            const variation = prevIndex
+                              ? parseFloat(
+                                  calculateVariation(
+                                    index.value,
+                                    prevIndex.value
+                                  )
+                                )
+                              : 0;
+
+                            return (
+                              <TableRow
+                                key={index.id}
+                                data-testid={`row-index-${index.id}`}
+                              >
+                                <TableCell className="text-sm">
+                                  {format(new Date(index.date), "MMMM yyyy", {
+                                    locale: fr,
+                                  })}
+                                </TableCell>
+                                <TableCell className="font-medium text-sm">
+                                  {index.value}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="text-xs">
+                                    {index.status === "R"
+                                      ? "Révisé"
+                                      : index.status === "P"
+                                      ? "Provisoire"
+                                      : "Arrêtée"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {prevIndex && (
+                                    <div
+                                      className={`flex items-center ${getVariationColor(
+                                        variation
+                                      )}`}
+                                    >
+                                      {getVariationIcon(variation)}
+                                      <span className="ml-1 text-sm">
+                                        {variation.toFixed(2)}%
+                                      </span>
+                                    </div>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                       </TableBody>
                     </Table>
                   </CardContent>

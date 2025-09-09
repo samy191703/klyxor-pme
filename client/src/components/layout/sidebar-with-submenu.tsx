@@ -69,14 +69,22 @@ const menuItems: MenuItem[] = [
       { label: "Dashboard", href: "/indexation-dashboard", icon: BarChart },
       { label: "Configuration", href: "/indexation-config", icon: Settings },
       { label: "Module autonome", href: "/indexations", icon: Calculator },
-      { label: "Historique & rapports", href: "/indexations", icon: TrendingUp },
+      {
+        label: "Historique & rapports",
+        href: "/indexations",
+        icon: TrendingUp,
+      },
     ],
   },
   {
     label: "Facturation",
     icon: CreditCard,
     children: [
-      { label: "Plans de facturation", href: "/billing-plans", icon: FileCheck },
+      {
+        label: "Plans de facturation",
+        href: "/billing-plans",
+        icon: FileCheck,
+      },
       { label: "Flux de paiement", href: "/payment-flows", icon: DollarSign },
       { label: "Blocages de paiement", href: "/payment-blocks", icon: Ban },
       { label: "Preuves de paiement", href: "/payment-proofs", icon: Receipt },
@@ -105,29 +113,29 @@ export default function SidebarWithSubmenu() {
   const { hasPermission, userRole } = usePermissions();
   // Toutes les sections sont toujours ouvertes
   const expandedSections = menuItems
-    .filter(item => item.children && item.children.length > 0)
-    .map(item => item.label);
+    .filter((item) => item.children && item.children.length > 0)
+    .map((item) => item.label);
 
   const isActiveSection = (item: MenuItem): boolean => {
     if (item.href === location) return true;
     if (item.children) {
-      return item.children.some(child => child.href === location);
+      return item.children.some((child) => child.href === location);
     }
     return false;
   };
 
   const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
-    return items.filter(item => {
+    return items.filter((item) => {
       // Check if user has permission for this item
       if (item.href && !hasPermission(item.href)) {
         return false;
       }
-      
+
       // Special handling for Admin section
-      if (item.label === 'Administration' && userRole !== 'admin') {
+      if (item.label === "Administration" && userRole !== "admin") {
         return false;
       }
-      
+
       // Filter children recursively
       if (item.children) {
         const filteredChildren = filterMenuItems(item.children);
@@ -136,13 +144,13 @@ export default function SidebarWithSubmenu() {
         }
         item.children = filteredChildren;
       }
-      
+
       return true;
     });
   };
-  
+
   const filteredMenuItems = filterMenuItems([...menuItems]);
-  
+
   const renderMenuItem = (item: MenuItem, level: number = 0) => {
     const Icon = item.icon;
     const hasChildren = item.children && item.children.length > 0;
@@ -156,7 +164,8 @@ export default function SidebarWithSubmenu() {
           <div
             className={cn(
               "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-              isSectionActive && "bg-[var(--klyxor-or)]/10 text-[var(--klyxor-bleu-nuit)]",
+              isSectionActive &&
+                "bg-[var(--klyxor-or)]/10 text-[var(--klyxor-bleu-nuit)]",
               level > 0 && "ml-4"
             )}
           >
@@ -166,11 +175,11 @@ export default function SidebarWithSubmenu() {
             </div>
             <ChevronDown className="w-4 h-4 text-gray-400" />
           </div>
-          
+
           {/* Toujours afficher les sous-menus */}
           {item.children && (
             <div className="mt-1 space-y-1">
-              {item.children.map(child => renderMenuItem(child, level + 1))}
+              {item.children.map((child) => renderMenuItem(child, level + 1))}
             </div>
           )}
         </div>
@@ -184,7 +193,8 @@ export default function SidebarWithSubmenu() {
         className={cn(
           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
           "hover:bg-gray-100 hover:text-[var(--klyxor-bleu-nuit)]",
-          isActive && "bg-[var(--klyxor-or)]/20 text-[var(--klyxor-bleu-nuit)] shadow-sm",
+          isActive &&
+            "bg-[var(--klyxor-or)]/20 text-[var(--klyxor-bleu-nuit)] shadow-sm",
           level > 0 && "ml-6 text-sm"
         )}
       >
@@ -198,22 +208,26 @@ export default function SidebarWithSubmenu() {
     <div className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-10 w-64 bg-white shadow-lg border-r border-gray-200 flex-col">
       {/* Logo/Header */}
       <div className="p-6 border-b border-gray-200 bg-gradient-to-br from-[var(--klyxor-bleu-nuit)]/5 via-[var(--klyxor-or)]/10 to-[var(--klyxor-bleu-nuit)]/5">
-        <div className="flex items-center space-x-3">
-          <img 
-            src="/klyxor-logo.jpeg" 
+        <Link to="/" className="flex items-center space-x-3">
+          <img
+            src="/klyxor-logo.jpeg"
             alt="KLYXOR Logo"
             className="w-12 h-12 object-contain rounded-lg shadow-lg"
           />
           <div>
-            <h1 className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">KLYXOR</h1>
-            <p className="text-xs text-[var(--klyxor-bleu-nuit)]/70">Contract Management</p>
+            <h1 className="text-xl font-bold text-[var(--klyxor-bleu-nuit)]">
+              KLYXOR
+            </h1>
+            <p className="text-xs text-[var(--klyxor-bleu-nuit)]/70">
+              Contract Management
+            </p>
           </div>
-        </div>
+        </Link>
       </div>
-      
+
       {/* Navigation Menu */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {filteredMenuItems.map(item => renderMenuItem(item))}
+        {filteredMenuItems.map((item) => renderMenuItem(item))}
       </nav>
 
       {/* Footer with user info and tutorial button */}
@@ -231,14 +245,16 @@ export default function SidebarWithSubmenu() {
           <HelpCircle className="w-4 h-4" />
           <span>Relancer le tutoriel</span>
         </button>
-        
+
         {/* User info */}
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[var(--klyxor-bleu-nuit)] flex items-center justify-center text-white text-sm font-medium">
             AD
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-[var(--klyxor-bleu-nuit)]">Admin</p>
+            <p className="text-sm font-medium text-[var(--klyxor-bleu-nuit)]">
+              Admin
+            </p>
             <p className="text-xs text-gray-500">admin@KLYXOR.fr</p>
           </div>
         </div>

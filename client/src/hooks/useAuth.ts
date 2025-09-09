@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 interface User {
   id: string;
   username: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   email: string;
   role: string;
@@ -29,7 +31,7 @@ export function useAuth(): AuthState {
     try {
       const response = await fetch("/api/auth/check");
       const data = await response.json();
-      
+
       setAuthState({
         isAuthenticated: data.authenticated,
         user: data.user || null,

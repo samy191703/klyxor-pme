@@ -4,7 +4,16 @@
  * Utilise Drizzle ORM avec PostgreSQL et validation Zod
  */
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, jsonb, decimal } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  varchar,
+  integer,
+  timestamp,
+  boolean,
+  jsonb,
+  decimal,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -13,7 +22,9 @@ import { z } from "zod";
  * Rôles: admin, manager, validator, business_unit_manager, contract_manager, finance_manager
  */
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
@@ -28,7 +39,9 @@ export const users = pgTable("users", {
  * Types: électricité, gaz, PPA renouvelables, maintenance infrastructure
  */
 export const contracts = pgTable("contracts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   number: text("number").notNull().unique(),
   title: text("title").notNull(),
   status: text("status").notNull().default("draft"), // draft, pending_validation, active, terminated, closed, archived
@@ -42,30 +55,45 @@ export const contracts = pgTable("contracts", {
   nextIndexationDate: timestamp("next_indexation_date"),
   indexationFormula: text("indexation_formula"), // 2.A, 2.B, 3, custom
   indexationFormulaId: varchar("indexation_formula_id"),
-  indexationBaseAmount: decimal("indexation_base_amount", { precision: 15, scale: 2 }),
-  indexationCurrentAmount: decimal("indexation_current_amount", { precision: 15, scale: 2 }),
+  indexationBaseAmount: decimal("indexation_base_amount", {
+    precision: 15,
+    scale: 2,
+  }),
+  indexationCurrentAmount: decimal("indexation_current_amount", {
+    precision: 15,
+    scale: 2,
+  }),
   indexationIndices: jsonb("indexation_indices"), // 📈 Indices de base {ICHT0: 120.5, FM0A0: 140.2, IPC0: 105.3}
   indexationCap: decimal("indexation_cap", { precision: 5, scale: 2 }), // 🔒 Cap/plafond en % - Limite la hausse max (ex: 10% max)
-  indexationThreshold: decimal("indexation_threshold", { precision: 5, scale: 2 }), // ⚠️ Seuil en % - Bloque si variation < seuil (ex: 2% min)
+  indexationThreshold: decimal("indexation_threshold", {
+    precision: 5,
+    scale: 2,
+  }), // ⚠️ Seuil en % - Bloque si variation < seuil (ex: 2% min)
   lastIndexationDate: timestamp("last_indexation_date"),
   // 🎯 Nouveaux champs V3 pour indexation avancée ENGIE
   // Découplage des dates (conf. document ENGIE p.12)
   indexTakingDate: timestamp("index_taking_date"), // Date de prise d'indice (peut différer de la date d'application)
   indexTakingDateRule: text("index_taking_date_rule"), // Règle automatique: "N-2" = indices 2 mois avant, "first_day_month" = 1er du mois
-  
+
   // Mode de calcul du montant de base
   calculationMode: text("calculation_mode"), // "P0" = toujours base initiale, "Pn-1" = dernière valeur indexée
   parkCode: text("park_code"), // Code parc ENGIE pour identification unique (ex: "AUX89", "FIG83")
-  
+
   // 📊 Gestion des paliers tarifaires (année 6 et 11 selon contrats ENGIE)
   tariffTiers: jsonb("tariff_tiers"), // Structure: {year6: {baseAmount: 150000, baseIndices: {ICHT: 125}}, year11: {...}}
   lastTierChangeDate: timestamp("last_tier_change_date"), // Date du dernier changement de palier
   lastTierChangeYear: integer("last_tier_change_year"), // Année du dernier palier activé (6 ou 11)
   createdBy: varchar("created_by").notNull(),
   validatedBy: varchar("validated_by"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
-  hasRequiredDocuments: boolean("has_required_documents").notNull().default(false),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
+  hasRequiredDocuments: boolean("has_required_documents")
+    .notNull()
+    .default(false),
 });
 
 /**
@@ -73,7 +101,9 @@ export const contracts = pgTable("contracts", {
  * Types: contrat, indexation, avenant, résiliation, montant manuel
  */
 export const validationRequests = pgTable("validation_requests", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   type: text("type").notNull(), // contract, indexation, amendment, termination, manual_amount
   referenceId: varchar("reference_id").notNull(),
   reference: text("reference").notNull(),
@@ -82,7 +112,9 @@ export const validationRequests = pgTable("validation_requests", {
   assignedTo: varchar("assigned_to").notNull(),
   status: text("status").notNull().default("pending"), // pending, approved, rejected, redirected
   reason: text("reason"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
   age: integer("age").notNull().default(0), // in days
 });
 
@@ -91,7 +123,9 @@ export const validationRequests = pgTable("validation_requests", {
  * Types: ICC, ILC, IRL, BT01, FM0A, formules personnalisées
  */
 export const indexationFormulas = pgTable("indexation_formulas", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
   expression: text("expression").notNull(),
   variables: text().array().notNull(), // ["ICHT", "FMOA", "CPI", etc.]
@@ -100,8 +134,12 @@ export const indexationFormulas = pgTable("indexation_formulas", {
   formula: text("formula"), // Formule complète
   calculationMode: text("calculation_mode"), // P0, Pn-1
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 /**
@@ -109,7 +147,9 @@ export const indexationFormulas = pgTable("indexation_formulas", {
  * Gestion des indices provisoires et révisés avec historique complet
  */
 export const indexValues = pgTable("index_values", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   indexCode: text("index_code").notNull(), // ICHT, FM0A, CPI, ICC, ILC, IRL, BT01
   indexName: text("index_name"),
   source: text("source").notNull(), // INSEE, Eurostat, Banque de France
@@ -122,8 +162,12 @@ export const indexValues = pgTable("index_values", {
   variation: decimal("variation", { precision: 5, scale: 2 }), // Variation en %
   isLatest: boolean("is_latest").notNull().default(true),
   metadata: jsonb("metadata"), // Informations supplémentaires
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 /**
@@ -131,7 +175,9 @@ export const indexValues = pgTable("index_values", {
  * Créées par le scheduler automatique et en attente de validation
  */
 export const indexationProposals = pgTable("indexation_proposals", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   contractId: varchar("contract_id").notNull(),
   contractNumber: text("contract_number").notNull(),
   contractTitle: text("contract_title").notNull(),
@@ -158,8 +204,12 @@ export const indexationProposals = pgTable("indexation_proposals", {
   errorMessage: text("error_message"),
   priority: integer("priority").notNull().default(5), // 1=urgent, 5=normal
   createdBy: text("created_by").notNull().default("scheduler"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 /**
@@ -167,7 +217,9 @@ export const indexationProposals = pgTable("indexation_proposals", {
  * Fréquences: annuelle, trimestrielle, semestrielle, mensuelle
  */
 export const indexations = pgTable("indexations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   contractId: varchar("contract_id").notNull(),
   contractNumber: text("contract_number").notNull(),
   contractTitle: text("contract_title").notNull(),
@@ -195,7 +247,10 @@ export const indexations = pgTable("indexations", {
   previousAmount: decimal("previous_amount", { precision: 15, scale: 2 }),
   proposedAmount: decimal("proposed_amount", { precision: 15, scale: 2 }),
   deltaAmount: decimal("delta_amount", { precision: 15, scale: 2 }).notNull(),
-  deltaPercentage: decimal("delta_percentage", { precision: 5, scale: 2 }).notNull(),
+  deltaPercentage: decimal("delta_percentage", {
+    precision: 5,
+    scale: 2,
+  }).notNull(),
   // Règles appliquées
   thresholdApplied: boolean("threshold_applied").default(false),
   thresholdBlocked: boolean("threshold_blocked").default(false), // Indexation bloquée car < seuil
@@ -210,8 +265,12 @@ export const indexations = pgTable("indexations", {
   validatedBy: varchar("validated_by"),
   validatedAt: timestamp("validated_at"),
   rejectionReason: text("rejection_reason"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 /**
@@ -219,7 +278,9 @@ export const indexations = pgTable("indexations", {
  * Types: révision tarifaire, changement de périmètre, prolongation, indexation
  */
 export const amendments = pgTable("amendments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   contractId: varchar("contract_id").notNull(),
   number: text("number").notNull().unique(), // AVN-001, AVN-002, etc.
   type: text("type").notNull(), // price_revision, scope_change, duration_extension, indexation_change
@@ -233,8 +294,12 @@ export const amendments = pgTable("amendments", {
   requestedBy: varchar("requested_by").notNull(),
   approvedBy: varchar("approved_by"),
   signedDate: timestamp("signed_date"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 /**
@@ -242,7 +307,9 @@ export const amendments = pgTable("amendments", {
  * Types: non-renouvellement, accord mutuel, rupture, autre
  */
 export const terminations = pgTable("terminations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   contractId: varchar("contract_id").notNull(),
   number: text("number").notNull().unique(), // RE-2025-001, etc.
   reason: text("reason").notNull(),
@@ -250,7 +317,10 @@ export const terminations = pgTable("terminations", {
   effectiveDate: timestamp("effective_date").notNull(),
   status: text("status").notNull().default("draft"), // draft, pending_validation, validated, rejected, executed
   noticeDate: timestamp("notice_date"),
-  compensationAmount: decimal("compensation_amount", { precision: 15, scale: 2 }),
+  compensationAmount: decimal("compensation_amount", {
+    precision: 15,
+    scale: 2,
+  }),
   description: text("description"),
   requestedBy: varchar("requested_by").notNull(),
   validatedBy: varchar("validated_by"),
@@ -258,8 +328,12 @@ export const terminations = pgTable("terminations", {
   executedBy: varchar("executed_by"),
   executedAt: timestamp("executed_at"),
   rejectionReason: text("rejection_reason"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 /**
@@ -267,7 +341,9 @@ export const terminations = pgTable("terminations", {
  * Types: mensuelle, trimestrielle, régularisation, clôture
  */
 export const invoices = pgTable("invoices", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   contractId: varchar("contract_id").notNull(),
   invoiceNumber: text("invoice_number").notNull().unique(),
   type: text("type").notNull(), // monthly, quarterly, regularization, closing
@@ -290,20 +366,31 @@ export const invoices = pgTable("invoices", {
   adjustmentAmount: decimal("adjustment_amount", { precision: 15, scale: 2 }),
   penaltyAmount: decimal("penalty_amount", { precision: 15, scale: 2 }),
   depositReturn: decimal("deposit_return", { precision: 15, scale: 2 }),
-  consumptionEstimated: decimal("consumption_estimated", { precision: 15, scale: 2 }),
+  consumptionEstimated: decimal("consumption_estimated", {
+    precision: 15,
+    scale: 2,
+  }),
   consumptionActual: decimal("consumption_actual", { precision: 15, scale: 2 }),
   unitPrice: decimal("unit_price", { precision: 10, scale: 4 }),
   isFinal: boolean("is_final").default(false),
   generatedAt: timestamp("generated_at"),
   generatedBy: varchar("generated_by"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Audit logs table
 export const auditLogs = pgTable("audit_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  timestamp: timestamp("timestamp").notNull().default(sql`now()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  timestamp: timestamp("timestamp")
+    .notNull()
+    .default(sql`now()`),
   user: text("user").notNull(),
   action: text("action").notNull(),
   fields: text("fields"),
@@ -313,12 +400,16 @@ export const auditLogs = pgTable("audit_logs", {
   contractNumber: text("contract_number"),
   description: text("description"),
   ipAddress: text("ip_address"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Deadlines table
 export const deadlines = pgTable("deadlines", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   contractId: varchar("contract_id").notNull(),
   contractNumber: text("contract_number").notNull(),
   type: text("type").notNull(), // end_contract, anniversary, amendment
@@ -330,8 +421,12 @@ export const deadlines = pgTable("deadlines", {
 
 // Alerts table
 export const alerts = pgTable("alerts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  timestamp: timestamp("timestamp").notNull().default(sql`now()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  timestamp: timestamp("timestamp")
+    .notNull()
+    .default(sql`now()`),
   type: text("type").notNull(), // workflow, deadline, system, error
   severity: text("severity").notNull(), // critical, warning, info
   category: text("category"), // sap_error, workflow_delay, deadline, validation
@@ -343,12 +438,16 @@ export const alerts = pgTable("alerts", {
   channel: text("channel").notNull().default("in-app"), // in-app, email, sms
   userId: varchar("user_id"),
   referenceId: varchar("reference_id"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Activity logs table
 export const activityLogs = pgTable("activity_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   userName: text("user_name").notNull(),
   action: text("action").notNull(),
@@ -356,12 +455,16 @@ export const activityLogs = pgTable("activity_logs", {
   entityId: varchar("entity_id").notNull(),
   entityReference: text("entity_reference").notNull(),
   details: text("details"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Import logs table
 export const importLogs = pgTable("import_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   fileName: text("file_name").notNull(),
   author: text("author").notNull(),
   status: text("status").notNull(), // success, error, partial
@@ -369,31 +472,43 @@ export const importLogs = pgTable("import_logs", {
   successRows: integer("success_rows").notNull(),
   errorRows: integer("error_rows").notNull(),
   errorReport: text("error_report"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Payment blocks table
 export const paymentBlocks = pgTable("payment_blocks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   flowId: varchar("flow_id").notNull(),
   contractId: varchar("contract_id").notNull(),
   contractName: text("contract_name").notNull(),
   amountBefore: decimal("amount_before", { precision: 15, scale: 2 }).notNull(),
   amountAfter: decimal("amount_after", { precision: 15, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("EUR"),
-  blockDate: timestamp("block_date").notNull().default(sql`now()`),
+  blockDate: timestamp("block_date")
+    .notNull()
+    .default(sql`now()`),
   modifiedBy: varchar("modified_by").notNull(),
   decisionMaker: varchar("decision_maker"),
   decisionStatus: text("decision_status").notNull().default("to_validate"), // to_validate, validated, rejected
   reason: text("reason").notNull(),
   dueDate: timestamp("due_date").notNull(),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Payment proofs table
 export const paymentProofs = pgTable("payment_proofs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   paymentId: varchar("payment_id").notNull(),
   invoiceId: varchar("invoice_id").notNull(),
   invoiceNumber: text("invoice_number").notNull(),
@@ -408,13 +523,19 @@ export const paymentProofs = pgTable("payment_proofs", {
   sentTo: text().array(),
   contractId: varchar("contract_id").notNull(),
   contractName: text("contract_name").notNull(),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Documents table (GED)
 export const documents = pgTable("documents", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   contractId: varchar("contract_id"),
   name: text("name").notNull(),
   type: text("type").notNull(), // contract, amendment, invoice, attestation, other
@@ -427,23 +548,33 @@ export const documents = pgTable("documents", {
   status: text("status").notNull().default("active"), // active, archived, deleted
   version: integer("version").notNull().default(1),
   uploadedBy: varchar("uploaded_by").notNull(),
-  uploadedAt: timestamp("uploaded_at").notNull().default(sql`now()`),
+  uploadedAt: timestamp("uploaded_at")
+    .notNull()
+    .default(sql`now()`),
   lastAccessedAt: timestamp("last_accessed_at"),
   isConfidential: boolean("is_confidential").notNull().default(false),
   retentionDate: timestamp("retention_date"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Export jobs table
 export const exportJobs = pgTable("export_jobs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   domain: text("domain").notNull(),
   format: text("format").notNull(), // xlsx, csv
   status: text("status").notNull().default("pending"), // pending, in_progress, completed, failed
   progress: integer("progress").notNull().default(0),
-  requestedAt: timestamp("requested_at").notNull().default(sql`now()`),
+  requestedAt: timestamp("requested_at")
+    .notNull()
+    .default(sql`now()`),
   completedAt: timestamp("completed_at"),
   requestedBy: varchar("requested_by").notNull(),
   filters: jsonb("filters"),
@@ -453,12 +584,16 @@ export const exportJobs = pgTable("export_jobs", {
   fileUrl: text("file_url"),
   traceId: text("trace_id").notNull(),
   errorMessage: text("error_message"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Security events table
 export const securityEvents = pgTable("security_events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   eventType: text("event_type").notNull(), // login, logout, access_denied, data_export, sensitive_access
   userId: varchar("user_id"),
   userName: text("user_name"),
@@ -470,12 +605,16 @@ export const securityEvents = pgTable("security_events", {
   reason: text("reason"),
   metadata: jsonb("metadata"),
   severity: text("severity").notNull().default("info"), // info, warning, critical
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Reminders table
 export const reminders = pgTable("reminders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   entityType: text("entity_type").notNull(), // contract, payment, validation, deadline
   entityId: varchar("entity_id").notNull(),
   reminderType: text("reminder_type").notNull(), // email, sms, in_app
@@ -489,26 +628,38 @@ export const reminders = pgTable("reminders", {
   priority: text("priority").notNull().default("normal"), // low, normal, high, critical
   retryCount: integer("retry_count").notNull().default(0),
   errorMessage: text("error_message"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Workflow definitions table
 export const workflowDefinitions = pgTable("workflow_definitions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
   entityType: text("entity_type").notNull(), // contract, payment, indexation, amendment
   steps: jsonb("steps").notNull(), // array of workflow steps
   isActive: boolean("is_active").notNull().default(true),
   createdBy: varchar("created_by").notNull(),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Workflow instances table
 export const workflowInstances = pgTable("workflow_instances", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   definitionId: varchar("definition_id").notNull(),
   entityType: text("entity_type").notNull(),
   entityId: varchar("entity_id").notNull(),
@@ -516,10 +667,16 @@ export const workflowInstances = pgTable("workflow_instances", {
   status: text("status").notNull().default("in_progress"), // in_progress, completed, cancelled, failed
   data: jsonb("data"),
   startedBy: varchar("started_by").notNull(),
-  startedAt: timestamp("started_at").notNull().default(sql`now()`),
+  startedAt: timestamp("started_at")
+    .notNull()
+    .default(sql`now()`),
   completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Create schemas
@@ -533,13 +690,17 @@ export const insertContractSchema = createInsertSchema(contracts).omit({
   updatedAt: true,
 });
 
-export const insertValidationRequestSchema = createInsertSchema(validationRequests).omit({
+export const insertValidationRequestSchema = createInsertSchema(
+  validationRequests
+).omit({
   id: true,
   createdAt: true,
   age: true,
 });
 
-export const insertIndexationFormulaSchema = createInsertSchema(indexationFormulas).omit({
+export const insertIndexationFormulaSchema = createInsertSchema(
+  indexationFormulas
+).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -551,7 +712,9 @@ export const insertIndexValueSchema = createInsertSchema(indexValues).omit({
   updatedAt: true,
 });
 
-export const insertIndexationProposalSchema = createInsertSchema(indexationProposals).omit({
+export const insertIndexationProposalSchema = createInsertSchema(
+  indexationProposals
+).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -625,7 +788,9 @@ export const insertExportJobSchema = createInsertSchema(exportJobs).omit({
   requestedAt: true,
 });
 
-export const insertSecurityEventSchema = createInsertSchema(securityEvents).omit({
+export const insertSecurityEventSchema = createInsertSchema(
+  securityEvents
+).omit({
   id: true,
   createdAt: true,
 });
@@ -636,13 +801,17 @@ export const insertReminderSchema = createInsertSchema(reminders).omit({
   updatedAt: true,
 });
 
-export const insertWorkflowDefinitionSchema = createInsertSchema(workflowDefinitions).omit({
+export const insertWorkflowDefinitionSchema = createInsertSchema(
+  workflowDefinitions
+).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertWorkflowInstanceSchema = createInsertSchema(workflowInstances).omit({
+export const insertWorkflowInstanceSchema = createInsertSchema(
+  workflowInstances
+).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -655,11 +824,17 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Contract = typeof contracts.$inferSelect;
 export type InsertContract = z.infer<typeof insertContractSchema>;
 export type IndexationProposal = typeof indexationProposals.$inferSelect;
-export type InsertIndexationProposal = z.infer<typeof insertIndexationProposalSchema>;
+export type InsertIndexationProposal = z.infer<
+  typeof insertIndexationProposalSchema
+>;
 export type ValidationRequest = typeof validationRequests.$inferSelect;
-export type InsertValidationRequest = z.infer<typeof insertValidationRequestSchema>;
+export type InsertValidationRequest = z.infer<
+  typeof insertValidationRequestSchema
+>;
 export type IndexationFormula = typeof indexationFormulas.$inferSelect;
-export type InsertIndexationFormula = z.infer<typeof insertIndexationFormulaSchema>;
+export type InsertIndexationFormula = z.infer<
+  typeof insertIndexationFormulaSchema
+>;
 export type IndexValue = typeof indexValues.$inferSelect;
 export type InsertIndexValue = z.infer<typeof insertIndexValueSchema>;
 export type Indexation = typeof indexations.$inferSelect;
@@ -691,34 +866,49 @@ export type InsertSecurityEvent = z.infer<typeof insertSecurityEventSchema>;
 export type Reminder = typeof reminders.$inferSelect;
 export type InsertReminder = z.infer<typeof insertReminderSchema>;
 export type WorkflowDefinition = typeof workflowDefinitions.$inferSelect;
-export type InsertWorkflowDefinition = z.infer<typeof insertWorkflowDefinitionSchema>;
+export type InsertWorkflowDefinition = z.infer<
+  typeof insertWorkflowDefinitionSchema
+>;
 export type WorkflowInstance = typeof workflowInstances.$inferSelect;
-export type InsertWorkflowInstance = z.infer<typeof insertWorkflowInstanceSchema>;
+export type InsertWorkflowInstance = z.infer<
+  typeof insertWorkflowInstanceSchema
+>;
 
 /**
  * Table des préférences de notification utilisateur
  * Gère comment chaque utilisateur souhaite recevoir ses alertes
  */
 export const notificationPreferences = pgTable("notification_preferences", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   channel: text("channel").notNull(), // email, interface, teams
   alertType: text("alert_type").notNull(), // deadline, validation, workflow, sap_error, amount_change
   enabled: boolean("enabled").notNull().default(true),
   threshold: decimal("threshold", { precision: 10, scale: 2 }), // Pour amount_change (pourcentage)
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Schémas et types pour notificationPreferences
-export const insertNotificationPreferenceSchema = createInsertSchema(notificationPreferences).omit({ 
+export const insertNotificationPreferenceSchema = createInsertSchema(
+  notificationPreferences
+).omit({
   id: true,
-  createdAt: true, 
-  updatedAt: true 
+  createdAt: true,
+  updatedAt: true,
 });
 
-export type InsertNotificationPreference = z.infer<typeof insertNotificationPreferenceSchema>;
-export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference = z.infer<
+  typeof insertNotificationPreferenceSchema
+>;
+export type NotificationPreference =
+  typeof notificationPreferences.$inferSelect;
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -792,7 +982,9 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
  * Stockage des indices IPC, ICHT, IPPAP, etc.
  */
 export const economicIndices = pgTable("economic_indices", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   seriesId: text("series_id").notNull(), // ID de la série INSEE (ex: 001763852)
   code: text("code").notNull(), // Code court (IPC, ICHT, IPPAP)
   name: text("name").notNull(), // Nom complet de l'indice
@@ -802,15 +994,22 @@ export const economicIndices = pgTable("economic_indices", {
   month: integer("month").notNull(), // Mois (1-12)
   base: text("base").notNull(), // Base de l'indice (2015, 2008, etc.)
   source: text("source").notNull().default("INSEE"), // Source (INSEE, Eurostat, etc.)
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  status: text("status").notNull().default("R"), // Statut (R = Révisé, P = Provisoire, A = Arrêté)
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Schémas et types pour economicIndices
-export const insertEconomicIndexSchema = createInsertSchema(economicIndices).omit({ 
+export const insertEconomicIndexSchema = createInsertSchema(
+  economicIndices
+).omit({
   id: true,
-  createdAt: true, 
-  updatedAt: true 
+  createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertEconomicIndex = z.infer<typeof insertEconomicIndexSchema>;
@@ -821,7 +1020,9 @@ export type SelectEconomicIndex = typeof economicIndices.$inferSelect;
  * Gère les validateurs principaux et suppléants par code parc et business unit
  */
 export const validationAssignments = pgTable("validation_assignments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   parkCode: text("park_code").notNull().unique(), // Code du parc (ex: AUX89, FIG83)
   businessUnit: text("business_unit").notNull(), // Business unit (ex: ENGIE Green)
   mainValidatorId: varchar("main_validator_id").notNull(), // ID du validateur principal
@@ -832,57 +1033,80 @@ export const validationAssignments = pgTable("validation_assignments", {
   autoReminder: boolean("auto_reminder").notNull().default(true), // Relances automatiques
   reminderDelay: integer("reminder_delay").notNull().default(24), // Délai en heures avant rappel
   escalationDelay: integer("escalation_delay").notNull().default(48), // Délai avant escalade
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Schémas et types pour validationAssignments
-export const insertValidationAssignmentSchema = createInsertSchema(validationAssignments).omit({ 
+export const insertValidationAssignmentSchema = createInsertSchema(
+  validationAssignments
+).omit({
   id: true,
-  createdAt: true, 
-  updatedAt: true 
+  createdAt: true,
+  updatedAt: true,
 });
 
-export type InsertValidationAssignment = z.infer<typeof insertValidationAssignmentSchema>;
-export type SelectValidationAssignment = typeof validationAssignments.$inferSelect;
+export type InsertValidationAssignment = z.infer<
+  typeof insertValidationAssignmentSchema
+>;
+export type SelectValidationAssignment =
+  typeof validationAssignments.$inferSelect;
 
 /**
  * Table des fréquences et périmètres d'indexation
  * Configure la fréquence et le périmètre d'indexation par contrat
  */
 export const indexationFrequencies = pgTable("indexation_frequencies", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   contractCode: text("contract_code").notNull().unique(), // Code du contrat (ex: AUX89, FIG83)
   frequency: text("frequency").notNull(), // Annuelle, Trimestrielle, Mensuelle, Semestrielle
   scope: text("scope").notNull(), // Maintenance complète, Production + Maintenance, Opérations + Énergie, etc.
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Schémas et types pour indexationFrequencies
-export const insertIndexationFrequencySchema = createInsertSchema(indexationFrequencies).omit({ 
+export const insertIndexationFrequencySchema = createInsertSchema(
+  indexationFrequencies
+).omit({
   id: true,
-  createdAt: true, 
-  updatedAt: true 
+  createdAt: true,
+  updatedAt: true,
 });
 
-export type InsertIndexationFrequency = z.infer<typeof insertIndexationFrequencySchema>;
-export type SelectIndexationFrequency = typeof indexationFrequencies.$inferSelect;
+export type InsertIndexationFrequency = z.infer<
+  typeof insertIndexationFrequencySchema
+>;
+export type SelectIndexationFrequency =
+  typeof indexationFrequencies.$inferSelect;
 
 // Relations pour validationAssignments
-export const validationAssignmentsRelations = relations(validationAssignments, ({ one }) => ({
-  mainValidator: one(users, {
-    fields: [validationAssignments.mainValidatorId],
-    references: [users.id],
-    relationName: "mainValidator",
-  }),
-  backupValidator: one(users, {
-    fields: [validationAssignments.backupValidatorId],
-    references: [users.id],
-    relationName: "backupValidator",
-  }),
-}));
+export const validationAssignmentsRelations = relations(
+  validationAssignments,
+  ({ one }) => ({
+    mainValidator: one(users, {
+      fields: [validationAssignments.mainValidatorId],
+      references: [users.id],
+      relationName: "mainValidator",
+    }),
+    backupValidator: one(users, {
+      fields: [validationAssignments.backupValidatorId],
+      references: [users.id],
+      relationName: "backupValidator",
+    }),
+  })
+);
 
 export const terminationsRelations = relations(terminations, ({ one }) => ({
   contract: one(contracts, {
@@ -911,7 +1135,9 @@ export const terminationsRelations = relations(terminations, ({ one }) => ({
  * Gère la synchronisation bidirectionnelle avec SAP
  */
 export const sapSynchronizations = pgTable("sap_synchronizations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   contractId: varchar("contract_id").notNull(),
   sapOrderNumber: text("sap_order_number"), // Numéro de commande SAP
   action: text("action").notNull(), // create, update, terminate
@@ -923,8 +1149,12 @@ export const sapSynchronizations = pgTable("sap_synchronizations", {
   retryCount: integer("retry_count").notNull().default(0),
   maxRetries: integer("max_retries").notNull().default(3),
   processedAt: timestamp("processed_at"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 /**
@@ -932,16 +1162,22 @@ export const sapSynchronizations = pgTable("sap_synchronizations", {
  * Gère les rappels et escalades pour les validations
  */
 export const validationReminders = pgTable("validation_reminders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   validationRequestId: varchar("validation_request_id").notNull(),
   type: text("type").notNull(), // reminder, escalation
   level: integer("level").notNull().default(1), // Niveau de relance (1, 2, 3...)
   sentTo: text("sent_to").notNull(), // Email ou ID utilisateur
-  sentAt: timestamp("sent_at").notNull().default(sql`now()`),
+  sentAt: timestamp("sent_at")
+    .notNull()
+    .default(sql`now()`),
   nextReminderAt: timestamp("next_reminder_at"),
   status: text("status").notNull().default("sent"), // sent, acknowledged, escalated
   message: text("message"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 /**
@@ -949,7 +1185,9 @@ export const validationReminders = pgTable("validation_reminders", {
  * Configure les transitions automatiques du cycle de vie
  */
 export const stateTransitionRules = pgTable("state_transition_rules", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   fromState: text("from_state").notNull(),
   toState: text("to_state").notNull(),
   condition: text("condition").notNull(), // validation_approved, contract_expired, payment_completed
@@ -958,37 +1196,53 @@ export const stateTransitionRules = pgTable("state_transition_rules", {
   validatorRole: text("validator_role"), // Role requis pour la validation
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Schémas et types pour sapSynchronizations
-export const insertSapSynchronizationSchema = createInsertSchema(sapSynchronizations).omit({ 
+export const insertSapSynchronizationSchema = createInsertSchema(
+  sapSynchronizations
+).omit({
   id: true,
-  createdAt: true, 
-  updatedAt: true 
+  createdAt: true,
+  updatedAt: true,
 });
 
-export type InsertSapSynchronization = z.infer<typeof insertSapSynchronizationSchema>;
+export type InsertSapSynchronization = z.infer<
+  typeof insertSapSynchronizationSchema
+>;
 export type SapSynchronization = typeof sapSynchronizations.$inferSelect;
 
 // Schémas et types pour validationReminders
-export const insertValidationReminderSchema = createInsertSchema(validationReminders).omit({ 
+export const insertValidationReminderSchema = createInsertSchema(
+  validationReminders
+).omit({
   id: true,
-  createdAt: true 
+  createdAt: true,
 });
 
-export type InsertValidationReminder = z.infer<typeof insertValidationReminderSchema>;
+export type InsertValidationReminder = z.infer<
+  typeof insertValidationReminderSchema
+>;
 export type ValidationReminder = typeof validationReminders.$inferSelect;
 
 // Schémas et types pour stateTransitionRules
-export const insertStateTransitionRuleSchema = createInsertSchema(stateTransitionRules).omit({ 
+export const insertStateTransitionRuleSchema = createInsertSchema(
+  stateTransitionRules
+).omit({
   id: true,
-  createdAt: true, 
-  updatedAt: true 
+  createdAt: true,
+  updatedAt: true,
 });
 
-export type InsertStateTransitionRule = z.infer<typeof insertStateTransitionRuleSchema>;
+export type InsertStateTransitionRule = z.infer<
+  typeof insertStateTransitionRuleSchema
+>;
 export type StateTransitionRule = typeof stateTransitionRules.$inferSelect;
 
 /**
@@ -996,7 +1250,9 @@ export type StateTransitionRule = typeof stateTransitionRules.$inferSelect;
  * Permet le partage contextuel de code avec preview et syntax highlighting
  */
 export const codeSnippets = pgTable("code_snippets", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
   description: text("description"),
   code: text("code").notNull(),
@@ -1009,8 +1265,12 @@ export const codeSnippets = pgTable("code_snippets", {
   sharedWith: text().array(), // Liste des user IDs avec qui c'est partagé
   viewCount: integer("view_count").notNull().default(0),
   copyCount: integer("copy_count").notNull().default(0),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+  createdAt: timestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`now()`),
 });
 
 // Relations pour codeSnippets
@@ -1023,12 +1283,12 @@ export const codeSnippetsRelations = relations(codeSnippets, ({ one }) => ({
 }));
 
 // Schémas et types pour codeSnippets
-export const insertCodeSnippetSchema = createInsertSchema(codeSnippets).omit({ 
+export const insertCodeSnippetSchema = createInsertSchema(codeSnippets).omit({
   id: true,
   viewCount: true,
   copyCount: true,
-  createdAt: true, 
-  updatedAt: true 
+  createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertCodeSnippet = z.infer<typeof insertCodeSnippetSchema>;
