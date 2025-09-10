@@ -74,6 +74,39 @@ import { useAIHelp } from "@/components/widgets/ai-help-context";
 import { ConfirmModal } from "@/components/common/confirm-modal";
 import Header from "@/components/layout/header";
 
+const CONTRACT_TYPES = [
+  "electricity",
+  "gas",
+  "renewable_ppa",
+  "maintenance",
+  "OMSA",
+  "LTSA",
+  "OMGC",
+] as const;
+
+const BUSINESS_UNITS = [
+  "ENGIE Solutions France",
+  "ENGIE Green",
+  "ENGIE Flex",
+  "ENGIE Global Energy Management",
+] as const;
+
+const BILLING_PERIODICITY_MAP: Record<string, any> = {
+  monthly: "mensuelle",
+  quarterly: "trimestrielle",
+  "semi-annual": "semestrielle",
+  annual: "annuelle",
+} as any;
+
+const TECHNOLOGY_MAP: Record<string, "eolien" | "PV"> = {
+  Éolien: "eolien",
+  Eolien: "eolien",
+  Photovoltaïque: "PV",
+  Photovoltaique: "PV",
+};
+
+const PAYMENT_TYPES = ["virement", "prelevement", "cheque"] as const;
+
 export default function Contracts() {
   const { canCreateContract, canExportData } = usePermissions();
   const { setPage } = useAIHelp();
@@ -256,14 +289,22 @@ export default function Contracts() {
     closed: contracts.filter((c) => c.status === "closed").length,
   };
 
+  // Filtrage sécurisé et insensible à la casse
   const filteredContracts = contracts.filter((contract) => {
     const matchesSearch =
       searchTerm === "" ||
-      contract.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contract.title.toLowerCase().includes(searchTerm.toLowerCase());
+      (contract.number || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (contract.title || "").toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStatus =
       statusFilter === "all" || contract.status === statusFilter;
-    const matchesType = typeFilter === "all" || contract.type === typeFilter;
+
+    const matchesType =
+      typeFilter === "all" ||
+      (contract.type || "").toLowerCase() === typeFilter.toLowerCase();
+
     const matchesBU =
       businessUnitFilter === "all" ||
       contract.businessUnit === businessUnitFilter;
@@ -330,30 +371,35 @@ export default function Contracts() {
     new Set(contracts.map((c) => c.businessUnit))
   );
 
-  // Types de contrats pour la compatibilité
-  const contractTypes = [
-    "OMSA",
-    "Bail",
-    "LTSA",
-    "OMGC",
-    "PPA",
-    "Distribution",
-    "Trading",
-  ];
+  // Types de contrats exposés au frontend — alignés strictement avec le backend
+  const contractTypes = [...CONTRACT_TYPES];
 
-  // Définitions détaillées des types de contrats
+  // Définitions détaillées (labels + flags) basées sur les types backend
   const contractTypeDefinitions = [
+    {
+      value: "electricity",
+      label: "Électricité",
+      hasFixedAmount: true,
+      hasTechnology: true,
+    },
+    { value: "gas", label: "Gaz", hasFixedAmount: true, hasTechnology: false },
+    {
+      value: "renewable_ppa",
+      label: "PPA (Renewable)",
+      hasFixedAmount: true,
+      hasTechnology: true,
+    },
+    {
+      value: "maintenance",
+      label: "Maintenance",
+      hasFixedAmount: true,
+      hasTechnology: false,
+    },
     {
       value: "OMSA",
       label: "OMSA - Services de Maintenance",
       hasFixedAmount: true,
       hasTechnology: true,
-    },
-    {
-      value: "Bail",
-      label: "Bail - Location/Leasing",
-      hasFixedAmount: false,
-      hasTechnology: false,
     },
     {
       value: "LTSA",
@@ -369,24 +415,6 @@ export default function Contracts() {
       hasTechnology: false,
       hasMaintainer: true,
     },
-    {
-      value: "PPA",
-      label: "PPA - Power Purchase Agreement",
-      hasFixedAmount: true,
-      hasTechnology: true,
-    },
-    {
-      value: "Distribution",
-      label: "Distribution Réseau",
-      hasFixedAmount: true,
-      hasTechnology: false,
-    },
-    {
-      value: "Trading",
-      label: "Trading Énergie",
-      hasFixedAmount: true,
-      hasTechnology: false,
-    },
   ];
 
   const technologies = [
@@ -397,8 +425,6 @@ export default function Contracts() {
     "Cogénération",
     "Géothermie",
   ];
-
-  // Les formules d'indexation sont maintenant récupérées depuis l'API
 
   const billingPeriods = [
     { value: "monthly", label: "Mensuelle" },
@@ -413,35 +439,162 @@ export default function Contracts() {
     setWizardData({});
   };
 
+  const toNum = (v: any) => {
+    if (v === null || v === undefined || v === "") return undefined;
+    const n =
+      typeof v === "number" ? v : parseFloat(String(v).replace(",", "."));
+    return isNaN(n) ? undefined : n;
+  };
+
+  const buildZodContractPayload = (wd: any, indexationFormulas: any[]) => {
+    const fixed = toNum(wd.fixedAmount) ?? 0;
+    const variable = toNum(wd.variableAmount) ?? 0;
+    const amount = fixed + variable; // number
+
+    const businessUnit = wd.businessUnit ?? wd.bu;
+
+    const type = wd.type;
+
+    const rawTech = wd.technology;
+    const technology =
+      rawTech && TECHNOLOGY_MAP[rawTech] ? TECHNOLOGY_MAP[rawTech] : undefined;
+
+    const billingPeriodicity =
+      wd.billingPeriodicity ??
+      (wd.billingPeriod && BILLING_PERIODICITY_MAP[wd.billingPeriod]);
+
+    const paymentType = PAYMENT_TYPES.includes(wd.paymentType)
+      ? wd.paymentType
+      : undefined;
+
+    const startDate = wd.startDate;
+    const endDate = wd.endDate || undefined;
+
+    const maxAnnualProduction = toNum(wd.maxAnnualProduction);
+    const numberOfTurbines = toNum(wd.numberOfTurbines);
+    const pricePerMWh = toNum(wd.pricePerMWh);
+
+    return {
+      title: wd.title,
+      type, // enum backend
+      businessUnit, // enum backend
+      clientName: wd.clientName, // ⚠️ requis par le backend
+      amount, // number
+      startDate, // "YYYY-MM-DD"
+      endDate, // "YYYY-MM-DD" | undefined
+      billingPeriodicity: billingPeriodicity as
+        | "mensuelle"
+        | "trimestrielle"
+        | "semestrielle"
+        | "annuelle"
+        | undefined,
+      paymentType: paymentType as
+        | "virement"
+        | "prelevement"
+        | "cheque"
+        | undefined,
+      technology,
+      maintenanceProvider: wd.maintainer || wd.maintenanceProvider || undefined,
+      maxAnnualProduction,
+      numberOfTurbines,
+      pricePerMWh,
+    };
+  };
+
   const handleWizardNext = () => {
     if (wizardStep < 5) {
       setWizardStep(wizardStep + 1);
-    } else {
-      // Préparer les données du contrat
-      const contractNumber = `CT-2025-${String(Date.now()).slice(-6)}`;
-      const totalAmount =
-        parseFloat(wizardData.fixedAmount || 0) +
-        parseFloat(wizardData.variableAmount || 0);
-
-      const contractData = {
-        number: contractNumber,
-        title: wizardData.title,
-        type: wizardData.type,
-        businessUnit: wizardData.businessUnit,
-        status: "pending_validation",
-        amount: totalAmount,
-        currency: "EUR",
-        startDate: wizardData.startDate,
-        endDate: wizardData.endDate,
-        indexationFrequency: wizardData.indexationFrequency || null,
-        nextIndexationDate: wizardData.indexationDate || null,
-        createdBy: "admin-1",
-        hasRequiredDocuments: wizardData.hasAttachment || false,
-      };
-
-      // Créer le contrat
-      createContractMutation.mutate(contractData);
+      return;
     }
+
+    // Pré-validations côté client alignées avec Zod
+    if (!wizardData.title || wizardData.title.length < 3) {
+      toast({
+        title: "Titre requis",
+        description: "Au moins 3 caractères.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!CONTRACT_TYPES.includes(wizardData.type)) {
+      toast({
+        title: "Type invalide",
+        description: "Sélectionnez un type autorisé.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!BUSINESS_UNITS.includes(wizardData.businessUnit ?? wizardData.bu)) {
+      toast({
+        title: "BU invalide",
+        description: "Sélectionnez une BU autorisée.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!wizardData.clientName) {
+      toast({
+        title: "Client requis",
+        description: "Renseignez le nom du client.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      !wizardData.startDate ||
+      !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(wizardData.startDate)
+    ) {
+      toast({
+        title: "Date de début invalide",
+        description: "Format attendu YYYY-MM-DD.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      wizardData.endDate &&
+      new Date(wizardData.endDate) <= new Date(wizardData.startDate)
+    ) {
+      toast({
+        title: "Dates incohérentes",
+        description: "La fin doit être après le début.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Vérifier les exigences métiers côté backend : certains types exigent la technologie
+    if (
+      ["OMSA", "LTSA", "OMGC"].includes(wizardData.type) &&
+      !wizardData.technology
+    ) {
+      toast({
+        title: "Technologie requise",
+        description: "Sélectionnez la technologie pour ce type de contrat.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Vérifier montant maximal supporté par le backend (1 000 000 000)
+    const fixed = toNum(wizardData.fixedAmount) ?? 0;
+    const variable = toNum(wizardData.variableAmount) ?? 0;
+    const totalAmount = fixed + variable;
+    if (typeof totalAmount === "number" && totalAmount > 1000000000) {
+      toast({
+        title: "Montant trop élevé",
+        description:
+          "Le montant total dépasse la limite autorisée (1 000 000 000).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Construire payload conforme Zod
+    const payload = buildZodContractPayload(wizardData, indexationFormulas);
+
+    // Soumettre
+    createContractMutation.mutate(payload);
   };
 
   const handleWizardPrevious = () => {
@@ -481,14 +634,12 @@ export default function Contracts() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-          {/* Custom Header with Search and Notifications */}
-            <Header />
+      <Header />
       <main
         className="flex-1 overflow-y-auto p-4 lg:p-6"
         data-testid="contracts-main"
       >
         <div className="max-w-7xl mx-auto">
-          {/* Page Title with AI Help */}
           <div className="mb-6 relative">
             <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 hidden lg:block">
               Gestion des contrats
@@ -507,7 +658,6 @@ export default function Contracts() {
             />
           </div>
 
-          {/* GC-1: Liste des contrats */}
           {!showWizard ? (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-6">
@@ -516,14 +666,12 @@ export default function Contracts() {
               </TabsList>
 
               <TabsContent value="list" className="space-y-6">
-                {/* Titre */}
                 <div className="mb-4 lg:mb-6">
                   <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                     Contrats
                   </h1>
                 </div>
 
-                {/* Tuiles KPI */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4 mb-4 lg:mb-6">
                   <Card>
                     <CardContent className="p-6">
@@ -596,11 +744,9 @@ export default function Contracts() {
                   </Card>
                 </div>
 
-                {/* Barre de filtres */}
                 <Card className="mb-6">
                   <CardContent className="p-4">
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                      {/* Période */}
                       <Select
                         value={periodFilter}
                         onValueChange={setPeriodFilter}
@@ -617,7 +763,6 @@ export default function Contracts() {
                         </SelectContent>
                       </Select>
 
-                      {/* Statut */}
                       <Select
                         value={statusFilter}
                         onValueChange={setStatusFilter}
@@ -637,7 +782,6 @@ export default function Contracts() {
                         </SelectContent>
                       </Select>
 
-                      {/* Type */}
                       <Select value={typeFilter} onValueChange={setTypeFilter}>
                         <SelectTrigger data-testid="select-type">
                           <SelectValue placeholder="Type" />
@@ -645,14 +789,15 @@ export default function Contracts() {
                         <SelectContent>
                           <SelectItem value="all">Tous les types</SelectItem>
                           {contractTypes.map((type) => (
-                            <SelectItem key={type} value={type.toLowerCase()}>
-                              {type}
+                            <SelectItem key={type} value={type}>
+                              {contractTypeDefinitions.find(
+                                (ct) => ct.value === type
+                              )?.label ?? type}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
 
-                      {/* BU/Entité */}
                       <Select
                         value={businessUnitFilter}
                         onValueChange={setBusinessUnitFilter}
@@ -670,7 +815,6 @@ export default function Contracts() {
                         </SelectContent>
                       </Select>
 
-                      {/* Recherche */}
                       <Input
                         placeholder="N°/titre..."
                         value={searchTerm}
@@ -707,7 +851,6 @@ export default function Contracts() {
                   </CardContent>
                 </Card>
 
-                {/* Bandeau d'info */}
                 <Alert className="mb-6">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
@@ -715,11 +858,9 @@ export default function Contracts() {
                   </AlertDescription>
                 </Alert>
 
-                {/* Liste (tableau) */}
                 <Card>
                   <CardContent className="p-0">
                     {filteredContracts.length === 0 ? (
-                      /* GC-5: État vide */
                       <div className="flex flex-col items-center justify-center py-12">
                         <FileText className="w-16 h-16 text-gray-400 mb-4" />
                         <p className="text-lg text-gray-600 mb-2">
@@ -743,60 +884,30 @@ export default function Contracts() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>N° contrat</TableHead>
-                              <TableHead>Titre / SPV</TableHead>
+                              <TableHead>N°</TableHead>
+                              <TableHead>Titre</TableHead>
                               <TableHead>Type</TableHead>
+                              <TableHead>BU</TableHead>
+                              <TableHead>Montant</TableHead>
                               <TableHead>Statut</TableHead>
-                              <TableHead>Date début</TableHead>
-                              <TableHead>Date fin</TableHead>
-                              <TableHead>Montant fixe</TableHead>
-                              <TableHead>Montant variable</TableHead>
-                              <TableHead>Indexation</TableHead>
-                              <TableHead>Prochaine échéance</TableHead>
-                              <TableHead>PJ obligatoire</TableHead>
-                              <TableHead>Dernière maj</TableHead>
-                              <TableHead className="text-right">
-                                Actions
-                              </TableHead>
+                              <TableHead>Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {filteredContracts.map((contract) => {
-                              const daysUntilExpiry = getDaysUntilExpiry(
-                                contract.endDate
-                              );
-                              const hasIndexation =
-                                contract.indexationFrequency !== null;
-
-                              return (
-                                <TableRow
-                                  key={contract.id}
-                                  data-testid={`row-contract-${contract.id}`}
-                                  className="cursor-pointer hover:bg-gray-50"
-                                  onClick={() =>
-                                    handleShowContractDetails(contract)
-                                  }
-                                >
-                                  <TableCell className="font-medium">
-                                    <a
-                                      href="#"
-                                      className="text-blue-600 hover:underline"
-                                    >
-                                      CT-2025-
-                                      {contract.id.slice(-4).toUpperCase()}
-                                    </a>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div>
-                                      <div className="font-medium">
-                                        {contract.title}
-                                      </div>
-                                      <div className="text-sm text-gray-500">
-                                        {contract.type}
-                                      </div>
-                                    </div>
-                                  </TableCell>
+                            {filteredContracts
+                              .slice(0, parseInt(itemsPerPage))
+                              .map((contract) => (
+                                <TableRow key={contract.id}>
+                                  <TableCell>{contract.number}</TableCell>
+                                  <TableCell>{contract.title}</TableCell>
                                   <TableCell>{contract.type}</TableCell>
+                                  <TableCell>{contract.businessUnit}</TableCell>
+                                  <TableCell>
+                                    {formatAmount(
+                                      contract.amount,
+                                      contract.currency || "EUR"
+                                    )}
+                                  </TableCell>
                                   <TableCell>
                                     <Badge
                                       variant={
@@ -805,56 +916,6 @@ export default function Contracts() {
                                     >
                                       {getStatusLabel(contract.status)}
                                     </Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatDate(contract.startDate)}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatDate(contract.endDate)}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatAmount(
-                                      contract.amount,
-                                      contract.currency
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {/* Variable amount placeholder */}-
-                                  </TableCell>
-                                  <TableCell>
-                                    {hasIndexation ? (
-                                      <Badge variant="secondary">Oui</Badge>
-                                    ) : (
-                                      <span className="text-gray-400">Non</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {daysUntilExpiry !== null &&
-                                    daysUntilExpiry <= 30 ? (
-                                      <Badge
-                                        variant={
-                                          daysUntilExpiry <= 1
-                                            ? "destructive"
-                                            : daysUntilExpiry <= 7
-                                            ? "default"
-                                            : "secondary"
-                                        }
-                                      >
-                                        J-{daysUntilExpiry}
-                                      </Badge>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {contract.hasRequiredDocuments ? (
-                                      <FileCheck className="w-4 h-4 text-green-500" />
-                                    ) : (
-                                      <AlertTriangle className="w-4 h-4 text-orange-500" />
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatDate(contract.updatedAt)}
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center justify-end space-x-1">
@@ -887,14 +948,12 @@ export default function Contracts() {
                                     </div>
                                   </TableCell>
                                 </TableRow>
-                              );
-                            })}
+                              ))}
                           </TableBody>
                         </Table>
                       </div>
                     )}
 
-                    {/* Pagination */}
                     {filteredContracts.length > 0 && (
                       <div className="border-t px-4 py-3 flex items-center justify-between text-sm text-gray-600">
                         <div>
@@ -911,10 +970,11 @@ export default function Contracts() {
                             value={itemsPerPage}
                             onValueChange={setItemsPerPage}
                           >
-                            <SelectTrigger className="w-[70px]">
+                            <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="10">10</SelectItem>
                               <SelectItem value="25">25</SelectItem>
                               <SelectItem value="50">50</SelectItem>
                               <SelectItem value="100">100</SelectItem>
@@ -926,7 +986,6 @@ export default function Contracts() {
                   </CardContent>
                 </Card>
 
-                {/* Note RBAC */}
                 <p className="text-xs text-gray-500 mt-4">
                   RBAC : colonnes/contrats visibles selon rôle.
                 </p>
@@ -949,7 +1008,6 @@ export default function Contracts() {
               </TabsContent>
             </Tabs>
           ) : (
-            /* GC-2: Wizard de création */
             <div className="space-y-6">
               <div className="mb-6">
                 <h1 className="text-3xl font-bold text-gray-900">
@@ -977,7 +1035,6 @@ export default function Contracts() {
 
               <Card>
                 <CardContent className="p-6">
-                  {/* Étape 1: Informations générales */}
                   {wizardStep === 1 && (
                     <div className="space-y-4">
                       <h2 className="text-xl font-semibold">
@@ -1014,6 +1071,19 @@ export default function Contracts() {
                           />
                         </div>
                         <div>
+                          <Label>Nom du client *</Label>
+                          <Input
+                            placeholder="Nom du client"
+                            value={wizardData.clientName || ""}
+                            onChange={(e) =>
+                              setWizardData({
+                                ...wizardData,
+                                clientName: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
                           <Label>Type *</Label>
                           <Select
                             value={wizardData.type || ""}
@@ -1022,12 +1092,14 @@ export default function Contracts() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner un type" />
+                              <SelectValue placeholder="Sélectionner" />
                             </SelectTrigger>
                             <SelectContent>
-                              {contractTypeDefinitions.map((type) => (
-                                <SelectItem key={type.value} value={type.value}>
-                                  {type.label}
+                              {contractTypes.map((t) => (
+                                <SelectItem key={t} value={t}>
+                                  {contractTypeDefinitions.find(
+                                    (ct) => ct.value === t
+                                  )?.label ?? t}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1036,9 +1108,12 @@ export default function Contracts() {
                         <div>
                           <Label>BU/Entité *</Label>
                           <Select
-                            value={wizardData.bu || ""}
+                            value={wizardData.businessUnit || ""}
                             onValueChange={(value) =>
-                              setWizardData({ ...wizardData, bu: value })
+                              setWizardData({
+                                ...wizardData,
+                                businessUnit: value,
+                              })
                             }
                           >
                             <SelectTrigger>
@@ -1067,7 +1142,6 @@ export default function Contracts() {
                             <SelectContent>
                               <SelectItem value="EUR">EUR</SelectItem>
                               <SelectItem value="USD">USD</SelectItem>
-                              <SelectItem value="GBP">GBP</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -1083,15 +1157,13 @@ export default function Contracts() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="FR">Français</SelectItem>
-                              <SelectItem value="EN">Anglais</SelectItem>
-                              <SelectItem value="ES">Espagnol</SelectItem>
+                              <SelectItem value="FR">FR</SelectItem>
+                              <SelectItem value="EN">EN</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
 
-                      {/* Champs conditionnels selon le type */}
                       {wizardData.type &&
                         (() => {
                           const selectedType = contractTypeDefinitions.find(
@@ -1112,7 +1184,7 @@ export default function Contracts() {
                                     }
                                   >
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Sélectionner la technologie" />
+                                      <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {technologies.map((tech) => (
@@ -1126,7 +1198,7 @@ export default function Contracts() {
                               )}
                               {selectedType?.hasMaintainer && (
                                 <div className="mt-4">
-                                  <Label>Mainteneur *</Label>
+                                  <Label>Mainteneur</Label>
                                   <Input
                                     placeholder="Nom du mainteneur"
                                     value={wizardData.maintainer || ""}
@@ -1143,7 +1215,6 @@ export default function Contracts() {
                           );
                         })()}
 
-                      {/* Formule d'indexation */}
                       <div className="mt-4 grid grid-cols-2 gap-4">
                         <div>
                           <Label>Formule d'indexation</Label>
@@ -1157,22 +1228,18 @@ export default function Contracts() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner une formule" />
+                              <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">
-                                Pas d'indexation
-                              </SelectItem>
-                              {indexationFormulas.map((formula: any) => (
-                                <SelectItem key={formula.id} value={formula.id}>
-                                  {formula.name} - {formula.type}
+                              <SelectItem value="none">Aucune</SelectItem>
+                              {indexationFormulas.map((f: any) => (
+                                <SelectItem key={f.id} value={f.code}>
+                                  {f.label}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-
-                        {/* Périodicité de facturation */}
                         <div>
                           <Label>Périodicité de facturation</Label>
                           <Select
@@ -1185,15 +1252,12 @@ export default function Contracts() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner" />
+                              <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {billingPeriods.map((period) => (
-                                <SelectItem
-                                  key={period.value}
-                                  value={period.value}
-                                >
-                                  {period.label}
+                              {billingPeriods.map((p) => (
+                                <SelectItem key={p.value} value={p.value}>
+                                  {p.label}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1203,7 +1267,6 @@ export default function Contracts() {
                     </div>
                   )}
 
-                  {/* Étape 2: Période & montants */}
                   {wizardStep === 2 && (
                     <div className="space-y-4">
                       <h2 className="text-xl font-semibold">
@@ -1240,19 +1303,10 @@ export default function Contracts() {
                           </p>
                         </div>
                         <div>
-                          <Label>
-                            Montant fixe{" "}
-                            {wizardData.type === "Bail"
-                              ? "(Non applicable)"
-                              : "*"}
-                          </Label>
+                          <Label>Montant fixe</Label>
                           <Input
                             type="number"
-                            placeholder={
-                              wizardData.type === "Bail"
-                                ? "Non applicable"
-                                : "0.00"
-                            }
+                            placeholder="0.00"
                             value={wizardData.fixedAmount || ""}
                             onChange={(e) =>
                               setWizardData({
@@ -1260,7 +1314,6 @@ export default function Contracts() {
                                 fixedAmount: e.target.value,
                               })
                             }
-                            disabled={wizardData.type === "Bail"}
                           />
                         </div>
                         <div>
@@ -1292,17 +1345,14 @@ export default function Contracts() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner" />
+                              <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="monthly">Mensuelle</SelectItem>
-                              <SelectItem value="quarterly">
-                                Trimestrielle
-                              </SelectItem>
-                              <SelectItem value="semi-annual">
-                                Semestrielle
-                              </SelectItem>
-                              <SelectItem value="annual">Annuelle</SelectItem>
+                              {billingPeriods.map((p) => (
+                                <SelectItem key={p.value} value={p.value}>
+                                  {p.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1318,13 +1368,14 @@ export default function Contracts() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner" />
+                              <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="advance">Avance</SelectItem>
-                              <SelectItem value="arrears">
-                                Terme échu
-                              </SelectItem>
+                              {PAYMENT_TYPES.map((pt) => (
+                                <SelectItem key={pt} value={pt}>
+                                  {pt}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1332,43 +1383,19 @@ export default function Contracts() {
                     </div>
                   )}
 
-                  {/* Étape 3: Indexation */}
                   {wizardStep === 3 && (
                     <div className="space-y-4">
                       <h2 className="text-xl font-semibold">
                         Étape 3 — Paramètres d'indexation
                       </h2>
-
                       {wizardData.indexationFormula &&
                       wizardData.indexationFormula !== "none" ? (
                         <>
                           <Alert>
                             <Info className="h-4 w-4" />
-                            <AlertDescription>
-                              <strong>Formule sélectionnée :</strong>
-                              <div className="mt-1">
-                                {(() => {
-                                  const formula = indexationFormulas.find(
-                                    (f: any) =>
-                                      f.id === wizardData.indexationFormula
-                                  );
-                                  return formula ? (
-                                    <>
-                                      <div className="font-medium">
-                                        {formula.name} - {formula.type}
-                                      </div>
-                                      <div className="text-xs font-mono mt-1">
-                                        {formula.expression}
-                                      </div>
-                                      <div className="text-xs mt-1">
-                                        {formula.description}
-                                      </div>
-                                    </>
-                                  ) : (
-                                    "Formule sélectionnée"
-                                  );
-                                })()}
-                              </div>
+                            <AlertDescription className="text-sm">
+                              Formule sélectionnée:{" "}
+                              {wizardData.indexationFormula}
                             </AlertDescription>
                           </Alert>
 
@@ -1492,7 +1519,6 @@ export default function Contracts() {
                     </div>
                   )}
 
-                  {/* Étape 4: Pièce jointe obligatoire */}
                   {wizardStep === 4 && (
                     <div className="space-y-4">
                       <h2 className="text-xl font-semibold">
@@ -1528,7 +1554,7 @@ export default function Contracts() {
                           <div className="flex items-center space-x-2">
                             <FileText className="w-4 h-4 text-gray-500" />
                             <span className="text-sm">
-                              {wizardData.attachment}
+                              {wizardData.attachment.name}
                             </span>
                           </div>
                           <Button
@@ -1545,83 +1571,33 @@ export default function Contracts() {
                     </div>
                   )}
 
-                  {/* Étape 5: Récapitulatif & soumission */}
                   {wizardStep === 5 && (
                     <div className="space-y-4">
                       <h2 className="text-xl font-semibold">
                         Étape 5 — Récapitulatif & soumission
                       </h2>
-
                       <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                         <h3 className="font-medium">Informations générales</h3>
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>N° contrat : {wizardData.number || "-"}</div>
-                          <div>Titre : {wizardData.title || "-"}</div>
-                          <div>Type : {wizardData.type || "-"}</div>
-                          <div>BU : {wizardData.bu || "-"}</div>
+                          <div>N° contrat : {wizardData.number}</div>
+                          <div>Titre : {wizardData.title}</div>
+                          <div>Type : {wizardData.type}</div>
+                          <div>BU : {wizardData.businessUnit}</div>
                         </div>
                       </div>
-
                       <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                         <h3 className="font-medium">Période & montants</h3>
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>Date début : {wizardData.startDate || "-"}</div>
-                          <div>Date fin : {wizardData.endDate || "-"}</div>
+                          <div>Date début : {wizardData.startDate}</div>
+                          <div>Date fin : {wizardData.endDate}</div>
                           <div>
-                            Montant fixe : {wizardData.fixedAmount || "-"}{" "}
-                            {wizardData.currency}
+                            Montant fixe : {wizardData.fixedAmount || 0}
                           </div>
                           <div>
-                            Montant variable :{" "}
-                            {wizardData.variableAmount || "0"}{" "}
-                            {wizardData.currency}
+                            Montant variable : {wizardData.variableAmount || 0}
                           </div>
                         </div>
                       </div>
-
-                      {wizardData.indexationFormula &&
-                        wizardData.indexationFormula !== "none" && (
-                          <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                            <h3 className="font-medium">Indexation</h3>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div>
-                                Formule :{" "}
-                                {indexationFormulas.find(
-                                  (f: any) =>
-                                    f.id === wizardData.indexationFormula
-                                )?.name || "-"}
-                              </div>
-                              <div>
-                                Montant de base :{" "}
-                                {wizardData.indexationBaseAmount ||
-                                  wizardData.fixedAmount ||
-                                  "-"}{" "}
-                                {wizardData.currency}
-                              </div>
-                              <div>
-                                Date indexation :{" "}
-                                {wizardData.indexationDate || "-"}
-                              </div>
-                              <div>
-                                Fréquence :{" "}
-                                {wizardData.indexationFrequency === "annual"
-                                  ? "Annuelle"
-                                  : wizardData.indexationFrequency ===
-                                    "biennial"
-                                  ? "Biennale"
-                                  : "Triennale"}
-                              </div>
-                              {wizardData.indexationCap && (
-                                <div>Cap : {wizardData.indexationCap}%</div>
-                              )}
-                              {wizardData.indexationThreshold && (
-                                <div>
-                                  Seuil : {wizardData.indexationThreshold}%
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
 
                       <Alert>
                         <Info className="h-4 w-4" />
@@ -1633,7 +1609,6 @@ export default function Contracts() {
                     </div>
                   )}
 
-                  {/* Navigation buttons */}
                   <div className="flex justify-between mt-6">
                     <div>
                       {wizardStep > 1 && (
@@ -1675,7 +1650,6 @@ export default function Contracts() {
             </div>
           )}
 
-          {/* GC-3: Fiche contrat (Sheet) */}
           <Sheet
             open={showContractDetails}
             onOpenChange={setShowContractDetails}
@@ -1687,10 +1661,7 @@ export default function Contracts() {
                     <SheetTitle>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span>
-                            CT-2025-
-                            {selectedContract.id.slice(-4).toUpperCase()}
-                          </span>
+                          <span>{selectedContract.number}</span>
                           <Badge
                             variant={
                               getStatusVariant(selectedContract.status) as any
@@ -1709,6 +1680,19 @@ export default function Contracts() {
                           <div>
                             Fin : {formatDate(selectedContract.endDate)}
                           </div>
+                          <div>BU : {selectedContract.businessUnit}</div>
+                        </div>
+                      </div>
+                    </SheetTitle>
+                  </SheetHeader>
+
+                  <div className="mt-6 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <h4>Financier</h4>
+                        </CardHeader>
+                        <CardContent>
                           <div>
                             Montant :{" "}
                             {formatAmount(
@@ -1716,139 +1700,78 @@ export default function Contracts() {
                               selectedContract.currency
                             )}
                           </div>
-                        </div>
-                      </div>
-                    </SheetTitle>
-                  </SheetHeader>
+                        </CardContent>
+                      </Card>
 
-                  <div className="mt-6 space-y-6">
-                    {/* Cartes récap' */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">
-                            Prochaines échéances
-                          </CardTitle>
+                          <h4>Dates</h4>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-1 text-sm">
-                            <div className="flex justify-between">
-                              <span>J-30</span>
-                              <span>
-                                {formatDate(
-                                  new Date(
-                                    Date.now() + 30 * 24 * 60 * 60 * 1000
-                                  )
-                                )}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>J-7</span>
-                              <span>
-                                {formatDate(
-                                  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-                                )}
-                              </span>
-                            </div>
+                          <div>
+                            Début : {formatDate(selectedContract.startDate)}
+                          </div>
+                          <div>
+                            Fin : {formatDate(selectedContract.endDate)}
                           </div>
                         </CardContent>
                       </Card>
 
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Indexation</CardTitle>
+                          <h4>Client</h4>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-1 text-sm">
-                            <div>
-                              {selectedContract.indexationFrequency ||
-                                "Pas d'indexation"}
-                            </div>
-                            {selectedContract.indexationFrequency && (
-                              <div className="text-gray-500">
-                                Prochaine : 01/01/2025
-                              </div>
-                            )}
-                          </div>
+                          <div>{selectedContract.clientName}</div>
                         </CardContent>
                       </Card>
 
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Documents</CardTitle>
+                          <h4>Indexation</h4>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-1 text-sm">
-                            <div>3 pièces jointes</div>
-                            {!selectedContract.hasRequiredDocuments && (
-                              <Alert className="p-2">
-                                <AlertTriangle className="h-3 w-3" />
-                                <AlertDescription className="text-xs">
-                                  Contrat signé manquant
-                                </AlertDescription>
-                              </Alert>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Historique</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-1 text-sm">
-                            <div>
-                              Créé le {formatDate(selectedContract.createdAt)}
-                            </div>
-                            <div>
-                              Modifié le{" "}
-                              {formatDate(selectedContract.updatedAt)}
-                            </div>
+                          <div>
+                            {selectedContract.indexationFormula || "Aucune"}
                           </div>
                         </CardContent>
                       </Card>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex space-x-2">
                       {selectedContract.status === "pending_validation" && (
-                        <>
-                          <Button
-                            onClick={() =>
-                              handleValidateContract(selectedContract)
-                            }
-                          >
-                            Valider/Rejeter
-                          </Button>
-                        </>
+                        <Button
+                          onClick={() =>
+                            handleValidateContract(selectedContract)
+                          }
+                        >
+                          Valider / Rejeter
+                        </Button>
                       )}
                       {selectedContract.status === "active" && (
                         <>
                           <Button
-                            variant="outline"
                             onClick={() => {
+                              setShowAmendmentModal(true);
                               setAmendmentData({
                                 ...amendmentData,
                                 contractId: selectedContract.id,
-                                originalAmount: selectedContract.amount,
                               });
-                              setShowAmendmentModal(true);
                             }}
                           >
-                            Créer un avenant
+                            Créer avenant
                           </Button>
                           <Button
                             variant="destructive"
                             onClick={() => {
+                              setShowTerminationModal(true);
                               setTerminationData({
                                 ...terminationData,
                                 contractId: selectedContract.id,
                               });
-                              setShowTerminationModal(true);
                             }}
                           >
-                            Résilier
+                            Demande résiliation
                           </Button>
                         </>
                       )}
@@ -1861,7 +1784,6 @@ export default function Contracts() {
             </SheetContent>
           </Sheet>
 
-          {/* GC-4: Modale Valider/Rejeter */}
           <Dialog
             open={showValidationModal}
             onOpenChange={setShowValidationModal}
@@ -1878,9 +1800,7 @@ export default function Contracts() {
               {selectedContract && (
                 <div className="space-y-4">
                   <div className="bg-gray-50 p-3 rounded text-sm">
-                    <div>
-                      N° : CT-2025-{selectedContract.id.slice(-4).toUpperCase()}
-                    </div>
+                    <div>N° : {selectedContract.number}</div>
                     <div>Titre : {selectedContract.title}</div>
                     <div>Type : {selectedContract.type}</div>
                     <div>
@@ -1963,7 +1883,6 @@ export default function Contracts() {
             </DialogContent>
           </Dialog>
 
-          {/* Modal Avenant */}
           <Dialog
             open={showAmendmentModal}
             onOpenChange={setShowAmendmentModal}
@@ -2175,7 +2094,6 @@ export default function Contracts() {
             </DialogContent>
           </Dialog>
 
-          {/* Modal Résiliation */}
           <Dialog
             open={showTerminationModal}
             onOpenChange={setShowTerminationModal}
@@ -2313,7 +2231,6 @@ export default function Contracts() {
             </DialogContent>
           </Dialog>
 
-          {/* Modal de confirmation de suppression */}
           <ConfirmModal
             open={showDeleteModal}
             onOpenChange={setShowDeleteModal}
@@ -2329,7 +2246,6 @@ export default function Contracts() {
             }}
           />
 
-          {/* Modal de confirmation de changement de statut */}
           <ConfirmModal
             open={showStatusChangeModal}
             onOpenChange={setShowStatusChangeModal}
@@ -2349,7 +2265,6 @@ export default function Contracts() {
             }}
           />
 
-          {/* Modal d'export avancé */}
           <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
             <DialogContent data-testid="export-modal">
               <DialogHeader>
@@ -2373,6 +2288,7 @@ export default function Contracts() {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div>
                   <Label htmlFor="export-range">Période</Label>
                   <Select defaultValue="current">
@@ -2391,6 +2307,7 @@ export default function Contracts() {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div>
                   <Label>Colonnes à inclure</Label>
                   <div className="space-y-2 mt-2">
