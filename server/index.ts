@@ -21,6 +21,8 @@ import { validationReminderService } from "./services/validationReminder";
 import { stateTransitionManager } from "./services/stateTransitionManager";
 import { sapSyncService } from "./services/sapSynchronization";
 import { alertService } from "./services/alertNotificationService";
+
+const CALC_ORIGIN = "https://index.klyxor.com";
 const app = express();
 
 // Configuration trust proxy pour Replit
@@ -52,7 +54,7 @@ app.use(
         scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // unsafe-eval pour Vite dev
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "ws:", "wss:"], // WebSocket pour HMR
+        connectSrc: ["'self'", "ws:", "wss:", CALC_ORIGIN], // WebSocket pour HMR
       },
     },
     crossOriginEmbedderPolicy: false, // Nécessaire pour Vite

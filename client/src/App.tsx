@@ -75,159 +75,159 @@ function Router() {
     <>
       <TutorialOverlay />
       <AppLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/contracts">
-          <ProtectedRoute route="/contracts">
-            <Contracts />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/validation">
-          <ProtectedRoute route="/validation">
-            <Validation />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/workflows">
-          <ProtectedRoute route="/workflows">
-            <Workflows />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/deadlines" component={Deadlines} />
-        <Route path="/indexations">
-          <ProtectedRoute route="/indexations">
-            <Indexations />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/indexation-config">
-          <ProtectedRoute route="/indexation-config">
-            <IndexationConfig />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/indexation-dashboard">
-          <ProtectedRoute route="/indexation-dashboard">
-            <IndexationDashboard />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/amendments">
-          <ProtectedRoute route="/amendments">
-            <Amendments />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/terminations">
-          <ProtectedRoute route="/terminations">
-            <Terminations />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/documents">
-          <ProtectedRoute route="/documents">
-            <Documents />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/code-snippets">
-          <ProtectedRoute route="/code-snippets">
-            <CodeSnippets />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/imports">
-          <ProtectedRoute route="/imports">
-            <Imports />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/data-export">
-          <ProtectedRoute route="/data-export">
-            <DataExport />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/import-export">
-          <ProtectedRoute route="/import-export">
-            <ImportExport />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/security">
-          <ProtectedRoute route="/security">
-            <Security />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/permissions-test">
-          <ProtectedRoute route="/permissions-test">
-            <PermissionsTest />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/permissions-demo">
-          <ProtectedRoute route="/permissions-demo">
-            <PermissionsDemo />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/billing-plans">
-          <ProtectedRoute route="/billing-plans">
-            <BillingPlans />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/payment-flows">
-          <ProtectedRoute route="/payment-flows">
-            <PaymentFlows />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/payment-blocks">
-          <ProtectedRoute route="/payment-blocks">
-            <PaymentBlocks />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/payment-proofs">
-          <ProtectedRoute route="/payment-proofs">
-            <PaymentProofs />
-          </ProtectedRoute>
-        </Route>
-        
-        {/* Admin routes - Protected for admin only */}
-        <Route path="/admin">
-          <ProtectedRoute route="/admin">
-            <AdminDashboard />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/admin/contracts">
-          <ProtectedRoute route="/admin/contracts">
-            <AdminContracts />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/admin/billing">
-          <ProtectedRoute route="/admin/billing">
-            <AdminBilling />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/admin/indexations">
-          <ProtectedRoute route="/admin/indexations">
-            <Indexations />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/admin/amendments">
-          <ProtectedRoute route="/admin/amendments">
-            <AdminAmendments />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/admin/deadlines">
-          <ProtectedRoute route="/admin/deadlines">
-            <AdminDeadlines />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/admin/documents">
-          <ProtectedRoute route="/admin/documents">
-            <AdminDocuments />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/admin/alerts">
-          <ProtectedRoute route="/admin/alerts">
-            <AdminDashboard />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/admin/extraction" component={AdminDashboard} />
-        <Route path="/admin/imports" component={AdminDashboard} />
-        <Route path="/admin/security" component={AdminDashboard} />
-        <Route path="/admin/audit" component={AdminDashboard} />
-        
-        <Route component={NotFound} />
-      </Switch>
-    </AppLayout>
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route path="/contracts">
+            <ProtectedRoute route="/contracts">
+              <Contracts />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/validation">
+            <ProtectedRoute route="/validation">
+              <Validation />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/workflows">
+            <ProtectedRoute route="/workflows">
+              <Workflows />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/deadlines" component={Deadlines} />
+          <Route path="/indexations">
+            <ProtectedRoute route="/indexations">
+              <Indexations />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/indexation-config">
+            <ProtectedRoute route="/indexation-config">
+              <IndexationConfig />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/indexation-dashboard">
+            <ProtectedRoute route="/indexation-dashboard">
+              <IndexationDashboard />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/amendments">
+            <ProtectedRoute route="/amendments">
+              <Amendments />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/terminations">
+            <ProtectedRoute route="/terminations">
+              <Terminations />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/documents">
+            <ProtectedRoute route="/documents">
+              <Documents />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/code-snippets">
+            <ProtectedRoute route="/code-snippets">
+              <CodeSnippets />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/imports">
+            <ProtectedRoute route="/imports">
+              <Imports />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/data-export">
+            <ProtectedRoute route="/data-export">
+              <DataExport />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/import-export">
+            <ProtectedRoute route="/import-export">
+              <ImportExport />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/security">
+            <ProtectedRoute route="/security">
+              <Security />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/permissions-test">
+            <ProtectedRoute route="/permissions-test">
+              <PermissionsTest />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/permissions-demo">
+            <ProtectedRoute route="/permissions-demo">
+              <PermissionsDemo />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/billing-plans">
+            <ProtectedRoute route="/billing-plans">
+              <BillingPlans />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/payment-flows">
+            <ProtectedRoute route="/payment-flows">
+              <PaymentFlows />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/payment-blocks">
+            <ProtectedRoute route="/payment-blocks">
+              <PaymentBlocks />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/payment-proofs">
+            <ProtectedRoute route="/payment-proofs">
+              <PaymentProofs />
+            </ProtectedRoute>
+          </Route>
+
+          {/* Admin routes - Protected for admin only */}
+          <Route path="/admin">
+            <ProtectedRoute route="/admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/contracts">
+            <ProtectedRoute route="/admin/contracts">
+              <AdminContracts />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/billing">
+            <ProtectedRoute route="/admin/billing">
+              <AdminBilling />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/indexations">
+            <ProtectedRoute route="/admin/indexations">
+              <Indexations />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/amendments">
+            <ProtectedRoute route="/admin/amendments">
+              <AdminAmendments />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/deadlines">
+            <ProtectedRoute route="/admin/deadlines">
+              <AdminDeadlines />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/documents">
+            <ProtectedRoute route="/admin/documents">
+              <AdminDocuments />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/alerts">
+            <ProtectedRoute route="/admin/alerts">
+              <AdminDashboard />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/extraction" component={AdminDashboard} />
+          <Route path="/admin/imports" component={AdminDashboard} />
+          <Route path="/admin/security" component={AdminDashboard} />
+          <Route path="/admin/audit" component={AdminDashboard} />
+
+          <Route component={NotFound} />
+        </Switch>
+      </AppLayout>
     </>
   );
 }

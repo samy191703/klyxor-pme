@@ -291,19 +291,18 @@ export default function Contracts() {
 
   // Filtrage sécurisé et insensible à la casse
   const filteredContracts = contracts.filter((contract) => {
+    const n = (contract.number ?? "").toLowerCase();
+    const t = (contract.title ?? "").toLowerCase();
+
     const matchesSearch =
       searchTerm === "" ||
-      (contract.number || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (contract.title || "").toLowerCase().includes(searchTerm.toLowerCase());
+      n.includes(searchTerm.toLowerCase()) ||
+      t.includes(searchTerm.toLowerCase());
 
     const matchesStatus =
       statusFilter === "all" || contract.status === statusFilter;
 
-    const matchesType =
-      typeFilter === "all" ||
-      (contract.type || "").toLowerCase() === typeFilter.toLowerCase();
+    const matchesType = typeFilter === "all" || contract.type === typeFilter;
 
     const matchesBU =
       businessUnitFilter === "all" ||
@@ -501,7 +500,27 @@ export default function Contracts() {
     };
   };
 
-  const handleWizardNext = () => {
+  const handleCalculateOnly = async () => {
+    try {
+      setCalcLoading(true);
+      setCalcError(null);
+      const preview = await runIndexationFromAssets(
+        wizardData,
+        indexationFormulas,
+        "https://index.klyxor.com/api/v1/calculate-from-assets"
+      );
+      setCalcResult(preview);
+    } catch (e: any) {
+      setCalcError(
+        "Erreur lors du calcul d’indexation: " +
+          (e?.message || "voir logs serveur")
+      );
+    } finally {
+      setCalcLoading(false);
+    }
+  };
+
+  const handleWizardNext = async () => {
     if (wizardStep < 5) {
       setWizardStep(wizardStep + 1);
       return;
@@ -593,8 +612,26 @@ export default function Contracts() {
     // Construire payload conforme Zod
     const payload = buildZodContractPayload(wizardData, indexationFormulas);
 
-    // Soumettre
-    createContractMutation.mutate(payload);
+    try {
+      setCalcLoading(true);
+      setCalcError(null);
+      const preview = await runIndexationFromAssets(
+        wizardData,
+        indexationFormulas,
+        "https://index.klyxor.com/api/v1/calculate-from-assets"
+      );
+      setCalcResult(preview);
+
+      // Soumettre
+      createContractMutation.mutate(payload);
+    } catch (e: any) {
+      setCalcError(
+        "Erreur lors du calcul d’indexation: " + e.message ||
+          "Erreur lors du calcul d’indexation."
+      );
+    } finally {
+      setCalcLoading(false);
+    }
   };
 
   const handleWizardPrevious = () => {
@@ -631,6 +668,148 @@ export default function Contracts() {
     setShowValidationModal(false);
     queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
   };
+
+  // CALCULATION OF INDEXATION VALUE PART
+
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [calcError, setCalcError] = useState<string | null>(null);
+  const [calcResult, setCalcResult] = useState<any>(null);
+
+  // indexationPreview.ts
+  type CalculateDto = {
+    contractCode?: string;
+    indexationDate: string; // "YYYY-MM-DD"
+    policy: "AT_INDEXATION_DATE" | "AT_N_MINUS_1" | "AT_REVISED_PUBLICATION";
+    mode: "P0" | "PN1";
+    formulaType: "SIMPLE_ICHT" | "MIXED_ICHT_FMOA" | "CPI_PN1";
+    base: Partial<{ P0: number; PN1: number; ICHT0: number; FMOA0: number }>;
+    weights?: Partial<{ const: number; ICHT: number; FMOA: number }>;
+    capPercent?: number | null;
+    floorPercent?: number | null;
+  };
+
+  function inferFormulaType(formula: any): CalculateDto["formulaType"] {
+    // Prefer explicit metadata if available on your formula objects
+    const explicit = (
+      formula?.formulaType ||
+      formula?.typeCode ||
+      ""
+    ).toUpperCase();
+    if (
+      explicit === "SIMPLE_ICHT" ||
+      explicit === "MIXED_ICHT_FMOA" ||
+      explicit === "CPI_PN1"
+    ) {
+      return explicit as CalculateDto["formulaType"];
+    }
+    // Fallback from name/expression
+    const hay = `${formula?.name ?? ""} ${
+      formula?.expression ?? ""
+    }`.toUpperCase();
+    if (hay.includes("MIX") || (hay.includes("ICHT") && hay.includes("FMOA")))
+      return "MIXED_ICHT_FMOA";
+    if (hay.includes("PN1") || hay.includes("CPI")) return "CPI_PN1";
+    return "SIMPLE_ICHT";
+  }
+
+  function ensureBaseFor(type: CalculateDto["formulaType"], dto: CalculateDto) {
+    const b = dto.base || {};
+    const miss = (k: keyof Required<CalculateDto>["base"]) => b[k] == null;
+    if (type === "SIMPLE_ICHT" && (miss("P0") || miss("ICHT0"))) {
+      throw new Error("Base requise: P0 et ICHT0 pour SIMPLE_ICHT.");
+    }
+    if (
+      type === "MIXED_ICHT_FMOA" &&
+      (miss("P0") || miss("ICHT0") || miss("FMOA0"))
+    ) {
+      throw new Error("Base requise: P0, ICHT0 et FMOA0 pour MIXED_ICHT_FMOA.");
+    }
+    if (type === "CPI_PN1" && miss("PN1")) {
+      throw new Error("Base requise: PN1 pour CPI_PN1.");
+    }
+  }
+
+  /** Build payload for /api/v1/calculate-from-assets from wizardData + selected formula id */
+  function buildCalculateFromAssetsPayload(
+    wd: any,
+    formulas: any[]
+  ): CalculateDto {
+    const selected = formulas.find((f) => f.id === wd.indexationFormula);
+    if (!selected) throw new Error("Formule d'indexation introuvable.");
+
+    const formulaType = inferFormulaType(selected);
+    const p0 =
+      toNum(wd.P0) ??
+      toNum(wd.indexationBaseAmount) ??
+      toNum(wd.amount) ??
+      (toNum(wd.fixedAmount) ?? 0) + (toNum(wd.variableAmount) ?? 0);
+
+    console.log("p0", p0);
+    const pn1 = toNum(wd.PN1);
+    const ICHT0 = toNum(wd.ICHT0);
+    const FMOA0 = toNum(wd.FMOA0);
+
+    const policy: CalculateDto["policy"] =
+      (wd.indexationPolicy as any) || "AT_INDEXATION_DATE";
+    const mode: CalculateDto["mode"] =
+      (wd.indexationMode as any) || (formulaType === "CPI_PN1" ? "PN1" : "P0");
+
+    const dto: CalculateDto = {
+      contractCode: wd.number || wd.title || undefined,
+      indexationDate: wd.indexationDate, // "YYYY-MM-DD"
+      policy,
+      mode,
+      formulaType,
+      base: {},
+      capPercent: toNum(wd.capPercent) ?? null,
+      floorPercent: toNum(wd.floorPercent) ?? null,
+    };
+
+    if (formulaType === "SIMPLE_ICHT") {
+      dto.base = { P0: p0!, ICHT0: ICHT0! };
+    } else if (formulaType === "MIXED_ICHT_FMOA") {
+      dto.base = { P0: p0!, ICHT0: ICHT0!, FMOA0: FMOA0! };
+      const W = wd.weights || {};
+      dto.weights = {
+        const: toNum(W.const) ?? 0.15,
+        ICHT: toNum(W.ICHT) ?? 0.55,
+        FMOA: toNum(W.FMOA) ?? 0.3,
+      };
+    } else {
+      // CPI_PN1
+      dto.base = { PN1: pn1! };
+    }
+
+    if (
+      !dto.indexationDate ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(dto.indexationDate)
+    ) {
+      throw new Error("indexationDate manquante ou invalide (YYYY-MM-DD).");
+    }
+    ensureBaseFor(formulaType, dto);
+    return dto;
+  }
+
+  /** POST to /api/v1/calculate-from-assets */
+  async function runIndexationFromAssets(
+    wd: any,
+    formulas: any[],
+    endpoint = "https://index.klyxor.com/api/v1/calculate-from-assets"
+  ) {
+    const payload = buildCalculateFromAssetsPayload(wd, formulas);
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Échec du calcul (${res.status}): ${text || "voir logs serveur"}`
+      );
+    }
+    return res.json();
+  }
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -1228,13 +1407,15 @@ export default function Contracts() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue />
+                              <SelectValue placeholder="Sélectionner une formule" />
                             </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Aucune</SelectItem>
+                            <SelectContent position="popper">
+                              <SelectItem value="none">
+                                Pas d'indexation
+                              </SelectItem>
                               {indexationFormulas.map((f: any) => (
-                                <SelectItem key={f.id} value={f.code}>
-                                  {f.label}
+                                <SelectItem key={f.id} value={f.id}>
+                                  {f.name} {f.type ? `- ${f.type}` : ""}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1500,6 +1681,153 @@ export default function Contracts() {
                                 Variation minimale pour déclencher (optionnel)
                               </p>
                             </div>
+                            {/* Resolve selected formula + its type */}
+                            {(() => {
+                              const selected = indexationFormulas.find(
+                                (f: any) =>
+                                  f.id === wizardData.indexationFormula
+                              );
+                              const typeGuess = selected
+                                ? inferFormulaType(selected)
+                                : null; // you already declared inferFormulaType
+
+                              if (!typeGuess) return null;
+
+                              return (
+                                <div className="grid grid-cols-2 gap-4">
+                                  {/* SIMPLE_ICHT needs ICHT0 */}
+                                  {typeGuess === "SIMPLE_ICHT" && (
+                                    <div>
+                                      <Label>
+                                        ICHT0 (indice à la signature) *
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        placeholder="ex: 115.7"
+                                        value={wizardData.ICHT0 || ""}
+                                        onChange={(e) =>
+                                          setWizardData({
+                                            ...wizardData,
+                                            ICHT0: e.target.value,
+                                          })
+                                        }
+                                      />
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Requis pour ICHT simple
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* MIXED_ICHT_FMOA needs ICHT0, FMOA0 and (optionally) weights */}
+                                  {typeGuess === "MIXED_ICHT_FMOA" && (
+                                    <>
+                                      <div>
+                                        <Label>ICHT0 *</Label>
+                                        <Input
+                                          type="number"
+                                          placeholder="ex: 128.2"
+                                          value={wizardData.ICHT0 || ""}
+                                          onChange={(e) =>
+                                            setWizardData({
+                                              ...wizardData,
+                                              ICHT0: e.target.value,
+                                            })
+                                          }
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label>FMOA0 *</Label>
+                                        <Input
+                                          type="number"
+                                          placeholder="ex: 97.93"
+                                          value={wizardData.FMOA0 || ""}
+                                          onChange={(e) =>
+                                            setWizardData({
+                                              ...wizardData,
+                                              FMOA0: e.target.value,
+                                            })
+                                          }
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label>Poids ICHT</Label>
+                                        <Input
+                                          type="number"
+                                          placeholder="0.55"
+                                          value={wizardData.weights?.ICHT ?? ""}
+                                          onChange={(e) =>
+                                            setWizardData({
+                                              ...wizardData,
+                                              weights: {
+                                                ...(wizardData.weights || {}),
+                                                ICHT: e.target.value,
+                                              },
+                                            })
+                                          }
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label>Poids FMOA</Label>
+                                        <Input
+                                          type="number"
+                                          placeholder="0.30"
+                                          value={wizardData.weights?.FMOA ?? ""}
+                                          onChange={(e) =>
+                                            setWizardData({
+                                              ...wizardData,
+                                              weights: {
+                                                ...(wizardData.weights || {}),
+                                                FMOA: e.target.value,
+                                              },
+                                            })
+                                          }
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label>Poids Constante</Label>
+                                        <Input
+                                          type="number"
+                                          placeholder="0.15"
+                                          value={
+                                            wizardData.weights?.const ?? ""
+                                          }
+                                          onChange={(e) =>
+                                            setWizardData({
+                                              ...wizardData,
+                                              weights: {
+                                                ...(wizardData.weights || {}),
+                                                const: e.target.value,
+                                              },
+                                            })
+                                          }
+                                        />
+                                      </div>
+                                    </>
+                                  )}
+
+                                  {/* CPI_PN1 needs PN1 */}
+                                  {typeGuess === "CPI_PN1" && (
+                                    <div>
+                                      <Label>PN1 (montant période N-1) *</Label>
+                                      <Input
+                                        type="number"
+                                        placeholder="ex: 52919.2"
+                                        value={wizardData.PN1 || ""}
+                                        onChange={(e) =>
+                                          setWizardData({
+                                            ...wizardData,
+                                            PN1: e.target.value,
+                                          })
+                                        }
+                                      />
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Requis pour CPI PN1
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </>
                       ) : (
@@ -1598,6 +1926,174 @@ export default function Contracts() {
                           </div>
                         </div>
                       </div>
+                      {/* ADD: indexation preview (step 5) */}
+                      {(calcLoading || calcError || calcResult) && (
+                        <>
+                          {(() => {
+                            const currency = wizardData?.currency || "EUR";
+                            const fmtMoney = (n: number) =>
+                              new Intl.NumberFormat("fr-FR", {
+                                style: "currency",
+                                currency,
+                              }).format(n);
+
+                            const fmtDate = (d?: string) =>
+                              d
+                                ? new Intl.DateTimeFormat("fr-FR").format(
+                                    new Date(d)
+                                  )
+                                : "—";
+
+                            const fmtMonth = (m?: string) => {
+                              if (!m) return "—";
+                              const [y, mm] = m.split("-");
+                              return new Date(
+                                Number(y),
+                                Number(mm) - 1,
+                                1
+                              ).toLocaleDateString("fr-FR", {
+                                month: "long",
+                                year: "numeric",
+                              });
+                            };
+
+                            const factor = Number(
+                              calcResult?.factor ?? calcResult?.rawFactor ?? NaN
+                            );
+                            const deltaPct = isFinite(factor)
+                              ? (factor - 1) * 100
+                              : null;
+
+                            const icht = calcResult?.indicesUsed?.ICHT;
+                            const cap = wizardData?.indexationCap;
+                            const floor = wizardData?.indexationThreshold;
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top stats */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <div className="rounded-lg border p-4 bg-white">
+                                    <div className="text-xs text-gray-500 mb-1">
+                                      Nouveau prix
+                                    </div>
+                                    <div className="text-2xl font-semibold">
+                                      {fmtMoney(Number(calcResult?.price ?? 0))}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Effectif le{" "}
+                                      {fmtDate(calcResult?.effectiveFrom)}
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-lg border p-4 bg-white">
+                                    <div className="text-xs text-gray-500 mb-1">
+                                      Facteur
+                                    </div>
+                                    <div className="text-2xl font-semibold">
+                                      {isFinite(factor)
+                                        ? `× ${factor.toFixed(4)}`
+                                        : "—"}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Variation{" "}
+                                      <span
+                                        className={
+                                          deltaPct && deltaPct >= 0
+                                            ? "text-green-600"
+                                            : "text-red-600"
+                                        }
+                                      >
+                                        {deltaPct === null
+                                          ? "—"
+                                          : `${deltaPct.toFixed(2)}%`}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-lg border p-4 bg-white">
+                                    <div className="text-xs text-gray-500 mb-1">
+                                      Statut du calcul
+                                    </div>
+                                    <div className="text-sm">
+                                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                                        {String(calcResult?.status ?? "—")}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      Cap: {cap ? `${cap}%` : "—"} · Seuil min.:{" "}
+                                      {floor ? `${floor}%` : "—"}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Indices used */}
+                                <div className="rounded-lg border p-4 bg-white">
+                                  <div className="text-sm font-medium mb-3">
+                                    Indice utilisé
+                                  </div>
+                                  {icht ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                                      <div>
+                                        <div className="text-xs text-gray-500">
+                                          Série
+                                        </div>
+                                        <div>ICHT</div>
+                                      </div>
+                                      <div>
+                                        <div className="text-xs text-gray-500">
+                                          Mois
+                                        </div>
+                                        <div>{fmtMonth(icht.month)}</div>
+                                      </div>
+                                      <div>
+                                        <div className="text-xs text-gray-500">
+                                          Valeur
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span>{icht.value}</span>
+                                          <span
+                                            className={
+                                              "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium " +
+                                              (icht.status === "R"
+                                                ? "bg-green-100 text-green-800"
+                                                : icht.status === "P"
+                                                ? "bg-yellow-100 text-yellow-800"
+                                                : "bg-gray-100 text-gray-800")
+                                            }
+                                            title={
+                                              icht.status === "R"
+                                                ? "Révisé"
+                                                : icht.status === "P"
+                                                ? "Provisoire"
+                                                : ""
+                                            }
+                                          >
+                                            {icht.status || "—"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm text-gray-500">
+                                      Aucun détail d’indice.
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Raw JSON (collapsible) */}
+                                <details className="text-xs">
+                                  <summary className="cursor-pointer text-gray-500">
+                                    Afficher le JSON
+                                  </summary>
+                                  <pre className="text-[11px] p-2 bg-gray-100 rounded overflow-x-auto mt-2">
+                                    {JSON.stringify(calcResult, null, 2)}
+                                  </pre>
+                                </details>
+                              </div>
+                            );
+                          })()}
+                        </>
+                      )}
 
                       <Alert>
                         <Info className="h-4 w-4" />
@@ -1638,10 +2134,33 @@ export default function Contracts() {
                           <ChevronRight className="w-4 h-4 ml-2" />
                         </Button>
                       ) : (
-                        <Button onClick={handleWizardNext}>
-                          <Send className="w-4 h-4 mr-2" />
-                          Valider la création
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={handleCalculateOnly}
+                            disabled={calcLoading}
+                            title="Calculer la prévisualisation d’indexation"
+                          >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Calculer l’indexation
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              // only submit here
+                              const payload = buildZodContractPayload(
+                                wizardData,
+                                indexationFormulas
+                              );
+                              createContractMutation.mutate(payload);
+                            }}
+                            disabled={
+                              calcLoading /* optional: || (wizardData.indexationFormula && !calcResult) */
+                            }
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Valider la création
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>

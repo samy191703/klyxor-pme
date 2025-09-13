@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   ChevronDown,
-  ChevronRight,
   LayoutDashboard,
   FileText,
   GitBranch,
@@ -22,14 +21,35 @@ import {
   Ban,
   Receipt,
   Settings,
-  Users,
   BarChart,
-  AlertCircle,
-  Clock,
-  Archive,
-  Calculator,
   HelpCircle,
+  Activity,
+  Calculator,
 } from "lucide-react";
+
+/** --- Drop-in link that always navigates, even for same-path + different query --- */
+function QueryLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    window.history.pushState({}, "", href);
+    window.dispatchEvent(new CustomEvent("app:location-query-changed"));
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+
+  return (
+    <a href={href} onClick={handleClick} className={className}>
+      {children}
+    </a>
+  );
+}
 
 interface MenuItem {
   label: string;
@@ -39,11 +59,7 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  {
-    label: "Tableau de bord",
-    href: "/",
-    icon: LayoutDashboard,
-  },
+  { label: "Tableau de bord", href: "/", icon: LayoutDashboard },
   {
     label: "Contrats",
     icon: FileText,
@@ -64,15 +80,30 @@ const menuItems: MenuItem[] = [
   },
   {
     label: "Indexation",
+    href: "/indexations",
     icon: Calculator,
     children: [
-      { label: "Dashboard", href: "/indexation-dashboard", icon: BarChart },
-      { label: "Configuration", href: "/indexation-config", icon: Settings },
-      { label: "Module autonome", href: "/indexations", icon: Calculator },
       {
-        label: "Historique & rapports",
-        href: "/indexations",
+        label: "Indices INSEE",
+        href: "/indexations?tab=indices",
+        icon: BarChart,
+      },
+      {
+        label: "À calculer",
+        href: "/indexations?tab=toCalculate",
+        icon: Calculator,
+      },
+      { label: "En cours", href: "/indexations?tab=list", icon: Activity },
+      {
+        label: "Historique",
+        href: "/indexations?tab=history",
         icon: TrendingUp,
+      },
+      { label: "Rapports", href: "/indexations?tab=reports", icon: FileText },
+      {
+        label: "Paramétrage",
+        href: "/indexations?tab=settings",
+        icon: Settings,
       },
     ],
   },
@@ -111,52 +142,54 @@ const menuItems: MenuItem[] = [
 export default function SidebarWithSubmenu() {
   const [location] = useLocation();
   const { hasPermission, userRole } = usePermissions();
-  // Toutes les sections sont toujours ouvertes
-  const expandedSections = menuItems
-    .filter((item) => item.children && item.children.length > 0)
-    .map((item) => item.label);
+
+  const expandedSections = useMemo(
+    () => menuItems.filter((i) => i.children?.length).map((i) => i.label),
+    []
+  );
+
+  const getPathnameOnly = (href: string) => href.split("?")[0];
 
   const isActiveSection = (item: MenuItem): boolean => {
-    if (item.href === location) return true;
-    if (item.children) {
-      return item.children.some((child) => child.href === location);
+    if (item.href && getPathnameOnly(item.href) === location) return true;
+    if (item.children?.length) {
+      return item.children.some(
+        (child) => getPathnameOnly(child.href || "") === location
+      );
     }
     return false;
   };
 
   const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
-    return items.filter((item) => {
-      // Check if user has permission for this item
-      if (item.href && !hasPermission(item.href)) {
-        return false;
-      }
+    return items
+      .map((item) => ({ ...item }))
+      .filter((item) => {
+        if (item.href && !hasPermission(item.href)) return false;
+        if (item.label === "Administration" && userRole !== "admin")
+          return false;
 
-      // Special handling for Admin section
-      if (item.label === "Administration" && userRole !== "admin") {
-        return false;
-      }
-
-      // Filter children recursively
-      if (item.children) {
-        const filteredChildren = filterMenuItems(item.children);
-        if (filteredChildren.length === 0) {
-          return false; // Hide parent if no children are accessible
+        if (item.children) {
+          const filteredChildren = filterMenuItems(item.children);
+          if (!filteredChildren.length) return false;
+          item.children = filteredChildren;
         }
-        item.children = filteredChildren;
-      }
-
-      return true;
-    });
+        return true;
+      });
   };
 
-  const filteredMenuItems = filterMenuItems([...menuItems]);
+  const filteredMenuItems = filterMenuItems(menuItems);
 
   const renderMenuItem = (item: MenuItem, level: number = 0) => {
     const Icon = item.icon;
-    const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = expandedSections.includes(item.label);
-    const isActive = item.href === location;
+    const hasChildren = !!item.children?.length;
     const isSectionActive = isActiveSection(item);
+
+    // full match (path + query) for exact leaf highlighting
+    const currentFull =
+      typeof window !== "undefined"
+        ? window.location.pathname + window.location.search
+        : location;
+    const isLeafActive = item.href ? currentFull === item.href : false;
 
     if (hasChildren) {
       return (
@@ -176,31 +209,29 @@ export default function SidebarWithSubmenu() {
             <ChevronDown className="w-4 h-4 text-gray-400" />
           </div>
 
-          {/* Toujours afficher les sous-menus */}
-          {item.children && (
-            <div className="mt-1 space-y-1">
-              {item.children.map((child) => renderMenuItem(child, level + 1))}
-            </div>
-          )}
+          <div className="mt-1 space-y-1">
+            {item.children!.map((child) => renderMenuItem(child, level + 1))}
+          </div>
         </div>
       );
     }
 
+    // leaf item: use QueryLink to force navigation on query change
     return (
-      <Link
+      <QueryLink
         key={item.label}
         href={item.href!}
         className={cn(
           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
           "hover:bg-gray-100 hover:text-[var(--klyxor-bleu-nuit)]",
-          isActive &&
+          isLeafActive &&
             "bg-[var(--klyxor-or)]/20 text-[var(--klyxor-bleu-nuit)] shadow-sm",
           level > 0 && "ml-6 text-sm"
         )}
       >
         <Icon className={cn("w-4 h-4", level > 0 && "w-3.5 h-3.5")} />
         <span>{item.label}</span>
-      </Link>
+      </QueryLink>
     );
   };
 
@@ -230,12 +261,10 @@ export default function SidebarWithSubmenu() {
         {filteredMenuItems.map((item) => renderMenuItem(item))}
       </nav>
 
-      {/* Footer with user info and tutorial button */}
+      {/* Footer */}
       <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-3">
-        {/* Tutorial Button */}
         <button
           onClick={() => {
-            // Utiliser la fonction globale pour relancer le tutoriel
             if ((window as any).restartTutorial) {
               (window as any).restartTutorial();
             }
@@ -246,7 +275,6 @@ export default function SidebarWithSubmenu() {
           <span>Relancer le tutoriel</span>
         </button>
 
-        {/* User info */}
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[var(--klyxor-bleu-nuit)] flex items-center justify-center text-white text-sm font-medium">
             AD
