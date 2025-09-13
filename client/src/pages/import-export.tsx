@@ -2,7 +2,7 @@
  * Module Import/Export de données KLYXOR
  * Permet l'import de données historiques depuis Excel/CSV
  * et l'export des données en différents formats
- * 
+ *
  * Fonctionnalités :
  * - Import Excel/CSV avec validation et gestion des doublons
  * - Export multi-format (Excel, CSV, PDF)
@@ -10,7 +10,13 @@
  * - Téléchargement de modèles pré-formatés
  */
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -19,15 +25,33 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { 
-  Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, 
-  AlertCircle, FileText, History, TrendingUp, Database,
-  FileX, RefreshCw, Settings, ChevronRight
+import {
+  Upload,
+  Download,
+  FileSpreadsheet,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  FileText,
+  History,
+  TrendingUp,
+  Database,
+  FileX,
+  RefreshCw,
+  Settings,
+  ChevronRight,
 } from "lucide-react";
+import Header from "@/components/layout/header";
 
 /**
  * Composant principal de gestion des imports/exports
@@ -41,16 +65,18 @@ export default function ImportExport() {
     updateExisting: false,
     skipDuplicates: true,
     validateData: true,
-    dataType: "contracts"
+    dataType: "contracts",
   });
   const [exportOptions, setExportOptions] = useState({
     format: "xlsx",
     includeArchived: false,
     dateRange: "all",
-    dataTypes: [] as string[]
+    dataTypes: [] as string[],
   });
   const [importProgress, setImportProgress] = useState(0);
-  const [importStatus, setImportStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [importStatus, setImportStatus] = useState<
+    "idle" | "processing" | "success" | "error"
+  >("idle");
   const [importResults, setImportResults] = useState<any>(null);
 
   // Récupération de l'historique des imports
@@ -67,12 +93,12 @@ export default function ImportExport() {
   const importMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       // Simulation de l'import avec progression
-      setImportStatus('processing');
+      setImportStatus("processing");
       setImportProgress(0);
-      
+
       // Simulation de progression
       const progressInterval = setInterval(() => {
-        setImportProgress(prev => {
+        setImportProgress((prev) => {
           if (prev >= 90) {
             clearInterval(progressInterval);
             return 90;
@@ -87,7 +113,7 @@ export default function ImportExport() {
       return response.json();
     },
     onSuccess: (data) => {
-      setImportStatus('success');
+      setImportStatus("success");
       setImportResults(data);
       toast({
         title: "Import réussi",
@@ -97,7 +123,7 @@ export default function ImportExport() {
       queryClient.invalidateQueries({ queryKey: ["/api/import-logs"] });
     },
     onError: (error) => {
-      setImportStatus('error');
+      setImportStatus("error");
       toast({
         title: "Erreur d'import",
         description: "Une erreur est survenue lors de l'import",
@@ -114,12 +140,14 @@ export default function ImportExport() {
     onSuccess: async (response) => {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `export_klyxor_${new Date().toISOString().split('T')[0]}.${exportOptions.format}`;
+      a.download = `export_klyxor_${new Date().toISOString().split("T")[0]}.${
+        exportOptions.format
+      }`;
       a.click();
       window.URL.revokeObjectURL(url);
-      
+
       toast({
         title: "Export réussi",
         description: "Le fichier a été téléchargé avec succès",
@@ -138,17 +166,22 @@ export default function ImportExport() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const validTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'];
+      const validTypes = [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "text/csv",
+      ];
       if (!validTypes.includes(file.type)) {
         toast({
           title: "Format invalide",
-          description: "Veuillez sélectionner un fichier Excel (.xlsx, .xls) ou CSV",
+          description:
+            "Veuillez sélectionner un fichier Excel (.xlsx, .xls) ou CSV",
           variant: "destructive",
         });
         return;
       }
       setUploadFile(file);
-      setImportStatus('idle');
+      setImportStatus("idle");
       setImportResults(null);
     }
   };
@@ -157,8 +190,8 @@ export default function ImportExport() {
     if (!uploadFile) return;
 
     const formData = new FormData();
-    formData.append('file', uploadFile);
-    formData.append('options', JSON.stringify(importOptions));
+    formData.append("file", uploadFile);
+    formData.append("options", JSON.stringify(importOptions));
 
     importMutation.mutate(formData);
   };
@@ -167,7 +200,8 @@ export default function ImportExport() {
     if (exportOptions.dataTypes.length === 0) {
       toast({
         title: "Sélection requise",
-        description: "Veuillez sélectionner au moins un type de données à exporter",
+        description:
+          "Veuillez sélectionner au moins un type de données à exporter",
         variant: "destructive",
       });
       return;
@@ -177,12 +211,17 @@ export default function ImportExport() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
+      <Header />
       <main className="flex-1 overflow-y-auto p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
           {/* En-tête */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Import / Export</h1>
-            <p className="text-gray-500 mt-2">Gérez vos imports et exports de données</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Import / Export
+            </h1>
+            <p className="text-gray-500 mt-2">
+              Gérez vos imports et exports de données
+            </p>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -206,9 +245,14 @@ export default function ImportExport() {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label>Type de données</Label>
-                      <Select 
+                      <Select
                         value={importOptions.dataType}
-                        onValueChange={(value) => setImportOptions({...importOptions, dataType: value})}
+                        onValueChange={(value) =>
+                          setImportOptions({
+                            ...importOptions,
+                            dataType: value,
+                          })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -216,7 +260,9 @@ export default function ImportExport() {
                         <SelectContent>
                           <SelectItem value="contracts">Contrats</SelectItem>
                           <SelectItem value="amendments">Avenants</SelectItem>
-                          <SelectItem value="indexations">Indexations</SelectItem>
+                          <SelectItem value="indexations">
+                            Indexations
+                          </SelectItem>
                           <SelectItem value="deadlines">Échéances</SelectItem>
                         </SelectContent>
                       </Select>
@@ -234,7 +280,9 @@ export default function ImportExport() {
                         {uploadFile ? (
                           <div className="space-y-2">
                             <FileSpreadsheet className="w-12 h-12 mx-auto text-green-500" />
-                            <p className="text-sm font-medium">{uploadFile.name}</p>
+                            <p className="text-sm font-medium">
+                              {uploadFile.name}
+                            </p>
                             <p className="text-xs text-gray-500">
                               {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
                             </p>
@@ -244,7 +292,9 @@ export default function ImportExport() {
                             <Upload className="w-12 h-12 mx-auto text-gray-400 mb-3" />
                             <p className="text-sm text-gray-600">
                               Glissez-déposez votre fichier ici ou{" "}
-                              <span className="text-primary font-medium">parcourir</span>
+                              <span className="text-primary font-medium">
+                                parcourir
+                              </span>
                             </p>
                             <p className="text-xs text-gray-500 mt-2">
                               Excel (.xlsx, .xls) ou CSV
@@ -256,11 +306,14 @@ export default function ImportExport() {
 
                     <div className="space-y-3">
                       <div className="flex items-center space-x-2">
-                        <Checkbox 
+                        <Checkbox
                           id="update-existing"
                           checked={importOptions.updateExisting}
-                          onCheckedChange={(checked) => 
-                            setImportOptions({...importOptions, updateExisting: checked as boolean})
+                          onCheckedChange={(checked) =>
+                            setImportOptions({
+                              ...importOptions,
+                              updateExisting: checked as boolean,
+                            })
                           }
                         />
                         <Label htmlFor="update-existing">
@@ -268,11 +321,14 @@ export default function ImportExport() {
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Checkbox 
+                        <Checkbox
                           id="skip-duplicates"
                           checked={importOptions.skipDuplicates}
-                          onCheckedChange={(checked) => 
-                            setImportOptions({...importOptions, skipDuplicates: checked as boolean})
+                          onCheckedChange={(checked) =>
+                            setImportOptions({
+                              ...importOptions,
+                              skipDuplicates: checked as boolean,
+                            })
                           }
                         />
                         <Label htmlFor="skip-duplicates">
@@ -280,11 +336,14 @@ export default function ImportExport() {
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Checkbox 
+                        <Checkbox
                           id="validate-data"
                           checked={importOptions.validateData}
-                          onCheckedChange={(checked) => 
-                            setImportOptions({...importOptions, validateData: checked as boolean})
+                          onCheckedChange={(checked) =>
+                            setImportOptions({
+                              ...importOptions,
+                              validateData: checked as boolean,
+                            })
                           }
                         />
                         <Label htmlFor="validate-data">
@@ -293,12 +352,12 @@ export default function ImportExport() {
                       </div>
                     </div>
 
-                    <Button 
+                    <Button
                       onClick={handleImport}
-                      disabled={!uploadFile || importStatus === 'processing'}
+                      disabled={!uploadFile || importStatus === "processing"}
                       className="w-full"
                     >
-                      {importStatus === 'processing' ? (
+                      {importStatus === "processing" ? (
                         <>
                           <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                           Import en cours...
@@ -316,14 +375,16 @@ export default function ImportExport() {
                 {/* Statut et résultats */}
                 <div className="space-y-6">
                   {/* Progress */}
-                  {importStatus === 'processing' && (
+                  {importStatus === "processing" && (
                     <Card>
                       <CardHeader>
                         <CardTitle>Import en cours</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Progress value={importProgress} className="mb-2" />
-                        <p className="text-sm text-gray-500">{importProgress}% complété</p>
+                        <p className="text-sm text-gray-500">
+                          {importProgress}% complété
+                        </p>
                       </CardContent>
                     </Card>
                   )}
@@ -337,23 +398,33 @@ export default function ImportExport() {
                       <CardContent className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm">Lignes traitées</span>
-                          <Badge variant="outline">{importResults.processed || 0}</Badge>
+                          <Badge variant="outline">
+                            {importResults.processed || 0}
+                          </Badge>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm">Importées avec succès</span>
-                          <Badge variant="default">{importResults.imported || 0}</Badge>
+                          <Badge variant="default">
+                            {importResults.imported || 0}
+                          </Badge>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm">Mises à jour</span>
-                          <Badge variant="secondary">{importResults.updated || 0}</Badge>
+                          <Badge variant="secondary">
+                            {importResults.updated || 0}
+                          </Badge>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm">Ignorées (doublons)</span>
-                          <Badge variant="outline">{importResults.skipped || 0}</Badge>
+                          <Badge variant="outline">
+                            {importResults.skipped || 0}
+                          </Badge>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm">Erreurs</span>
-                          <Badge variant="destructive">{importResults.errors || 0}</Badge>
+                          <Badge variant="destructive">
+                            {importResults.errors || 0}
+                          </Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -368,17 +439,26 @@ export default function ImportExport() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      <Button variant="outline" className="w-full justify-start">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
                         <FileSpreadsheet className="w-4 h-4 mr-2" />
                         Modèle Contrats
                         <Download className="w-4 h-4 ml-auto" />
                       </Button>
-                      <Button variant="outline" className="w-full justify-start">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
                         <FileSpreadsheet className="w-4 h-4 mr-2" />
                         Modèle Avenants
                         <Download className="w-4 h-4 ml-auto" />
                       </Button>
-                      <Button variant="outline" className="w-full justify-start">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
                         <FileSpreadsheet className="w-4 h-4 mr-2" />
                         Modèle Indexations
                         <Download className="w-4 h-4 ml-auto" />
@@ -402,9 +482,11 @@ export default function ImportExport() {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label>Format d'export</Label>
-                      <RadioGroup 
+                      <RadioGroup
                         value={exportOptions.format}
-                        onValueChange={(value) => setExportOptions({...exportOptions, format: value})}
+                        onValueChange={(value) =>
+                          setExportOptions({ ...exportOptions, format: value })
+                        }
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="xlsx" id="xlsx" />
@@ -424,21 +506,35 @@ export default function ImportExport() {
                     <div className="space-y-2">
                       <Label>Types de données</Label>
                       <div className="space-y-2">
-                        {['Contrats', 'Avenants', 'Indexations', 'Échéances', 'Documents'].map((type) => (
-                          <div key={type} className="flex items-center space-x-2">
-                            <Checkbox 
+                        {[
+                          "Contrats",
+                          "Avenants",
+                          "Indexations",
+                          "Échéances",
+                          "Documents",
+                        ].map((type) => (
+                          <div
+                            key={type}
+                            className="flex items-center space-x-2"
+                          >
+                            <Checkbox
                               id={`export-${type}`}
                               checked={exportOptions.dataTypes.includes(type)}
                               onCheckedChange={(checked) => {
                                 if (checked) {
                                   setExportOptions({
                                     ...exportOptions,
-                                    dataTypes: [...exportOptions.dataTypes, type]
+                                    dataTypes: [
+                                      ...exportOptions.dataTypes,
+                                      type,
+                                    ],
                                   });
                                 } else {
                                   setExportOptions({
                                     ...exportOptions,
-                                    dataTypes: exportOptions.dataTypes.filter(t => t !== type)
+                                    dataTypes: exportOptions.dataTypes.filter(
+                                      (t) => t !== type
+                                    ),
                                   });
                                 }
                               }}
@@ -451,29 +547,45 @@ export default function ImportExport() {
 
                     <div className="space-y-2">
                       <Label>Période</Label>
-                      <Select 
+                      <Select
                         value={exportOptions.dateRange}
-                        onValueChange={(value) => setExportOptions({...exportOptions, dateRange: value})}
+                        onValueChange={(value) =>
+                          setExportOptions({
+                            ...exportOptions,
+                            dateRange: value,
+                          })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Toutes les données</SelectItem>
-                          <SelectItem value="current_year">Année en cours</SelectItem>
-                          <SelectItem value="last_year">Année précédente</SelectItem>
-                          <SelectItem value="last_quarter">Dernier trimestre</SelectItem>
+                          <SelectItem value="all">
+                            Toutes les données
+                          </SelectItem>
+                          <SelectItem value="current_year">
+                            Année en cours
+                          </SelectItem>
+                          <SelectItem value="last_year">
+                            Année précédente
+                          </SelectItem>
+                          <SelectItem value="last_quarter">
+                            Dernier trimestre
+                          </SelectItem>
                           <SelectItem value="custom">Personnalisée</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
+                      <Checkbox
                         id="include-archived"
                         checked={exportOptions.includeArchived}
-                        onCheckedChange={(checked) => 
-                          setExportOptions({...exportOptions, includeArchived: checked as boolean})
+                        onCheckedChange={(checked) =>
+                          setExportOptions({
+                            ...exportOptions,
+                            includeArchived: checked as boolean,
+                          })
                         }
                       />
                       <Label htmlFor="include-archived">
@@ -481,7 +593,7 @@ export default function ImportExport() {
                       </Label>
                     </div>
 
-                    <Button 
+                    <Button
                       onClick={handleExport}
                       disabled={exportMutation.isPending}
                       className="w-full"
@@ -512,13 +624,20 @@ export default function ImportExport() {
                   <CardContent>
                     <div className="space-y-3">
                       {exportJobs.slice(0, 5).map((job: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        >
                           <div className="flex items-center space-x-3">
                             <FileSpreadsheet className="w-5 h-5 text-gray-400" />
                             <div>
-                              <p className="text-sm font-medium">{job.fileName || `Export ${job.format}`}</p>
+                              <p className="text-sm font-medium">
+                                {job.fileName || `Export ${job.format}`}
+                              </p>
                               <p className="text-xs text-gray-500">
-                                {new Date(job.createdAt).toLocaleDateString('fr-FR')}
+                                {new Date(job.createdAt).toLocaleDateString(
+                                  "fr-FR"
+                                )}
                               </p>
                             </div>
                           </div>
@@ -545,11 +664,14 @@ export default function ImportExport() {
                 <CardContent>
                   <div className="space-y-3">
                     {importHistory.map((log: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
                         <div className="flex items-center space-x-4">
-                          {log.status === 'success' ? (
+                          {log.status === "success" ? (
                             <CheckCircle2 className="w-5 h-5 text-green-500" />
-                          ) : log.status === 'error' ? (
+                          ) : log.status === "error" ? (
                             <XCircle className="w-5 h-5 text-red-500" />
                           ) : (
                             <AlertCircle className="w-5 h-5 text-yellow-500" />
@@ -557,14 +679,20 @@ export default function ImportExport() {
                           <div>
                             <p className="font-medium">{log.fileName}</p>
                             <p className="text-sm text-gray-500">
-                              {log.importType} • {new Date(log.createdAt).toLocaleDateString('fr-FR')}
+                              {log.importType} •{" "}
+                              {new Date(log.createdAt).toLocaleDateString(
+                                "fr-FR"
+                              )}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium">{log.totalRows} lignes</p>
+                          <p className="text-sm font-medium">
+                            {log.totalRows} lignes
+                          </p>
                           <p className="text-xs text-gray-500">
-                            {log.successCount} réussies, {log.errorCount} erreurs
+                            {log.successCount} réussies, {log.errorCount}{" "}
+                            erreurs
                           </p>
                         </div>
                       </div>

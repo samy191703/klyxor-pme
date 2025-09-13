@@ -1,12 +1,37 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -15,22 +40,51 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import StatusBadge from "@/components/widgets/status-badge";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  Download, Plus, Eye, Filter, Search, Settings, Clock,
-  AlertCircle, Info, CheckCircle, AlertTriangle, FileText,
-  Database, Shield, Copy, RefreshCw, X, ChevronRight,
-  Calendar, Building, DollarSign, FileSpreadsheet, FilePlus,
-  Loader2, CheckSquare, Square, File, History, Lock,
-  User, Archive, HardDrive, Activity, Globe
+import {
+  Download,
+  Plus,
+  Eye,
+  Filter,
+  Search,
+  Settings,
+  Clock,
+  AlertCircle,
+  Info,
+  CheckCircle,
+  AlertTriangle,
+  FileText,
+  Database,
+  Shield,
+  Copy,
+  RefreshCw,
+  X,
+  ChevronRight,
+  Calendar,
+  Building,
+  DollarSign,
+  FileSpreadsheet,
+  FilePlus,
+  Loader2,
+  CheckSquare,
+  Square,
+  File,
+  History,
+  Lock,
+  User,
+  Archive,
+  HardDrive,
+  Activity,
+  Globe,
 } from "lucide-react";
+import Header from "@/components/layout/header";
 
 // Type definitions
 interface ExportJob {
   id: string;
   name: string;
   domain: string;
-  format: 'xlsx' | 'csv';
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  format: "xlsx" | "csv";
+  status: "pending" | "in_progress" | "completed" | "failed";
   progress: number;
   requestedAt: Date;
   completedAt?: Date;
@@ -46,9 +100,9 @@ interface ExportJob {
 interface FilterRule {
   id: string;
   field: string;
-  operator: 'equals' | 'contains' | 'between' | 'greater_than' | 'less_than';
+  operator: "equals" | "contains" | "between" | "greater_than" | "less_than";
   value: string | string[];
-  logicalOperator?: 'AND' | 'OR';
+  logicalOperator?: "AND" | "OR";
 }
 
 interface DataColumn {
@@ -72,9 +126,11 @@ export default function DataExport() {
   const { data: amendments = [] } = useQuery({
     queryKey: ["/api/amendments"],
   });
-  const [currentStep, setCurrentStep] = useState<'selection' | 'refinement' | 'preview' | 'generation' | 'history'>('selection');
+  const [currentStep, setCurrentStep] = useState<
+    "selection" | "refinement" | "preview" | "generation" | "history"
+  >("selection");
   const [selectedDomain, setSelectedDomain] = useState<string>("");
-  const [selectedFormat, setSelectedFormat] = useState<'xlsx' | 'csv'>('xlsx');
+  const [selectedFormat, setSelectedFormat] = useState<"xlsx" | "csv">("xlsx");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
@@ -85,104 +141,180 @@ export default function DataExport() {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [showError, setShowError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'export' | 'history' | 'settings'>('export');
+  const [activeTab, setActiveTab] = useState<"export" | "history" | "settings">(
+    "export"
+  );
 
   // Domaines de données avec compteurs réels
   const dataDomains = [
-    { id: 'contracts', name: 'Contrats', icon: FileText, count: contracts.length },
-    { id: 'amounts', name: 'Montants', icon: DollarSign, count: contracts.filter((c: any) => c.annual_amount).length },
-    { id: 'lifecycle', name: 'États / cycle de vie', icon: Activity, count: contracts.filter((c: any) => c.status).length },
-    { id: 'indexations', name: 'Indexations', icon: Database, count: indexations.length },
-    { id: 'payments', name: 'Paiements', icon: Globe, count: 0 }, // A implémenter quand les données seront disponibles
-    { id: 'other', name: 'Autres', icon: Archive, count: amendments.length }
+    {
+      id: "contracts",
+      name: "Contrats",
+      icon: FileText,
+      count: contracts.length,
+    },
+    {
+      id: "amounts",
+      name: "Montants",
+      icon: DollarSign,
+      count: contracts.filter((c: any) => c.annual_amount).length,
+    },
+    {
+      id: "lifecycle",
+      name: "États / cycle de vie",
+      icon: Activity,
+      count: contracts.filter((c: any) => c.status).length,
+    },
+    {
+      id: "indexations",
+      name: "Indexations",
+      icon: Database,
+      count: indexations.length,
+    },
+    { id: "payments", name: "Paiements", icon: Globe, count: 0 }, // A implémenter quand les données seront disponibles
+    { id: "other", name: "Autres", icon: Archive, count: amendments.length },
   ];
 
   // Colonnes dynamiques basées sur les vraies données
   const domainColumns: Record<string, DataColumn[]> = {
-    contracts: contracts.length > 0 ? 
-      Object.keys(contracts[0] || {}).map((key, index) => ({
-        id: String(index + 1),
-        name: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        field: key,
-        included: ['contract_number', 'contract_name', 'start_date', 'end_date', 'status'].includes(key),
-        required: key === 'contract_number'
-      })) : [
-        { id: '1', name: 'Numéro de contrat', field: 'contractNumber', included: true, required: true },
-        { id: '2', name: 'Intitulé', field: 'title', included: true },
-        { id: '3', name: 'Date de début', field: 'startDate', included: true },
-        { id: '4', name: 'Date de fin', field: 'endDate', included: true },
-        { id: '5', name: 'Montant', field: 'amount', included: true },
-        { id: '6', name: 'Statut', field: 'status', included: true }
-      ],
-    indexations: indexations.length > 0 ?
-      Object.keys(indexations[0] || {}).map((key, index) => ({
-        id: String(index + 1),
-        name: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        field: key,
-        included: true,
-        required: false
-      })) : []
+    contracts:
+      contracts.length > 0
+        ? Object.keys(contracts[0] || {}).map((key, index) => ({
+            id: String(index + 1),
+            name: key
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, (l) => l.toUpperCase()),
+            field: key,
+            included: [
+              "contract_number",
+              "contract_name",
+              "start_date",
+              "end_date",
+              "status",
+            ].includes(key),
+            required: key === "contract_number",
+          }))
+        : [
+            {
+              id: "1",
+              name: "Numéro de contrat",
+              field: "contractNumber",
+              included: true,
+              required: true,
+            },
+            { id: "2", name: "Intitulé", field: "title", included: true },
+            {
+              id: "3",
+              name: "Date de début",
+              field: "startDate",
+              included: true,
+            },
+            { id: "4", name: "Date de fin", field: "endDate", included: true },
+            { id: "5", name: "Montant", field: "amount", included: true },
+            { id: "6", name: "Statut", field: "status", included: true },
+          ],
+    indexations:
+      indexations.length > 0
+        ? Object.keys(indexations[0] || {}).map((key, index) => ({
+            id: String(index + 1),
+            name: key
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, (l) => l.toUpperCase()),
+            field: key,
+            included: true,
+            required: false,
+          }))
+        : [],
   };
 
   // Historique d'export (sera alimenté au fur et à mesure)
   const exportHistory: ExportJob[] = [
     // Génération d'historique depuis les données réelles
-    ...(contracts.length > 0 ? [{
-      id: `EXP-${new Date().getFullYear()}-001`,
-      name: `Export_Contrats_${new Date().toISOString().split('T')[0]}`,
-      domain: 'contracts',
-      format: 'xlsx' as const,
-      status: 'completed' as const,
-      progress: 100,
-      requestedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      completedAt: new Date(Date.now() - 24 * 60 * 60 * 1000 + 120000),
-      requestedBy: 'Utilisateur',
-      filters: `Total: ${contracts.length} contrats`,
-      columns: ['contract_number', 'contract_name', 'status'],
-      rowCount: contracts.length,
-      fileSize: `${(contracts.length * 0.005).toFixed(1)} MB`,
-      traceId: `TRC-EXP-${new Date().getFullYear()}-001`
-    }] : []),
+    ...(contracts.length > 0
+      ? [
+          {
+            id: `EXP-${new Date().getFullYear()}-001`,
+            name: `Export_Contrats_${new Date().toISOString().split("T")[0]}`,
+            domain: "contracts",
+            format: "xlsx" as const,
+            status: "completed" as const,
+            progress: 100,
+            requestedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            completedAt: new Date(Date.now() - 24 * 60 * 60 * 1000 + 120000),
+            requestedBy: "Utilisateur",
+            filters: `Total: ${contracts.length} contrats`,
+            columns: ["contract_number", "contract_name", "status"],
+            rowCount: contracts.length,
+            fileSize: `${(contracts.length * 0.005).toFixed(1)} MB`,
+            traceId: `TRC-EXP-${new Date().getFullYear()}-001`,
+          },
+        ]
+      : []),
     {
-      id: 'EXP-2024-002',
-      name: 'Export_Indexations_Janvier',
-      domain: 'indexations',
-      format: 'csv',
-      status: 'completed',
+      id: "EXP-2024-002",
+      name: "Export_Indexations_Janvier",
+      domain: "indexations",
+      format: "csv",
+      status: "completed",
       progress: 100,
-      requestedAt: new Date('2024-01-15T14:30:00'),
-      completedAt: new Date('2024-01-15T14:31:00'),
-      requestedBy: 'Pierre Durand',
-      filters: 'Période: Janvier 2024',
-      columns: ['indexId', 'contractNumber', 'oldValue', 'newValue'],
+      requestedAt: new Date("2024-01-15T14:30:00"),
+      completedAt: new Date("2024-01-15T14:31:00"),
+      requestedBy: "Pierre Durand",
+      filters: "Période: Janvier 2024",
+      columns: ["indexId", "contractNumber", "oldValue", "newValue"],
       rowCount: 89,
-      fileSize: '156 KB',
-      traceId: 'TRC-EXP-2024-002'
+      fileSize: "156 KB",
+      traceId: "TRC-EXP-2024-002",
     },
     {
-      id: 'EXP-2024-003',
-      name: 'Export_Paiements_2024',
-      domain: 'payments',
-      format: 'xlsx',
-      status: 'failed',
+      id: "EXP-2024-003",
+      name: "Export_Paiements_2024",
+      domain: "payments",
+      format: "xlsx",
+      status: "failed",
       progress: 45,
-      requestedAt: new Date('2024-02-10T09:00:00'),
-      requestedBy: 'Sophie Bernard',
-      filters: 'Année: 2024',
-      columns: ['paymentId', 'amount', 'date', 'status'],
-      errorMessage: 'Timeout base de données',
-      traceId: 'TRC-EXP-2024-003'
-    }
+      requestedAt: new Date("2024-02-10T09:00:00"),
+      requestedBy: "Sophie Bernard",
+      filters: "Année: 2024",
+      columns: ["paymentId", "amount", "date", "status"],
+      errorMessage: "Timeout base de données",
+      traceId: "TRC-EXP-2024-003",
+    },
   ];
 
   // Mock preview data
   const generatePreviewData = () => {
     return [
-      { contractNumber: 'CNT-2024-001', title: 'Maintenance informatique', amount: '250 000 €', status: 'Actif' },
-      { contractNumber: 'CNT-2024-002', title: 'Location bureaux', amount: '180 000 €', status: 'Actif' },
-      { contractNumber: 'CNT-2024-003', title: 'Services de nettoyage', amount: '45 000 €', status: 'Actif' },
-      { contractNumber: 'CNT-2024-004', title: 'Fournitures de bureau', amount: '25 000 €', status: 'Résilié' },
-      { contractNumber: 'CNT-2024-005', title: 'Transport logistique', amount: '120 000 €', status: 'En cours' }
+      {
+        contractNumber: "CNT-2024-001",
+        title: "Maintenance informatique",
+        amount: "250 000 €",
+        status: "Actif",
+      },
+      {
+        contractNumber: "CNT-2024-002",
+        title: "Location bureaux",
+        amount: "180 000 €",
+        status: "Actif",
+      },
+      {
+        contractNumber: "CNT-2024-003",
+        title: "Services de nettoyage",
+        amount: "45 000 €",
+        status: "Actif",
+      },
+      {
+        contractNumber: "CNT-2024-004",
+        title: "Fournitures de bureau",
+        amount: "25 000 €",
+        status: "Résilié",
+      },
+      {
+        contractNumber: "CNT-2024-005",
+        title: "Transport logistique",
+        amount: "120 000 €",
+        status: "En cours",
+      },
     ];
   };
 
@@ -192,105 +324,135 @@ export default function DataExport() {
   };
 
   const handleColumnToggle = (columnId: string) => {
-    setSelectedColumns(prev => 
-      prev.map(col => 
+    setSelectedColumns((prev) =>
+      prev.map((col) =>
         col.id === columnId ? { ...col, included: !col.included } : col
       )
     );
   };
 
   const handleAddFilter = () => {
-    setAdvancedFilters(prev => [...prev, {
-      id: `filter-${Date.now()}`,
-      field: '',
-      operator: 'equals',
-      value: '',
-      logicalOperator: prev.length > 0 ? 'AND' : undefined
-    }]);
+    setAdvancedFilters((prev) => [
+      ...prev,
+      {
+        id: `filter-${Date.now()}`,
+        field: "",
+        operator: "equals",
+        value: "",
+        logicalOperator: prev.length > 0 ? "AND" : undefined,
+      },
+    ]);
   };
 
   const handleRemoveFilter = (filterId: string) => {
-    setAdvancedFilters(prev => prev.filter(f => f.id !== filterId));
+    setAdvancedFilters((prev) => prev.filter((f) => f.id !== filterId));
   };
 
   const handleStartExport = () => {
     const newJob: ExportJob = {
       id: `EXP-2024-${Date.now()}`,
-      name: `Export_${selectedDomain}_${new Date().toISOString().split('T')[0]}`,
+      name: `Export_${selectedDomain}_${
+        new Date().toISOString().split("T")[0]
+      }`,
       domain: selectedDomain,
       format: selectedFormat,
-      status: 'in_progress',
+      status: "in_progress",
       progress: 0,
       requestedAt: new Date(),
-      requestedBy: 'Utilisateur actuel',
+      requestedBy: "Utilisateur actuel",
       filters: `Période: ${dateRange.from} - ${dateRange.to}`,
-      columns: selectedColumns.filter(c => c.included).map(c => c.field),
-      traceId: `TRC-EXP-${Date.now()}`
+      columns: selectedColumns.filter((c) => c.included).map((c) => c.field),
+      traceId: `TRC-EXP-${Date.now()}`,
     };
     setCurrentJob(newJob);
-    setCurrentStep('generation');
-    
+    setCurrentStep("generation");
+
     // Simulate progress
     let progress = 0;
     const interval = setInterval(() => {
       progress += 10;
       if (progress >= 100) {
         clearInterval(interval);
-        setCurrentJob(prev => prev ? {
-          ...prev,
-          status: 'completed',
-          progress: 100,
-          completedAt: new Date(),
-          rowCount: 450,
-          fileSize: '2.3 MB'
-        } : null);
+        setCurrentJob((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "completed",
+                progress: 100,
+                completedAt: new Date(),
+                rowCount: 450,
+                fileSize: "2.3 MB",
+              }
+            : null
+        );
       } else {
-        setCurrentJob(prev => prev ? { ...prev, progress } : null);
+        setCurrentJob((prev) => (prev ? { ...prev, progress } : null));
       }
     }, 500);
   };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case "completed": return "success";
-      case "in_progress": return "warning";
-      case "pending": return "secondary";
-      case "failed": return "destructive";
-      default: return "secondary";
+      case "completed":
+        return "success";
+      case "in_progress":
+        return "warning";
+      case "pending":
+        return "secondary";
+      case "failed":
+        return "destructive";
+      default:
+        return "secondary";
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "completed": return "Terminé";
-      case "in_progress": return "En cours";
-      case "pending": return "En attente";
-      case "failed": return "Échec";
-      default: return status;
+      case "completed":
+        return "Terminé";
+      case "in_progress":
+        return "En cours";
+      case "pending":
+        return "En attente";
+      case "failed":
+        return "Échec";
+      default:
+        return status;
     }
   };
 
   const formatDateTime = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date);
   };
 
   return (
     <>
       <div className="flex flex-col h-full bg-gray-50">
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="data-export-main">
+        <Header />
+        <main
+          className="flex-1 overflow-y-auto p-4 lg:p-6"
+          data-testid="data-export-main"
+        >
           <div className="max-w-7xl mx-auto">
             {/* Page Header */}
             <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">Extraction des données</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Extraction des données
+              </h1>
             </div>
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'export' | 'history' | 'settings')}>
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) =>
+                setActiveTab(v as "export" | "history" | "settings")
+              }
+            >
               <TabsList className="mb-6">
                 <TabsTrigger value="export">Nouvelle extraction</TabsTrigger>
                 <TabsTrigger value="history">Historique</TabsTrigger>
@@ -302,18 +464,21 @@ export default function DataExport() {
                 <Alert className="mb-6">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Seules les données accessibles selon vos droits seront extraites.
+                    Seules les données accessibles selon vos droits seront
+                    extraites.
                   </AlertDescription>
                 </Alert>
 
                 {/* EX-1 - Selection Step */}
-                {currentStep === 'selection' && (
+                {currentStep === "selection" && (
                   <div className="space-y-6">
                     {/* Domain Selection */}
                     <Card>
                       <CardHeader>
                         <CardTitle>Domaine de données</CardTitle>
-                        <CardDescription>Sélectionnez le type de données à extraire</CardDescription>
+                        <CardDescription>
+                          Sélectionnez le type de données à extraire
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -324,14 +489,16 @@ export default function DataExport() {
                                 key={domain.id}
                                 onClick={() => handleDomainSelect(domain.id)}
                                 className={`p-4 border rounded-lg hover:shadow-md transition-all ${
-                                  selectedDomain === domain.id 
-                                    ? 'border-primary bg-primary/5' 
-                                    : 'border-gray-200'
+                                  selectedDomain === domain.id
+                                    ? "border-primary bg-primary/5"
+                                    : "border-gray-200"
                                 }`}
                               >
                                 <Icon className="w-8 h-8 mb-2 text-gray-600" />
                                 <div className="font-medium">{domain.name}</div>
-                                <div className="text-sm text-gray-500">{domain.count} enregistrements</div>
+                                <div className="text-sm text-gray-500">
+                                  {domain.count} enregistrements
+                                </div>
                               </button>
                             );
                           })}
@@ -343,26 +510,38 @@ export default function DataExport() {
                     <Card>
                       <CardHeader>
                         <CardTitle>Période</CardTitle>
-                        <CardDescription>Définissez la plage de dates pour l'extraction</CardDescription>
+                        <CardDescription>
+                          Définissez la plage de dates pour l'extraction
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="date-from">Du</Label>
-                            <Input 
+                            <Input
                               id="date-from"
                               type="date"
                               value={dateRange.from}
-                              onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                              onChange={(e) =>
+                                setDateRange((prev) => ({
+                                  ...prev,
+                                  from: e.target.value,
+                                }))
+                              }
                             />
                           </div>
                           <div>
                             <Label htmlFor="date-to">Au</Label>
-                            <Input 
+                            <Input
                               id="date-to"
                               type="date"
                               value={dateRange.to}
-                              onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                              onChange={(e) =>
+                                setDateRange((prev) => ({
+                                  ...prev,
+                                  to: e.target.value,
+                                }))
+                              }
                             />
                           </div>
                         </div>
@@ -373,44 +552,62 @@ export default function DataExport() {
                     <Card>
                       <CardHeader>
                         <CardTitle>Filtres rapides</CardTitle>
-                        <CardDescription>Sélectionnez plusieurs options pour affiner</CardDescription>
+                        <CardDescription>
+                          Sélectionnez plusieurs options pour affiner
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
                           <div>
                             <Label>Type de contrat</Label>
                             <div className="flex flex-wrap gap-2 mt-2">
-                              {['Achat', 'Vente', 'Service', 'Location'].map((type) => (
-                                <Button
-                                  key={type}
-                                  variant={selectedFilters.includes(type) ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedFilters(prev => 
-                                      prev.includes(type) 
-                                        ? prev.filter(f => f !== type)
-                                        : [...prev, type]
-                                    );
-                                  }}
-                                >
-                                  {type}
-                                </Button>
-                              ))}
+                              {["Achat", "Vente", "Service", "Location"].map(
+                                (type) => (
+                                  <Button
+                                    key={type}
+                                    variant={
+                                      selectedFilters.includes(type)
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedFilters((prev) =>
+                                        prev.includes(type)
+                                          ? prev.filter((f) => f !== type)
+                                          : [...prev, type]
+                                      );
+                                    }}
+                                  >
+                                    {type}
+                                  </Button>
+                                )
+                              )}
                             </div>
                           </div>
-                          
+
                           <div>
                             <Label>Statut</Label>
                             <div className="flex flex-wrap gap-2 mt-2">
-                              {['Brouillon', 'À valider', 'Actif', 'Résilié', 'Clôturé'].map((status) => (
+                              {[
+                                "Brouillon",
+                                "À valider",
+                                "Actif",
+                                "Résilié",
+                                "Clôturé",
+                              ].map((status) => (
                                 <Button
                                   key={status}
-                                  variant={selectedFilters.includes(status) ? "default" : "outline"}
+                                  variant={
+                                    selectedFilters.includes(status)
+                                      ? "default"
+                                      : "outline"
+                                  }
                                   size="sm"
                                   onClick={() => {
-                                    setSelectedFilters(prev => 
-                                      prev.includes(status) 
-                                        ? prev.filter(f => f !== status)
+                                    setSelectedFilters((prev) =>
+                                      prev.includes(status)
+                                        ? prev.filter((f) => f !== status)
                                         : [...prev, status]
                                     );
                                   }}
@@ -430,17 +627,28 @@ export default function DataExport() {
                         <CardTitle>Format de sortie</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <RadioGroup value={selectedFormat} onValueChange={(v) => setSelectedFormat(v as 'xlsx' | 'csv')}>
+                        <RadioGroup
+                          value={selectedFormat}
+                          onValueChange={(v) =>
+                            setSelectedFormat(v as "xlsx" | "csv")
+                          }
+                        >
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="xlsx" id="xlsx" />
-                            <Label htmlFor="xlsx" className="flex items-center gap-2 cursor-pointer">
+                            <Label
+                              htmlFor="xlsx"
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
                               <FileSpreadsheet className="w-4 h-4" />
                               Excel (.xlsx)
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="csv" id="csv" />
-                            <Label htmlFor="csv" className="flex items-center gap-2 cursor-pointer">
+                            <Label
+                              htmlFor="csv"
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
                               <File className="w-4 h-4" />
                               CSV (.csv)
                             </Label>
@@ -457,7 +665,8 @@ export default function DataExport() {
                           <div className="text-sm">
                             <strong>Conformité & sécurité</strong>
                             <p className="text-gray-600 mt-1">
-                              Accès selon profil RBAC • Traçabilité de l'action d'export • Conformité RGPD
+                              Accès selon profil RBAC • Traçabilité de l'action
+                              d'export • Conformité RGPD
                             </p>
                           </div>
                         </div>
@@ -466,15 +675,18 @@ export default function DataExport() {
 
                     {/* Actions */}
                     <div className="flex justify-between">
-                      <Button variant="outline" onClick={() => {
-                        setSelectedDomain("");
-                        setSelectedFilters([]);
-                        setDateRange({ from: "", to: "" });
-                      }}>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedDomain("");
+                          setSelectedFilters([]);
+                          setDateRange({ from: "", to: "" });
+                        }}
+                      >
                         Réinitialiser
                       </Button>
-                      <Button 
-                        onClick={() => setCurrentStep('refinement')}
+                      <Button
+                        onClick={() => setCurrentStep("refinement")}
                         disabled={!selectedDomain}
                       >
                         Continuer
@@ -485,26 +697,39 @@ export default function DataExport() {
                 )}
 
                 {/* EX-2 - Refinement Step */}
-                {currentStep === 'refinement' && (
+                {currentStep === "refinement" && (
                   <div className="space-y-6">
-                    <h2 className="text-xl font-semibold">Affiner l'extraction</h2>
+                    <h2 className="text-xl font-semibold">
+                      Affiner l'extraction
+                    </h2>
 
                     {/* Advanced Filters Builder */}
                     <Card>
                       <CardHeader>
                         <CardTitle>Constructeur de filtres avancés</CardTitle>
-                        <CardDescription>Ajoutez des conditions pour filtrer les données</CardDescription>
+                        <CardDescription>
+                          Ajoutez des conditions pour filtrer les données
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-3">
                           {advancedFilters.map((filter, index) => (
                             <div key={filter.id}>
                               {index > 0 && (
-                                <Select 
+                                <Select
                                   value={filter.logicalOperator}
                                   onValueChange={(v) => {
-                                    setAdvancedFilters(prev => 
-                                      prev.map(f => f.id === filter.id ? { ...f, logicalOperator: v as 'AND' | 'OR' } : f)
+                                    setAdvancedFilters((prev) =>
+                                      prev.map((f) =>
+                                        f.id === filter.id
+                                          ? {
+                                              ...f,
+                                              logicalOperator: v as
+                                                | "AND"
+                                                | "OR",
+                                            }
+                                          : f
+                                      )
                                     );
                                   }}
                                 >
@@ -523,10 +748,18 @@ export default function DataExport() {
                                     <SelectValue placeholder="Champ" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="contractNumber">Numéro de contrat</SelectItem>
-                                    <SelectItem value="amount">Montant</SelectItem>
-                                    <SelectItem value="status">Statut</SelectItem>
-                                    <SelectItem value="supplier">Fournisseur</SelectItem>
+                                    <SelectItem value="contractNumber">
+                                      Numéro de contrat
+                                    </SelectItem>
+                                    <SelectItem value="amount">
+                                      Montant
+                                    </SelectItem>
+                                    <SelectItem value="status">
+                                      Statut
+                                    </SelectItem>
+                                    <SelectItem value="supplier">
+                                      Fournisseur
+                                    </SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <Select>
@@ -535,15 +768,26 @@ export default function DataExport() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="equals">=</SelectItem>
-                                    <SelectItem value="contains">Contient</SelectItem>
-                                    <SelectItem value="between">Entre</SelectItem>
-                                    <SelectItem value="greater_than">&gt;</SelectItem>
-                                    <SelectItem value="less_than">&lt;</SelectItem>
+                                    <SelectItem value="contains">
+                                      Contient
+                                    </SelectItem>
+                                    <SelectItem value="between">
+                                      Entre
+                                    </SelectItem>
+                                    <SelectItem value="greater_than">
+                                      &gt;
+                                    </SelectItem>
+                                    <SelectItem value="less_than">
+                                      &lt;
+                                    </SelectItem>
                                   </SelectContent>
                                 </Select>
-                                <Input className="flex-1" placeholder="Valeur" />
-                                <Button 
-                                  variant="ghost" 
+                                <Input
+                                  className="flex-1"
+                                  placeholder="Valeur"
+                                />
+                                <Button
+                                  variant="ghost"
                                   size="sm"
                                   onClick={() => handleRemoveFilter(filter.id)}
                                 >
@@ -552,7 +796,11 @@ export default function DataExport() {
                               </div>
                             </div>
                           ))}
-                          <Button variant="outline" onClick={handleAddFilter} className="w-full">
+                          <Button
+                            variant="outline"
+                            onClick={handleAddFilter}
+                            className="w-full"
+                          >
                             <Plus className="w-4 h-4 mr-2" />
                             Ajouter un filtre
                           </Button>
@@ -565,34 +813,47 @@ export default function DataExport() {
                       <CardHeader>
                         <CardTitle>Colonnes à inclure</CardTitle>
                         <CardDescription>
-                          Sélectionnez les champs à exporter (pré-cochées par défaut)
+                          Sélectionnez les champs à exporter (pré-cochées par
+                          défaut)
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
                           {selectedColumns.map((column) => (
-                            <div key={column.id} className="flex items-center space-x-2">
-                              <Checkbox 
+                            <div
+                              key={column.id}
+                              className="flex items-center space-x-2"
+                            >
+                              <Checkbox
                                 id={column.id}
                                 checked={column.included}
-                                onCheckedChange={() => handleColumnToggle(column.id)}
+                                onCheckedChange={() =>
+                                  handleColumnToggle(column.id)
+                                }
                                 disabled={column.required}
                               />
-                              <Label 
-                                htmlFor={column.id} 
-                                className={`flex-1 ${column.required ? 'font-medium' : ''}`}
+                              <Label
+                                htmlFor={column.id}
+                                className={`flex-1 ${
+                                  column.required ? "font-medium" : ""
+                                }`}
                               >
                                 {column.name}
-                                {column.required && <span className="text-xs text-gray-500 ml-2">(obligatoire)</span>}
+                                {column.required && (
+                                  <span className="text-xs text-gray-500 ml-2">
+                                    (obligatoire)
+                                  </span>
+                                )}
                               </Label>
                             </div>
                           ))}
                         </div>
-                        
+
                         <Alert className="mt-4">
                           <Info className="h-4 w-4" />
                           <AlertDescription className="text-sm">
-                            Les colonnes et lignes visibles respectent vos droits d'accès.
+                            Les colonnes et lignes visibles respectent vos
+                            droits d'accès.
                           </AlertDescription>
                         </Alert>
                       </CardContent>
@@ -600,23 +861,30 @@ export default function DataExport() {
 
                     {/* Format Reminder */}
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-600">Format sélectionné :</span>
+                      <span className="text-sm text-gray-600">
+                        Format sélectionné :
+                      </span>
                       <Badge variant="outline">
-                        {selectedFormat === 'xlsx' ? 'Excel (.xlsx)' : 'CSV (.csv)'}
+                        {selectedFormat === "xlsx"
+                          ? "Excel (.xlsx)"
+                          : "CSV (.csv)"}
                       </Badge>
                     </div>
 
                     {/* Actions */}
                     <div className="flex justify-between">
-                      <Button variant="outline" onClick={() => setCurrentStep('selection')}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep("selection")}
+                      >
                         Retour
                       </Button>
                       <div className="flex gap-2">
-                        <Button 
+                        <Button
                           variant="outline"
                           onClick={() => {
                             setPreviewData(generatePreviewData());
-                            setCurrentStep('preview');
+                            setCurrentStep("preview");
                           }}
                         >
                           <Eye className="w-4 h-4 mr-2" />
@@ -631,7 +899,7 @@ export default function DataExport() {
                 )}
 
                 {/* EX-3 - Preview Step */}
-                {currentStep === 'preview' && (
+                {currentStep === "preview" && (
                   <div className="space-y-6">
                     {/* Preview Header */}
                     <Card>
@@ -640,7 +908,8 @@ export default function DataExport() {
                           <div className="flex items-center gap-4">
                             <Badge variant="outline">Aperçu</Badge>
                             <span className="text-sm text-gray-600">
-                              Filtres actifs : {advancedFilters.length || 'Aucun'}
+                              Filtres actifs :{" "}
+                              {advancedFilters.length || "Aucun"}
                             </span>
                           </div>
                           <span className="text-sm font-medium">
@@ -659,9 +928,11 @@ export default function DataExport() {
                               <TableHeader>
                                 <TableRow>
                                   {selectedColumns
-                                    .filter(col => col.included)
-                                    .map(col => (
-                                      <TableHead key={col.id}>{col.name}</TableHead>
+                                    .filter((col) => col.included)
+                                    .map((col) => (
+                                      <TableHead key={col.id}>
+                                        {col.name}
+                                      </TableHead>
                                     ))}
                                 </TableRow>
                               </TableHeader>
@@ -672,7 +943,9 @@ export default function DataExport() {
                                     <TableCell>{row.title}</TableCell>
                                     <TableCell>{row.amount}</TableCell>
                                     <TableCell>
-                                      <Badge variant="outline">{row.status}</Badge>
+                                      <Badge variant="outline">
+                                        {row.status}
+                                      </Badge>
                                     </TableCell>
                                   </TableRow>
                                 ))}
@@ -688,10 +961,13 @@ export default function DataExport() {
                       <Card>
                         <CardContent className="p-12 text-center">
                           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">Aperçu vide</h3>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            Aperçu vide
+                          </h3>
                           <p className="text-gray-500">
-                            Aucun enregistrement ne correspond à vos filtres.
-                            Un fichier vide (entêtes uniquement) sera tout de même généré si vous exportez.
+                            Aucun enregistrement ne correspond à vos filtres. Un
+                            fichier vide (entêtes uniquement) sera tout de même
+                            généré si vous exportez.
                           </p>
                         </CardContent>
                       </Card>
@@ -699,7 +975,10 @@ export default function DataExport() {
 
                     {/* Actions */}
                     <div className="flex justify-between">
-                      <Button variant="outline" onClick={() => setCurrentStep('refinement')}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep("refinement")}
+                      >
                         Modifier les filtres
                       </Button>
                       <Button onClick={handleStartExport}>
@@ -710,9 +989,11 @@ export default function DataExport() {
                 )}
 
                 {/* EX-4 - Generation Step */}
-                {currentStep === 'generation' && currentJob && (
+                {currentStep === "generation" && currentJob && (
                   <div className="space-y-6">
-                    <h2 className="text-xl font-semibold">Génération de votre export...</h2>
+                    <h2 className="text-xl font-semibold">
+                      Génération de votre export...
+                    </h2>
 
                     {/* Job Card */}
                     <Card>
@@ -730,18 +1011,20 @@ export default function DataExport() {
                             <div>
                               <span className="text-gray-500">Format :</span>
                               <span className="ml-2 font-medium">
-                                {currentJob.format === 'xlsx' ? 'Excel' : 'CSV'}
+                                {currentJob.format === "xlsx" ? "Excel" : "CSV"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-500">Horodatage :</span>
+                              <span className="text-gray-500">
+                                Horodatage :
+                              </span>
                               <span className="ml-2 font-medium">
                                 {formatDateTime(currentJob.requestedAt)}
                               </span>
                             </div>
                           </div>
 
-                          {currentJob.status === 'in_progress' && (
+                          {currentJob.status === "in_progress" && (
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-sm">
                                 <span>Progression</span>
@@ -755,23 +1038,30 @@ export default function DataExport() {
                             </div>
                           )}
 
-                          {currentJob.status === 'completed' && (
+                          {currentJob.status === "completed" && (
                             <Alert className="border-green-200 bg-green-50">
                               <CheckCircle className="h-4 w-4 text-green-600" />
                               <AlertDescription>
                                 Export terminé avec succès !
-                                {currentJob.rowCount && ` ${currentJob.rowCount} lignes exportées.`}
-                                {currentJob.fileSize && ` Taille : ${currentJob.fileSize}`}
+                                {currentJob.rowCount &&
+                                  ` ${currentJob.rowCount} lignes exportées.`}
+                                {currentJob.fileSize &&
+                                  ` Taille : ${currentJob.fileSize}`}
                               </AlertDescription>
                             </Alert>
                           )}
 
-                          {currentJob.status === 'failed' && (
+                          {currentJob.status === "failed" && (
                             <Alert variant="destructive">
                               <AlertTriangle className="h-4 w-4" />
                               <AlertDescription>
-                                La génération a échoué — aucune donnée partielle n'a été produite.
-                                {currentJob.errorMessage && <div className="mt-1">{currentJob.errorMessage}</div>}
+                                La génération a échoué — aucune donnée partielle
+                                n'a été produite.
+                                {currentJob.errorMessage && (
+                                  <div className="mt-1">
+                                    {currentJob.errorMessage}
+                                  </div>
+                                )}
                               </AlertDescription>
                             </Alert>
                           )}
@@ -782,7 +1072,9 @@ export default function DataExport() {
                     {/* Export Content Summary */}
                     <Card className="bg-gray-50">
                       <CardHeader>
-                        <CardTitle className="text-base">Ce que contient le fichier</CardTitle>
+                        <CardTitle className="text-base">
+                          Ce que contient le fichier
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2 text-sm">
@@ -792,15 +1084,21 @@ export default function DataExport() {
                           </div>
                           <div>
                             <span className="text-gray-500">Période :</span>
-                            <span className="ml-2">{dateRange.from} - {dateRange.to}</span>
+                            <span className="ml-2">
+                              {dateRange.from} - {dateRange.to}
+                            </span>
                           </div>
                           <div>
                             <span className="text-gray-500">Filtres :</span>
                             <span className="ml-2">{currentJob.filters}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500">Nombre de colonnes :</span>
-                            <span className="ml-2">{currentJob.columns.length}</span>
+                            <span className="text-gray-500">
+                              Nombre de colonnes :
+                            </span>
+                            <span className="ml-2">
+                              {currentJob.columns.length}
+                            </span>
                           </div>
                         </div>
                       </CardContent>
@@ -808,20 +1106,20 @@ export default function DataExport() {
 
                     {/* Actions */}
                     <div className="flex justify-between">
-                      <Button 
+                      <Button
                         variant="outline"
-                        onClick={() => setActiveTab('history')}
+                        onClick={() => setActiveTab("history")}
                       >
                         Voir l'historique
                       </Button>
                       <div className="flex gap-2">
-                        {currentJob.status === 'failed' && (
+                        {currentJob.status === "failed" && (
                           <Button variant="outline" onClick={handleStartExport}>
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Relancer
                           </Button>
                         )}
-                        {currentJob.status === 'completed' && (
+                        {currentJob.status === "completed" && (
                           <Button>
                             <Download className="w-4 h-4 mr-2" />
                             Télécharger
@@ -848,7 +1146,9 @@ export default function DataExport() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="contracts">Contrats</SelectItem>
-                            <SelectItem value="indexations">Indexations</SelectItem>
+                            <SelectItem value="indexations">
+                              Indexations
+                            </SelectItem>
                             <SelectItem value="payments">Paiements</SelectItem>
                           </SelectContent>
                         </Select>
@@ -863,7 +1163,10 @@ export default function DataExport() {
                         </Select>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <Input placeholder="Rechercher par nom..." className="pl-10" />
+                          <Input
+                            placeholder="Rechercher par nom..."
+                            className="pl-10"
+                          />
                         </div>
                       </div>
                     </CardContent>
@@ -895,15 +1198,19 @@ export default function DataExport() {
                           <TableBody>
                             {exportHistory.map((job) => (
                               <TableRow key={job.id}>
-                                <TableCell>{formatDateTime(job.requestedAt)}</TableCell>
+                                <TableCell>
+                                  {formatDateTime(job.requestedAt)}
+                                </TableCell>
                                 <TableCell>{job.domain}</TableCell>
-                                <TableCell className="max-w-xs truncate">{job.filters}</TableCell>
+                                <TableCell className="max-w-xs truncate">
+                                  {job.filters}
+                                </TableCell>
                                 <TableCell>
                                   <Badge variant="outline">
-                                    {job.format === 'xlsx' ? 'Excel' : 'CSV'}
+                                    {job.format === "xlsx" ? "Excel" : "CSV"}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>{job.fileSize || '-'}</TableCell>
+                                <TableCell>{job.fileSize || "-"}</TableCell>
                                 <TableCell>
                                   <StatusBadge
                                     variant={getStatusVariant(job.status)}
@@ -913,13 +1220,13 @@ export default function DataExport() {
                                 <TableCell>{job.requestedBy}</TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
-                                    {job.status === 'completed' && (
+                                    {job.status === "completed" && (
                                       <Button variant="ghost" size="sm">
                                         <Download className="w-4 h-4" />
                                       </Button>
                                     )}
-                                    <Button 
-                                      variant="ghost" 
+                                    <Button
+                                      variant="ghost"
                                       size="sm"
                                       onClick={() => {
                                         setSelectedExport(job);
@@ -935,12 +1242,12 @@ export default function DataExport() {
                           </TableBody>
                         </Table>
                       </div>
-                      
+
                       <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                         <div className="flex items-center gap-2 text-sm text-blue-800">
                           <Lock className="w-4 h-4" />
-                          L'accès aux exports et leur contenu restent soumis à vos droits ; 
-                          toutes les actions sont journalisées.
+                          L'accès aux exports et leur contenu restent soumis à
+                          vos droits ; toutes les actions sont journalisées.
                         </div>
                       </div>
                     </CardContent>
@@ -954,7 +1261,8 @@ export default function DataExport() {
                   <Alert className="border-amber-200 bg-amber-50">
                     <Shield className="h-4 w-4 text-amber-600" />
                     <AlertDescription>
-                      <strong>Section lecture seule</strong> - Configuration réservée aux administrateurs
+                      <strong>Section lecture seule</strong> - Configuration
+                      réservée aux administrateurs
                     </AlertDescription>
                   </Alert>
 
@@ -962,14 +1270,17 @@ export default function DataExport() {
                   <Card>
                     <CardHeader>
                       <CardTitle>Règles d'extraction</CardTitle>
-                      <CardDescription>Lecture pour tous, édition Admin uniquement</CardDescription>
+                      <CardDescription>
+                        Lecture pour tous, édition Admin uniquement
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3 text-sm">
                         <div className="flex items-start gap-2">
                           <CheckSquare className="w-4 h-4 text-green-600 mt-0.5" />
                           <div>
-                            Extraction limitée aux données visibles par l'utilisateur selon ses droits RBAC
+                            Extraction limitée aux données visibles par
+                            l'utilisateur selon ses droits RBAC
                           </div>
                         </div>
                         <div className="flex items-start gap-2">
@@ -980,15 +1291,11 @@ export default function DataExport() {
                         </div>
                         <div className="flex items-start gap-2">
                           <CheckSquare className="w-4 h-4 text-green-600 mt-0.5" />
-                          <div>
-                            Limite maximale : 100 000 lignes par export
-                          </div>
+                          <div>Limite maximale : 100 000 lignes par export</div>
                         </div>
                         <div className="flex items-start gap-2">
                           <CheckSquare className="w-4 h-4 text-green-600 mt-0.5" />
-                          <div>
-                            Rétention des exports : 30 jours
-                          </div>
+                          <div>Rétention des exports : 30 jours</div>
                         </div>
                       </div>
                     </CardContent>
@@ -998,7 +1305,9 @@ export default function DataExport() {
                   <Card>
                     <CardHeader>
                       <CardTitle>Gouvernance & conformité</CardTitle>
-                      <CardDescription>Rappel des règles de conformité</CardDescription>
+                      <CardDescription>
+                        Rappel des règles de conformité
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
@@ -1008,19 +1317,21 @@ export default function DataExport() {
                             RBAC (Role-Based Access Control)
                           </h4>
                           <p className="text-sm text-gray-600">
-                            Les utilisateurs ne peuvent extraire que les données auxquelles ils ont accès 
-                            selon leur profil et leurs permissions.
+                            Les utilisateurs ne peuvent extraire que les données
+                            auxquelles ils ont accès selon leur profil et leurs
+                            permissions.
                           </p>
                         </div>
-                        
+
                         <div className="p-4 bg-gray-50 rounded-lg">
                           <h4 className="font-medium mb-2 flex items-center gap-2">
                             <History className="w-4 h-4" />
                             Audit des actions d'export
                           </h4>
                           <p className="text-sm text-gray-600">
-                            Toutes les actions d'export sont horodatées et tracées : auteur, date/heure, 
-                            résultat, paramètres utilisés. Rétention conforme aux exigences légales.
+                            Toutes les actions d'export sont horodatées et
+                            tracées : auteur, date/heure, résultat, paramètres
+                            utilisés. Rétention conforme aux exigences légales.
                           </p>
                         </div>
 
@@ -1030,14 +1341,19 @@ export default function DataExport() {
                             Conformité RGPD
                           </h4>
                           <p className="text-sm text-gray-600">
-                            Les exports respectent les principes du RGPD : minimisation des données, 
-                            limitation de la finalité, et droit à l'effacement sur demande.
+                            Les exports respectent les principes du RGPD :
+                            minimisation des données, limitation de la finalité,
+                            et droit à l'effacement sur demande.
                           </p>
                         </div>
                       </div>
 
                       <div className="mt-6 pt-4 border-t">
-                        <Button variant="outline" disabled className="opacity-50">
+                        <Button
+                          variant="outline"
+                          disabled
+                          className="opacity-50"
+                        >
                           <Settings className="w-4 h-4 mr-2" />
                           Consulter les logs d'export (Admin)
                         </Button>
@@ -1053,8 +1369,12 @@ export default function DataExport() {
               <Card>
                 <CardContent className="p-12 text-center">
                   <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun export</h3>
-                  <p className="text-gray-500">Aucun export pour la période sélectionnée.</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Aucun export
+                  </h3>
+                  <p className="text-gray-500">
+                    Aucun export pour la période sélectionnée.
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -1066,18 +1386,14 @@ export default function DataExport() {
                   {showError}
                   {showError.includes("technique") && (
                     <div className="mt-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => setShowError(null)}
                       >
                         Réessayer
                       </Button>
-                      <Button 
-                        variant="link" 
-                        size="sm"
-                        className="ml-2"
-                      >
+                      <Button variant="link" size="sm" className="ml-2">
                         Contacter l'admin
                       </Button>
                     </div>
@@ -1108,7 +1424,7 @@ export default function DataExport() {
                         {getStatusLabel(selectedExport.status)}
                       </Badge>
                       <Badge variant="outline">
-                        {selectedExport.format === 'xlsx' ? 'Excel' : 'CSV'}
+                        {selectedExport.format === "xlsx" ? "Excel" : "CSV"}
                       </Badge>
                     </div>
                   </div>
@@ -1119,13 +1435,17 @@ export default function DataExport() {
                 {/* Applied Parameters */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Paramètres appliqués</CardTitle>
+                    <CardTitle className="text-base">
+                      Paramètres appliqués
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm">
                       <div>
                         <span className="text-gray-500">Domaine :</span>
-                        <span className="ml-2 font-medium">{selectedExport.domain}</span>
+                        <span className="ml-2 font-medium">
+                          {selectedExport.domain}
+                        </span>
                       </div>
                       <div>
                         <span className="text-gray-500">Période :</span>
@@ -1138,10 +1458,16 @@ export default function DataExport() {
                         </div>
                       </div>
                       <div>
-                        <span className="text-gray-500">Colonnes sélectionnées :</span>
+                        <span className="text-gray-500">
+                          Colonnes sélectionnées :
+                        </span>
                         <div className="mt-1 flex flex-wrap gap-1">
-                          {selectedExport.columns.map(col => (
-                            <Badge key={col} variant="secondary" className="text-xs">
+                          {selectedExport.columns.map((col) => (
+                            <Badge
+                              key={col}
+                              variant="secondary"
+                              className="text-xs"
+                            >
                               {col}
                             </Badge>
                           ))}
@@ -1160,20 +1486,28 @@ export default function DataExport() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-500">Demandeur :</span>
-                        <span className="font-medium">{selectedExport.requestedBy}</span>
+                        <span className="font-medium">
+                          {selectedExport.requestedBy}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Horodatage :</span>
-                        <span className="font-medium">{formatDateTime(selectedExport.requestedAt)}</span>
+                        <span className="font-medium">
+                          {formatDateTime(selectedExport.requestedAt)}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Trace-ID :</span>
-                        <span className="font-mono text-xs">{selectedExport.traceId}</span>
+                        <span className="font-mono text-xs">
+                          {selectedExport.traceId}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Résultat :</span>
                         <span className="font-medium">
-                          {selectedExport.status === 'completed' ? 'Succès' : 'Échec'}
+                          {selectedExport.status === "completed"
+                            ? "Succès"
+                            : "Échec"}
                         </span>
                       </div>
                       {selectedExport.errorMessage && (
@@ -1186,14 +1520,22 @@ export default function DataExport() {
                       )}
                       {selectedExport.rowCount && (
                         <div className="flex justify-between">
-                          <span className="text-gray-500">Lignes exportées :</span>
-                          <span className="font-medium">{selectedExport.rowCount}</span>
+                          <span className="text-gray-500">
+                            Lignes exportées :
+                          </span>
+                          <span className="font-medium">
+                            {selectedExport.rowCount}
+                          </span>
                         </div>
                       )}
                       {selectedExport.fileSize && (
                         <div className="flex justify-between">
-                          <span className="text-gray-500">Taille du fichier :</span>
-                          <span className="font-medium">{selectedExport.fileSize}</span>
+                          <span className="text-gray-500">
+                            Taille du fichier :
+                          </span>
+                          <span className="font-medium">
+                            {selectedExport.fileSize}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -1201,7 +1543,9 @@ export default function DataExport() {
                     <Separator className="my-4" />
 
                     <div>
-                      <h4 className="font-medium mb-2">Journal des événements</h4>
+                      <h4 className="font-medium mb-2">
+                        Journal des événements
+                      </h4>
                       <div className="space-y-2 text-xs">
                         <div className="flex gap-2">
                           <span className="text-gray-500">10:00:00</span>
@@ -1226,18 +1570,18 @@ export default function DataExport() {
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  {selectedExport.status === 'completed' && (
+                  {selectedExport.status === "completed" && (
                     <Button className="flex-1">
                       <Download className="w-4 h-4 mr-2" />
                       Télécharger
                     </Button>
                   )}
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="flex-1"
                     onClick={() => {
                       // Copy parameters to new export
-                      setCurrentStep('refinement');
+                      setCurrentStep("refinement");
                       setShowDetailPanel(false);
                     }}
                   >

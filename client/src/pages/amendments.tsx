@@ -3,19 +3,57 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Edit, Plus, Eye, Trash2, Calendar, Search, Filter, 
-  CheckCircle, XCircle, Clock, FileText, X, Info
+import {
+  Edit,
+  Plus,
+  Eye,
+  Trash2,
+  Calendar,
+  Search,
+  Filter,
+  CheckCircle,
+  XCircle,
+  Clock,
+  FileText,
+  X,
+  Info,
 } from "lucide-react";
+import Header from "@/components/layout/header";
 
 interface Amendment {
   id: string;
@@ -43,19 +81,26 @@ interface Contract {
 }
 
 export default function AmendmentsSimple() {
-  const { canCreateContract, canModifyContract, canDeleteContract } = usePermissions();
+  const { canCreateContract, canModifyContract, canDeleteContract } =
+    usePermissions();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedAmendment, setSelectedAmendment] = useState<Amendment | null>(null);
+  const [selectedAmendment, setSelectedAmendment] = useState<Amendment | null>(
+    null
+  );
   const [showNewAmendmentDialog, setShowNewAmendmentDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState("25");
 
   // Query pour récupérer les avenants
-  const { data: amendments = [], isLoading, error } = useQuery<Amendment[]>({
+  const {
+    data: amendments = [],
+    isLoading,
+    error,
+  } = useQuery<Amendment[]>({
     queryKey: ["/api/amendments"],
   });
 
@@ -75,7 +120,7 @@ export default function AmendmentsSimple() {
     effectiveDate: "",
     originalAmount: "",
     newAmount: "",
-    impactDescription: ""
+    impactDescription: "",
   });
 
   // Form state for edit
@@ -88,7 +133,7 @@ export default function AmendmentsSimple() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error("Failed to create amendment");
       return response.json();
@@ -97,7 +142,7 @@ export default function AmendmentsSimple() {
       queryClient.invalidateQueries({ queryKey: ["/api/amendments"] });
       toast({
         title: "Avenant créé",
-        description: "L'avenant a été créé avec succès"
+        description: "L'avenant a été créé avec succès",
       });
       setShowNewAmendmentDialog(false);
       resetNewAmendmentForm();
@@ -106,9 +151,9 @@ export default function AmendmentsSimple() {
       toast({
         title: "Erreur",
         description: "Impossible de créer l'avenant",
-        variant: "destructive"
+        variant: "destructive",
       });
-    }
+    },
   });
 
   const updateAmendmentMutation = useMutation({
@@ -117,7 +162,7 @@ export default function AmendmentsSimple() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error("Failed to update amendment");
       return response.json();
@@ -126,7 +171,7 @@ export default function AmendmentsSimple() {
       queryClient.invalidateQueries({ queryKey: ["/api/amendments"] });
       toast({
         title: "Avenant modifié",
-        description: "L'avenant a été modifié avec succès"
+        description: "L'avenant a été modifié avec succès",
       });
       setShowEditDialog(false);
       setEditAmendment({});
@@ -135,16 +180,16 @@ export default function AmendmentsSimple() {
       toast({
         title: "Erreur",
         description: "Impossible de modifier l'avenant",
-        variant: "destructive"
+        variant: "destructive",
       });
-    }
+    },
   });
 
   const deleteAmendmentMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/amendments/${id}`, {
         method: "DELETE",
-        credentials: "include"
+        credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to delete amendment");
       return response.json();
@@ -153,16 +198,16 @@ export default function AmendmentsSimple() {
       queryClient.invalidateQueries({ queryKey: ["/api/amendments"] });
       toast({
         title: "Avenant supprimé",
-        description: "L'avenant a été supprimé avec succès"
+        description: "L'avenant a été supprimé avec succès",
       });
     },
     onError: () => {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer l'avenant",
-        variant: "destructive"
+        variant: "destructive",
       });
-    }
+    },
   });
 
   const resetNewAmendmentForm = () => {
@@ -176,16 +221,21 @@ export default function AmendmentsSimple() {
       effectiveDate: "",
       originalAmount: "",
       newAmount: "",
-      impactDescription: ""
+      impactDescription: "",
     });
   };
 
   const handleCreateAmendment = () => {
-    if (!newAmendment.contractId || !newAmendment.number || !newAmendment.title || !newAmendment.effectiveDate) {
+    if (
+      !newAmendment.contractId ||
+      !newAmendment.number ||
+      !newAmendment.title ||
+      !newAmendment.effectiveDate
+    ) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -196,7 +246,7 @@ export default function AmendmentsSimple() {
     if (!selectedAmendment) return;
     updateAmendmentMutation.mutate({
       id: selectedAmendment.id,
-      data: editAmendment
+      data: editAmendment,
     });
   };
 
@@ -208,57 +258,88 @@ export default function AmendmentsSimple() {
 
   // Get contract details
   const getContractDetails = (contractId: string) => {
-    const contract = contracts.find(c => c.id === contractId);
+    const contract = contracts.find((c) => c.id === contractId);
     return contract ? `${contract.number} - ${contract.title}` : contractId;
   };
 
   // Filter amendments
-  const filteredAmendments = amendments.filter(amendment => {
-    if (statusFilter !== "all" && amendment.status !== statusFilter) return false;
+  const filteredAmendments = amendments.filter((amendment) => {
+    if (statusFilter !== "all" && amendment.status !== statusFilter)
+      return false;
     if (typeFilter !== "all" && amendment.type !== typeFilter) return false;
-    if (searchQuery && !amendment.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !amendment.number.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (
+      searchQuery &&
+      !amendment.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !amendment.number.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+      return false;
     return true;
   });
 
   // KPI calculations
   const kpiData = {
     total: amendments.length,
-    drafts: amendments.filter(a => a.status === 'draft').length,
-    pending: amendments.filter(a => a.status === 'pending_signature').length,
-    active: amendments.filter(a => a.status === 'active').length,
-    rejected: amendments.filter(a => a.status === 'rejected').length
+    drafts: amendments.filter((a) => a.status === "draft").length,
+    pending: amendments.filter((a) => a.status === "pending_signature").length,
+    active: amendments.filter((a) => a.status === "active").length,
+    rejected: amendments.filter((a) => a.status === "rejected").length,
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active": return { text: "Actif", icon: CheckCircle, color: "text-green-600 bg-green-50" };
-      case "pending_signature": return { text: "À signer", icon: Clock, color: "text-yellow-600 bg-yellow-50" };
-      case "draft": return { text: "Brouillon", icon: FileText, color: "text-gray-600 bg-gray-50" };
-      case "rejected": return { text: "Rejeté", icon: XCircle, color: "text-red-600 bg-red-50" };
-      default: return { text: status, icon: Info, color: "text-gray-600 bg-gray-50" };
+      case "active":
+        return {
+          text: "Actif",
+          icon: CheckCircle,
+          color: "text-green-600 bg-green-50",
+        };
+      case "pending_signature":
+        return {
+          text: "À signer",
+          icon: Clock,
+          color: "text-yellow-600 bg-yellow-50",
+        };
+      case "draft":
+        return {
+          text: "Brouillon",
+          icon: FileText,
+          color: "text-gray-600 bg-gray-50",
+        };
+      case "rejected":
+        return {
+          text: "Rejeté",
+          icon: XCircle,
+          color: "text-red-600 bg-red-50",
+        };
+      default:
+        return { text: status, icon: Info, color: "text-gray-600 bg-gray-50" };
     }
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case "duration_extension": return "Extension durée";
-      case "price_revision": return "Révision prix";
-      case "scope_change": return "Changement périmètre";
-      case "indexation_change": return "Modification indexation";
-      default: return type;
+      case "duration_extension":
+        return "Extension durée";
+      case "price_revision":
+        return "Révision prix";
+      case "scope_change":
+        return "Changement périmètre";
+      case "indexation_change":
+        return "Modification indexation";
+      default:
+        return type;
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR');
+    return new Date(dateString).toLocaleDateString("fr-FR");
   };
 
   const formatAmount = (amount: string | null | undefined) => {
     if (!amount) return "-";
-    return new Intl.NumberFormat('fr-FR', { 
-      style: 'currency', 
-      currency: 'EUR' 
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "EUR",
     }).format(parseFloat(amount));
   };
 
@@ -273,19 +354,29 @@ export default function AmendmentsSimple() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-red-500">Erreur lors du chargement des avenants</div>
+        <div className="text-red-500">
+          Erreur lors du chargement des avenants
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="amendments-main">
+      <Header />
+      <main
+        className="flex-1 overflow-y-auto p-4 lg:p-6"
+        data-testid="amendments-main"
+      >
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Gestion des Avenants</h1>
-            <p className="text-gray-600 mt-1">Gérez les modifications de vos contrats</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Gestion des Avenants
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Gérez les modifications de vos contrats
+            </p>
           </div>
 
           {/* KPI Cards */}
@@ -298,25 +389,33 @@ export default function AmendmentsSimple() {
             </Card>
             <Card>
               <CardContent className="p-4">
-                <div className="text-2xl font-bold text-gray-600">{kpiData.drafts}</div>
+                <div className="text-2xl font-bold text-gray-600">
+                  {kpiData.drafts}
+                </div>
                 <div className="text-sm text-gray-600">Brouillons</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <div className="text-2xl font-bold text-yellow-600">{kpiData.pending}</div>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {kpiData.pending}
+                </div>
                 <div className="text-sm text-gray-600">À signer</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <div className="text-2xl font-bold text-green-600">{kpiData.active}</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {kpiData.active}
+                </div>
                 <div className="text-sm text-gray-600">Actifs</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <div className="text-2xl font-bold text-red-600">{kpiData.rejected}</div>
+                <div className="text-2xl font-bold text-red-600">
+                  {kpiData.rejected}
+                </div>
                 <div className="text-sm text-gray-600">Rejetés</div>
               </CardContent>
             </Card>
@@ -338,31 +437,50 @@ export default function AmendmentsSimple() {
                     />
                   </div>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[180px]" data-testid="filter-status">
+                    <SelectTrigger
+                      className="w-[180px]"
+                      data-testid="filter-status"
+                    >
                       <SelectValue placeholder="Tous les statuts" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous les statuts</SelectItem>
                       <SelectItem value="draft">Brouillon</SelectItem>
-                      <SelectItem value="pending_signature">À signer</SelectItem>
+                      <SelectItem value="pending_signature">
+                        À signer
+                      </SelectItem>
                       <SelectItem value="active">Actif</SelectItem>
                       <SelectItem value="rejected">Rejeté</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-[200px]" data-testid="filter-type">
+                    <SelectTrigger
+                      className="w-[200px]"
+                      data-testid="filter-type"
+                    >
                       <SelectValue placeholder="Tous les types" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous les types</SelectItem>
-                      <SelectItem value="price_revision">Révision prix</SelectItem>
-                      <SelectItem value="duration_extension">Extension durée</SelectItem>
-                      <SelectItem value="scope_change">Changement périmètre</SelectItem>
-                      <SelectItem value="indexation_change">Modification indexation</SelectItem>
+                      <SelectItem value="price_revision">
+                        Révision prix
+                      </SelectItem>
+                      <SelectItem value="duration_extension">
+                        Extension durée
+                      </SelectItem>
+                      <SelectItem value="scope_change">
+                        Changement périmètre
+                      </SelectItem>
+                      <SelectItem value="indexation_change">
+                        Modification indexation
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={() => setShowNewAmendmentDialog(true)} data-testid="button-new-amendment">
+                <Button
+                  onClick={() => setShowNewAmendmentDialog(true)}
+                  data-testid="button-new-amendment"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Nouvel avenant
                 </Button>
@@ -389,78 +507,99 @@ export default function AmendmentsSimple() {
                 <TableBody>
                   {filteredAmendments.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell
+                        colSpan={8}
+                        className="text-center py-8 text-gray-500"
+                      >
                         Aucun avenant trouvé
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredAmendments.slice(0, parseInt(itemsPerPage)).map((amendment) => {
-                      const statusBadge = getStatusBadge(amendment.status);
-                      const StatusIcon = statusBadge.icon;
-                      return (
-                        <TableRow key={amendment.id} data-testid={`row-amendment-${amendment.id}`}>
-                          <TableCell className="font-medium">{amendment.number}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">
-                            {getContractDetails(amendment.contractId)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {getTypeLabel(amendment.type)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-[200px] truncate">{amendment.title}</TableCell>
-                          <TableCell>{formatDate(amendment.effectiveDate)}</TableCell>
-                          <TableCell>
-                            {amendment.newAmount ? formatAmount(amendment.newAmount) : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusBadge.color}`}>
-                              <StatusIcon className="h-3 w-3" />
-                              {statusBadge.text}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedAmendment(amendment);
-                                  setShowDetailDialog(true);
-                                }}
-                                data-testid={`button-view-${amendment.id}`}
+                    filteredAmendments
+                      .slice(0, parseInt(itemsPerPage))
+                      .map((amendment) => {
+                        const statusBadge = getStatusBadge(amendment.status);
+                        const StatusIcon = statusBadge.icon;
+                        return (
+                          <TableRow
+                            key={amendment.id}
+                            data-testid={`row-amendment-${amendment.id}`}
+                          >
+                            <TableCell className="font-medium">
+                              {amendment.number}
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate">
+                              {getContractDetails(amendment.contractId)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {getTypeLabel(amendment.type)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate">
+                              {amendment.title}
+                            </TableCell>
+                            <TableCell>
+                              {formatDate(amendment.effectiveDate)}
+                            </TableCell>
+                            <TableCell>
+                              {amendment.newAmount
+                                ? formatAmount(amendment.newAmount)
+                                : "-"}
+                            </TableCell>
+                            <TableCell>
+                              <div
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusBadge.color}`}
                               >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {canModifyContract() && (
+                                <StatusIcon className="h-3 w-3" />
+                                {statusBadge.text}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
                                     setSelectedAmendment(amendment);
-                                    setEditAmendment(amendment);
-                                    setShowEditDialog(true);
+                                    setShowDetailDialog(true);
                                   }}
-                                  data-testid={`button-edit-${amendment.id}`}
+                                  data-testid={`button-view-${amendment.id}`}
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Eye className="h-4 w-4" />
                                 </Button>
-                              )}
-                              {amendment.status === 'draft' && canDeleteContract() && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteAmendment(amendment.id)}
-                                  data-testid={`button-delete-${amendment.id}`}
-                                >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
+                                {canModifyContract() && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedAmendment(amendment);
+                                      setEditAmendment(amendment);
+                                      setShowEditDialog(true);
+                                    }}
+                                    data-testid={`button-edit-${amendment.id}`}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {amendment.status === "draft" &&
+                                  canDeleteContract() && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleDeleteAmendment(amendment.id)
+                                      }
+                                      data-testid={`button-delete-${amendment.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                  )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                   )}
                 </TableBody>
               </Table>
@@ -469,11 +608,19 @@ export default function AmendmentsSimple() {
               {filteredAmendments.length > 0 && (
                 <div className="border-t px-4 py-3 flex items-center justify-between text-sm text-gray-600">
                   <div>
-                    1-{Math.min(parseInt(itemsPerPage), filteredAmendments.length)} sur {filteredAmendments.length}
+                    1-
+                    {Math.min(
+                      parseInt(itemsPerPage),
+                      filteredAmendments.length
+                    )}{" "}
+                    sur {filteredAmendments.length}
                   </div>
                   <div className="flex items-center space-x-2">
                     <span>Afficher:</span>
-                    <Select value={itemsPerPage} onValueChange={setItemsPerPage}>
+                    <Select
+                      value={itemsPerPage}
+                      onValueChange={setItemsPerPage}
+                    >
                       <SelectTrigger className="w-[70px]">
                         <SelectValue />
                       </SelectTrigger>
@@ -492,7 +639,10 @@ export default function AmendmentsSimple() {
       </main>
 
       {/* New Amendment Dialog */}
-      <Dialog open={showNewAmendmentDialog} onOpenChange={setShowNewAmendmentDialog}>
+      <Dialog
+        open={showNewAmendmentDialog}
+        onOpenChange={setShowNewAmendmentDialog}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Créer un nouvel avenant</DialogTitle>
@@ -504,9 +654,11 @@ export default function AmendmentsSimple() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="contract">Contrat *</Label>
-                <Select 
-                  value={newAmendment.contractId} 
-                  onValueChange={(value) => setNewAmendment({...newAmendment, contractId: value})}
+                <Select
+                  value={newAmendment.contractId}
+                  onValueChange={(value) =>
+                    setNewAmendment({ ...newAmendment, contractId: value })
+                  }
                 >
                   <SelectTrigger data-testid="select-contract">
                     <SelectValue placeholder="Sélectionner un contrat" />
@@ -525,7 +677,9 @@ export default function AmendmentsSimple() {
                 <Input
                   id="number"
                   value={newAmendment.number}
-                  onChange={(e) => setNewAmendment({...newAmendment, number: e.target.value})}
+                  onChange={(e) =>
+                    setNewAmendment({ ...newAmendment, number: e.target.value })
+                  }
                   placeholder="AVN-2025-XXX"
                   data-testid="input-number"
                 />
@@ -534,18 +688,28 @@ export default function AmendmentsSimple() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="type">Type *</Label>
-                <Select 
-                  value={newAmendment.type} 
-                  onValueChange={(value) => setNewAmendment({...newAmendment, type: value})}
+                <Select
+                  value={newAmendment.type}
+                  onValueChange={(value) =>
+                    setNewAmendment({ ...newAmendment, type: value })
+                  }
                 >
                   <SelectTrigger data-testid="select-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="price_revision">Révision prix</SelectItem>
-                    <SelectItem value="duration_extension">Extension durée</SelectItem>
-                    <SelectItem value="scope_change">Changement périmètre</SelectItem>
-                    <SelectItem value="indexation_change">Modification indexation</SelectItem>
+                    <SelectItem value="price_revision">
+                      Révision prix
+                    </SelectItem>
+                    <SelectItem value="duration_extension">
+                      Extension durée
+                    </SelectItem>
+                    <SelectItem value="scope_change">
+                      Changement périmètre
+                    </SelectItem>
+                    <SelectItem value="indexation_change">
+                      Modification indexation
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -555,7 +719,12 @@ export default function AmendmentsSimple() {
                   id="effectiveDate"
                   type="date"
                   value={newAmendment.effectiveDate}
-                  onChange={(e) => setNewAmendment({...newAmendment, effectiveDate: e.target.value})}
+                  onChange={(e) =>
+                    setNewAmendment({
+                      ...newAmendment,
+                      effectiveDate: e.target.value,
+                    })
+                  }
                   data-testid="input-effective-date"
                 />
               </div>
@@ -565,7 +734,9 @@ export default function AmendmentsSimple() {
               <Input
                 id="title"
                 value={newAmendment.title}
-                onChange={(e) => setNewAmendment({...newAmendment, title: e.target.value})}
+                onChange={(e) =>
+                  setNewAmendment({ ...newAmendment, title: e.target.value })
+                }
                 placeholder="Titre de l'avenant"
                 data-testid="input-title"
               />
@@ -575,7 +746,12 @@ export default function AmendmentsSimple() {
               <Textarea
                 id="description"
                 value={newAmendment.description}
-                onChange={(e) => setNewAmendment({...newAmendment, description: e.target.value})}
+                onChange={(e) =>
+                  setNewAmendment({
+                    ...newAmendment,
+                    description: e.target.value,
+                  })
+                }
                 placeholder="Description détaillée de l'avenant"
                 rows={3}
                 data-testid="textarea-description"
@@ -588,7 +764,12 @@ export default function AmendmentsSimple() {
                   id="originalAmount"
                   type="number"
                   value={newAmendment.originalAmount}
-                  onChange={(e) => setNewAmendment({...newAmendment, originalAmount: e.target.value})}
+                  onChange={(e) =>
+                    setNewAmendment({
+                      ...newAmendment,
+                      originalAmount: e.target.value,
+                    })
+                  }
                   placeholder="0.00"
                   data-testid="input-original-amount"
                 />
@@ -599,7 +780,12 @@ export default function AmendmentsSimple() {
                   id="newAmount"
                   type="number"
                   value={newAmendment.newAmount}
-                  onChange={(e) => setNewAmendment({...newAmendment, newAmount: e.target.value})}
+                  onChange={(e) =>
+                    setNewAmendment({
+                      ...newAmendment,
+                      newAmount: e.target.value,
+                    })
+                  }
                   placeholder="0.00"
                   data-testid="input-new-amount"
                 />
@@ -610,7 +796,12 @@ export default function AmendmentsSimple() {
               <Textarea
                 id="impactDescription"
                 value={newAmendment.impactDescription}
-                onChange={(e) => setNewAmendment({...newAmendment, impactDescription: e.target.value})}
+                onChange={(e) =>
+                  setNewAmendment({
+                    ...newAmendment,
+                    impactDescription: e.target.value,
+                  })
+                }
                 placeholder="Décrivez l'impact de cet avenant"
                 rows={2}
                 data-testid="textarea-impact"
@@ -618,11 +809,14 @@ export default function AmendmentsSimple() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewAmendmentDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewAmendmentDialog(false)}
+            >
               Annuler
             </Button>
-            <Button 
-              onClick={handleCreateAmendment} 
+            <Button
+              onClick={handleCreateAmendment}
               data-testid="button-create"
               disabled={!canCreateContract()}
             >
@@ -646,21 +840,29 @@ export default function AmendmentsSimple() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-gray-600">Contrat</Label>
-                  <p className="font-medium">{getContractDetails(selectedAmendment.contractId)}</p>
+                  <p className="font-medium">
+                    {getContractDetails(selectedAmendment.contractId)}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-gray-600">Type</Label>
-                  <p className="font-medium">{getTypeLabel(selectedAmendment.type)}</p>
+                  <p className="font-medium">
+                    {getTypeLabel(selectedAmendment.type)}
+                  </p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-gray-600">Date d'effet</Label>
-                  <p className="font-medium">{formatDate(selectedAmendment.effectiveDate)}</p>
+                  <p className="font-medium">
+                    {formatDate(selectedAmendment.effectiveDate)}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-gray-600">Statut</Label>
-                  <p className="font-medium">{getStatusBadge(selectedAmendment.status).text}</p>
+                  <p className="font-medium">
+                    {getStatusBadge(selectedAmendment.status).text}
+                  </p>
                 </div>
               </div>
               {selectedAmendment.description && (
@@ -669,22 +871,29 @@ export default function AmendmentsSimple() {
                   <p className="font-medium">{selectedAmendment.description}</p>
                 </div>
               )}
-              {(selectedAmendment.originalAmount || selectedAmendment.newAmount) && (
+              {(selectedAmendment.originalAmount ||
+                selectedAmendment.newAmount) && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-gray-600">Montant original</Label>
-                    <p className="font-medium">{formatAmount(selectedAmendment.originalAmount)}</p>
+                    <p className="font-medium">
+                      {formatAmount(selectedAmendment.originalAmount)}
+                    </p>
                   </div>
                   <div>
                     <Label className="text-gray-600">Nouveau montant</Label>
-                    <p className="font-medium">{formatAmount(selectedAmendment.newAmount)}</p>
+                    <p className="font-medium">
+                      {formatAmount(selectedAmendment.newAmount)}
+                    </p>
                   </div>
                 </div>
               )}
               {selectedAmendment.impactDescription && (
                 <div>
                   <Label className="text-gray-600">Impact</Label>
-                  <p className="font-medium">{selectedAmendment.impactDescription}</p>
+                  <p className="font-medium">
+                    {selectedAmendment.impactDescription}
+                  </p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4 text-sm text-gray-500">
@@ -700,7 +909,10 @@ export default function AmendmentsSimple() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDetailDialog(false)}
+            >
               Fermer
             </Button>
           </DialogFooter>
@@ -723,7 +935,12 @@ export default function AmendmentsSimple() {
                 <Input
                   id="edit-title"
                   value={editAmendment.title || ""}
-                  onChange={(e) => setEditAmendment({...editAmendment, title: e.target.value})}
+                  onChange={(e) =>
+                    setEditAmendment({
+                      ...editAmendment,
+                      title: e.target.value,
+                    })
+                  }
                   data-testid="edit-title"
                 />
               </div>
@@ -732,7 +949,12 @@ export default function AmendmentsSimple() {
                 <Textarea
                   id="edit-description"
                   value={editAmendment.description || ""}
-                  onChange={(e) => setEditAmendment({...editAmendment, description: e.target.value})}
+                  onChange={(e) =>
+                    setEditAmendment({
+                      ...editAmendment,
+                      description: e.target.value,
+                    })
+                  }
                   rows={3}
                   data-testid="edit-description"
                 />
@@ -740,16 +962,20 @@ export default function AmendmentsSimple() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-status">Statut</Label>
-                  <Select 
-                    value={editAmendment.status || ""} 
-                    onValueChange={(value) => setEditAmendment({...editAmendment, status: value})}
+                  <Select
+                    value={editAmendment.status || ""}
+                    onValueChange={(value) =>
+                      setEditAmendment({ ...editAmendment, status: value })
+                    }
                   >
                     <SelectTrigger data-testid="edit-status">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="draft">Brouillon</SelectItem>
-                      <SelectItem value="pending_signature">À signer</SelectItem>
+                      <SelectItem value="pending_signature">
+                        À signer
+                      </SelectItem>
                       <SelectItem value="active">Actif</SelectItem>
                       <SelectItem value="rejected">Rejeté</SelectItem>
                     </SelectContent>
@@ -760,8 +986,17 @@ export default function AmendmentsSimple() {
                   <Input
                     id="edit-effective-date"
                     type="date"
-                    value={editAmendment.effectiveDate ? editAmendment.effectiveDate.split('T')[0] : ""}
-                    onChange={(e) => setEditAmendment({...editAmendment, effectiveDate: e.target.value})}
+                    value={
+                      editAmendment.effectiveDate
+                        ? editAmendment.effectiveDate.split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setEditAmendment({
+                        ...editAmendment,
+                        effectiveDate: e.target.value,
+                      })
+                    }
                     data-testid="edit-effective-date"
                   />
                 </div>
@@ -773,7 +1008,12 @@ export default function AmendmentsSimple() {
                     id="edit-original-amount"
                     type="number"
                     value={editAmendment.originalAmount || ""}
-                    onChange={(e) => setEditAmendment({...editAmendment, originalAmount: e.target.value})}
+                    onChange={(e) =>
+                      setEditAmendment({
+                        ...editAmendment,
+                        originalAmount: e.target.value,
+                      })
+                    }
                     data-testid="edit-original-amount"
                   />
                 </div>
@@ -783,7 +1023,12 @@ export default function AmendmentsSimple() {
                     id="edit-new-amount"
                     type="number"
                     value={editAmendment.newAmount || ""}
-                    onChange={(e) => setEditAmendment({...editAmendment, newAmount: e.target.value})}
+                    onChange={(e) =>
+                      setEditAmendment({
+                        ...editAmendment,
+                        newAmount: e.target.value,
+                      })
+                    }
                     data-testid="edit-new-amount"
                   />
                 </div>
@@ -793,7 +1038,12 @@ export default function AmendmentsSimple() {
                 <Textarea
                   id="edit-impact"
                   value={editAmendment.impactDescription || ""}
-                  onChange={(e) => setEditAmendment({...editAmendment, impactDescription: e.target.value})}
+                  onChange={(e) =>
+                    setEditAmendment({
+                      ...editAmendment,
+                      impactDescription: e.target.value,
+                    })
+                  }
                   rows={2}
                   data-testid="edit-impact"
                 />
@@ -804,8 +1054,8 @@ export default function AmendmentsSimple() {
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={handleUpdateAmendment} 
+            <Button
+              onClick={handleUpdateAmendment}
               data-testid="button-save"
               disabled={!canModifyContract()}
             >

@@ -2,15 +2,47 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,14 +51,40 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import StatusBadge from "@/components/widgets/status-badge";
-import { 
-  XCircle, Plus, Eye, Check, X, Calendar, FileText, 
-  AlertCircle, Clock, Search, Filter, Download, 
-  ChevronRight, ChevronLeft, History, Settings,
-  User, Building, Bell, Link, Timer, Mail,
-  AlertTriangle, Info, CheckCircle, MessageSquare,
-  FileDown, Archive, Shield, Database, RefreshCw
+import {
+  XCircle,
+  Plus,
+  Eye,
+  Check,
+  X,
+  Calendar,
+  FileText,
+  AlertCircle,
+  Clock,
+  Search,
+  Filter,
+  Download,
+  ChevronRight,
+  ChevronLeft,
+  History,
+  Settings,
+  User,
+  Building,
+  Bell,
+  Link,
+  Timer,
+  Mail,
+  AlertTriangle,
+  Info,
+  CheckCircle,
+  MessageSquare,
+  FileDown,
+  Archive,
+  Shield,
+  Database,
+  RefreshCw,
 } from "lucide-react";
+import Header from "@/components/layout/header";
 
 // Type definitions
 interface Termination {
@@ -36,7 +94,7 @@ interface Termination {
   contractTitle: string;
   reason: string;
   effectiveDate: Date;
-  status: 'draft' | 'to_validate' | 'validated' | 'rejected';
+  status: "draft" | "to_validate" | "validated" | "rejected";
   assignedValidator: string | null;
   lastUpdate: Date;
   requestedBy: string;
@@ -72,24 +130,30 @@ interface RoutingRule {
 
 interface NotificationTemplate {
   id: string;
-  type: 'submitted' | 'validated' | 'rejected';
-  channel: 'in-app' | 'email' | 'teams';
+  type: "submitted" | "validated" | "rejected";
+  channel: "in-app" | "email" | "teams";
   template: string;
   active: boolean;
 }
 
 export default function Terminations() {
   const { toast } = useToast();
-  const [activeView, setActiveView] = useState<'list' | 'history' | 'settings'>('list');
+  const [activeView, setActiveView] = useState<"list" | "history" | "settings">(
+    "list"
+  );
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [periodFilter, setPeriodFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTermination, setSelectedTermination] = useState<Termination | null>(null);
-  const [showNewTerminationDialog, setShowNewTerminationDialog] = useState(false);
+  const [selectedTermination, setSelectedTermination] =
+    useState<Termination | null>(null);
+  const [showNewTerminationDialog, setShowNewTerminationDialog] =
+    useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showDetailPanel, setShowDetailPanel] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [validationDecision, setValidationDecision] = useState<'validate' | 'reject'>('validate');
+  const [validationDecision, setValidationDecision] = useState<
+    "validate" | "reject"
+  >("validate");
   const [rejectionReason, setRejectionReason] = useState("");
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [showError, setShowError] = useState<string | null>(null);
@@ -97,7 +161,7 @@ export default function Terminations() {
   // Query pour récupérer les contrats actifs
   const { data: contracts = [] } = useQuery<any[]>({
     queryKey: ["/api/contracts"],
-    enabled: showNewTerminationDialog // Only fetch when dialog is open
+    enabled: showNewTerminationDialog, // Only fetch when dialog is open
   });
 
   // Mutation pour créer une demande de résiliation
@@ -106,7 +170,7 @@ export default function Terminations() {
       const response = await fetch("/api/validation-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error("Failed to create termination request");
       return response.json();
@@ -116,7 +180,7 @@ export default function Terminations() {
       queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       toast({
         title: "Demande de résiliation créée",
-        description: "La demande de résiliation a été envoyée pour validation."
+        description: "La demande de résiliation a été envoyée pour validation.",
       });
       setShowNewTerminationDialog(false);
       resetNewTerminationForm();
@@ -125,9 +189,9 @@ export default function Terminations() {
       toast({
         title: "Erreur",
         description: "Impossible de créer la demande de résiliation.",
-        variant: "destructive"
+        variant: "destructive",
       });
-    }
+    },
   });
 
   // Settings states
@@ -143,7 +207,7 @@ export default function Terminations() {
     contractTitle: "",
     effectiveDate: "",
     reason: "",
-    validator: ""
+    validator: "",
   });
 
   // Mock data with complete specification compliance
@@ -155,7 +219,7 @@ export default function Terminations() {
       contractTitle: "Maintenance informatique",
       reason: "Non-renouvellement à échéance suite à changement de prestataire",
       effectiveDate: new Date("2024-03-31"),
-      status: 'to_validate',
+      status: "to_validate",
       assignedValidator: "Jean Martin",
       lastUpdate: new Date("2024-02-01"),
       requestedBy: "Marie Dupont",
@@ -164,7 +228,7 @@ export default function Terminations() {
       impact: {
         lifecycle: "Le contrat passera à 'Résilié' à la date d'effet",
         deadlines: "Suppression des échéances postérieures au 31/03/2024",
-        integrations: "Mise à jour du statut dans SAP"
+        integrations: "Mise à jour du statut dans SAP",
       },
       history: [
         {
@@ -173,7 +237,7 @@ export default function Terminations() {
           date: new Date("2024-02-01T10:00:00"),
           user: "Marie Dupont",
           details: "Demande créée en brouillon",
-          traceId: "TRC-2024-RE-001-001"
+          traceId: "TRC-2024-RE-001-001",
         },
         {
           id: "h-2",
@@ -181,9 +245,9 @@ export default function Terminations() {
           date: new Date("2024-02-01T14:30:00"),
           user: "Marie Dupont",
           details: "Soumise à validation",
-          traceId: "TRC-2024-RE-001-002"
-        }
-      ]
+          traceId: "TRC-2024-RE-001-002",
+        },
+      ],
     },
     {
       id: "RE-2024-002",
@@ -192,7 +256,7 @@ export default function Terminations() {
       contractTitle: "Location bureaux",
       reason: "Résiliation amiable - déménagement du siège social",
       effectiveDate: new Date("2024-06-30"),
-      status: 'validated',
+      status: "validated",
       assignedValidator: "Sophie Bernard",
       lastUpdate: new Date("2024-01-15"),
       requestedBy: "Pierre Durand",
@@ -202,21 +266,22 @@ export default function Terminations() {
       impact: {
         lifecycle: "Contrat résilié avec effet au 30/06/2024",
         deadlines: "Échéances supprimées après le 30/06/2024",
-        integrations: "Statut SAP mis à jour"
-      }
+        integrations: "Statut SAP mis à jour",
+      },
     },
     {
       id: "RE-2024-003",
       contractId: "cnt-3",
       contractNumber: "CNT-2024-008",
       contractTitle: "Services de nettoyage",
-      reason: "Résiliation pour faute - non-respect des engagements contractuels",
+      reason:
+        "Résiliation pour faute - non-respect des engagements contractuels",
       effectiveDate: new Date("2024-02-29"),
-      status: 'draft',
+      status: "draft",
       assignedValidator: null,
       lastUpdate: new Date("2024-02-10"),
       requestedBy: "Marie Dupont",
-      createdAt: new Date("2024-02-10")
+      createdAt: new Date("2024-02-10"),
     },
     {
       id: "RE-2024-004",
@@ -225,15 +290,16 @@ export default function Terminations() {
       contractTitle: "Fournitures de bureau",
       reason: "Fin de contrat",
       effectiveDate: new Date("2024-05-31"),
-      status: 'rejected',
+      status: "rejected",
       assignedValidator: "Jean Martin",
       lastUpdate: new Date("2024-02-05"),
       requestedBy: "Sophie Bernard",
       createdAt: new Date("2024-02-03"),
       validatedBy: "Jean Martin",
       validatedAt: new Date("2024-02-05"),
-      rejectionReason: "Date d'effet antérieure au délai de préavis contractuel"
-    }
+      rejectionReason:
+        "Date d'effet antérieure au délai de préavis contractuel",
+    },
   ];
 
   // Routing rules mock data
@@ -245,7 +311,7 @@ export default function Terminations() {
       threshold: 100000,
       validator: "Jean Martin",
       substitute: "Sophie Bernard",
-      active: true
+      active: true,
     },
     {
       id: "rule-2",
@@ -253,98 +319,120 @@ export default function Terminations() {
       businessUnit: "BU International",
       validator: "Marie Dupont",
       substitute: "Pierre Durand",
-      active: true
-    }
+      active: true,
+    },
   ];
 
   // Notification templates mock data
   const notificationTemplates: NotificationTemplate[] = [
     {
       id: "notif-1",
-      type: 'submitted',
-      channel: 'email',
-      template: "Une demande de résiliation a été soumise pour le contrat {contract_number}",
-      active: true
+      type: "submitted",
+      channel: "email",
+      template:
+        "Une demande de résiliation a été soumise pour le contrat {contract_number}",
+      active: true,
     },
     {
       id: "notif-2",
-      type: 'validated',
-      channel: 'in-app',
+      type: "validated",
+      channel: "in-app",
       template: "La résiliation du contrat {contract_number} a été validée",
-      active: true
+      active: true,
     },
     {
       id: "notif-3",
-      type: 'rejected',
-      channel: 'teams',
-      template: "La résiliation du contrat {contract_number} a été rejetée: {reason}",
-      active: false
-    }
+      type: "rejected",
+      channel: "teams",
+      template:
+        "La résiliation du contrat {contract_number} a été rejetée: {reason}",
+      active: false,
+    },
   ];
 
   // KPI calculations
   const kpiData = {
-    drafts: terminations.filter(t => t.status === 'draft').length,
-    toValidate: terminations.filter(t => t.status === 'to_validate').length,
-    validated30Days: terminations.filter(t => 
-      t.status === 'validated' && 
-      t.validatedAt && 
-      (new Date().getTime() - t.validatedAt.getTime()) / (1000 * 60 * 60 * 24) <= 30
+    drafts: terminations.filter((t) => t.status === "draft").length,
+    toValidate: terminations.filter((t) => t.status === "to_validate").length,
+    validated30Days: terminations.filter(
+      (t) =>
+        t.status === "validated" &&
+        t.validatedAt &&
+        (new Date().getTime() - t.validatedAt.getTime()) /
+          (1000 * 60 * 60 * 24) <=
+          30
     ).length,
-    rejected: terminations.filter(t => t.status === 'rejected').length
+    rejected: terminations.filter((t) => t.status === "rejected").length,
   };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case "validated": return "success";
-      case "to_validate": return "warning";
-      case "draft": return "secondary";
-      case "rejected": return "destructive";
-      default: return "secondary";
+      case "validated":
+        return "success";
+      case "to_validate":
+        return "warning";
+      case "draft":
+        return "secondary";
+      case "rejected":
+        return "destructive";
+      default:
+        return "secondary";
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "validated": return "Validée";
-      case "to_validate": return "À valider";
-      case "draft": return "Brouillon";
-      case "rejected": return "Rejetée";
-      default: return status;
+      case "validated":
+        return "Validée";
+      case "to_validate":
+        return "À valider";
+      case "draft":
+        return "Brouillon";
+      case "rejected":
+        return "Rejetée";
+      default:
+        return status;
     }
   };
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR').format(date);
+    return new Intl.DateTimeFormat("fr-FR").format(date);
   };
 
   const formatDateTime = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date);
   };
 
   // Filter terminations based on current filters
-  const filteredTerminations = terminations.filter(termination => {
-    if (statusFilter !== 'all' && termination.status !== statusFilter) return false;
-    if (searchQuery && !termination.id.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !termination.contractNumber.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !termination.reason.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+  const filteredTerminations = terminations.filter((termination) => {
+    if (statusFilter !== "all" && termination.status !== statusFilter)
+      return false;
+    if (
+      searchQuery &&
+      !termination.id.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !termination.contractNumber
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) &&
+      !termination.reason.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+      return false;
     return true;
   });
 
   const handleValidation = () => {
-    if (validationDecision === 'reject' && !rejectionReason) {
+    if (validationDecision === "reject" && !rejectionReason) {
       setShowError("Le motif du rejet est obligatoire");
       return;
     }
     // Process validation
     setShowValidationModal(false);
-    setValidationDecision('validate');
+    setValidationDecision("validate");
     setRejectionReason("");
   };
 
@@ -355,7 +443,7 @@ export default function Terminations() {
       contractTitle: "",
       effectiveDate: "",
       reason: "",
-      validator: ""
+      validator: "",
     });
     setCurrentStep(1);
   };
@@ -363,14 +451,23 @@ export default function Terminations() {
   return (
     <>
       <div className="flex flex-col h-full bg-gray-50">
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6" data-testid="terminations-main">
+        <Header />
+        <main
+          className="flex-1 overflow-y-auto p-4 lg:p-6"
+          data-testid="terminations-main"
+        >
           <div className="max-w-7xl mx-auto">
             {/* Page Header - RE-1 */}
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-gray-900">Résiliations</h1>
             </div>
 
-            <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'list' | 'history' | 'settings')}>
+            <Tabs
+              value={activeView}
+              onValueChange={(v) =>
+                setActiveView(v as "list" | "history" | "settings")
+              }
+            >
               <TabsList className="mb-6">
                 <TabsTrigger value="list">Liste globale</TabsTrigger>
                 <TabsTrigger value="history">Historique</TabsTrigger>
@@ -384,7 +481,9 @@ export default function Terminations() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <FileText className="w-6 h-6 text-gray-400" />
-                        <span className="text-2xl font-bold text-gray-900">{kpiData.drafts}</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          {kpiData.drafts}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600">Brouillons</p>
                     </CardContent>
@@ -394,7 +493,9 @@ export default function Terminations() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <Clock className="w-6 h-6 text-warning" />
-                        <span className="text-2xl font-bold text-gray-900">{kpiData.toValidate}</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          {kpiData.toValidate}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600">À valider</p>
                     </CardContent>
@@ -404,7 +505,9 @@ export default function Terminations() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <CheckCircle className="w-6 h-6 text-green-600" />
-                        <span className="text-2xl font-bold text-gray-900">{kpiData.validated30Days}</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          {kpiData.validated30Days}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600">Validées (30 j)</p>
                     </CardContent>
@@ -414,7 +517,9 @@ export default function Terminations() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <XCircle className="w-6 h-6 text-destructive" />
-                        <span className="text-2xl font-bold text-gray-900">{kpiData.rejected}</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          {kpiData.rejected}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600">Rejetées</p>
                     </CardContent>
@@ -425,7 +530,8 @@ export default function Terminations() {
                 <Alert className="mb-6 border-amber-200 bg-amber-50">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <AlertDescription className="text-sm text-gray-700">
-                    <strong>Rappel :</strong> Toute résiliation nécessite une validation avant application. Motif obligatoire.
+                    <strong>Rappel :</strong> Toute résiliation nécessite une
+                    validation avant application. Motif obligatoire.
                   </AlertDescription>
                 </Alert>
 
@@ -433,8 +539,10 @@ export default function Terminations() {
                 <Alert className="mb-6 border-blue-200 bg-blue-50">
                   <Info className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-sm text-gray-700">
-                    Une résiliation <strong>validée</strong> passe le contrat à l'état <strong>Résilié</strong> (cycle de vie), 
-                    met à jour les systèmes connectés (ex. SAP) et est <strong>historisée</strong>.
+                    Une résiliation <strong>validée</strong> passe le contrat à
+                    l'état <strong>Résilié</strong> (cycle de vie), met à jour
+                    les systèmes connectés (ex. SAP) et est{" "}
+                    <strong>historisée</strong>.
                   </AlertDescription>
                 </Alert>
 
@@ -443,23 +551,42 @@ export default function Terminations() {
                   <CardContent className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                       <div>
-                        <Label htmlFor="period-filter" className="text-sm font-medium mb-1">Période de demande</Label>
-                        <Select value={periodFilter} onValueChange={setPeriodFilter}>
+                        <Label
+                          htmlFor="period-filter"
+                          className="text-sm font-medium mb-1"
+                        >
+                          Période de demande
+                        </Label>
+                        <Select
+                          value={periodFilter}
+                          onValueChange={setPeriodFilter}
+                        >
                           <SelectTrigger id="period-filter">
                             <SelectValue placeholder="Sélectionner une période" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">Toutes les périodes</SelectItem>
-                            <SelectItem value="30days">30 derniers jours</SelectItem>
-                            <SelectItem value="90days">90 derniers jours</SelectItem>
+                            <SelectItem value="all">
+                              Toutes les périodes
+                            </SelectItem>
+                            <SelectItem value="30days">
+                              30 derniers jours
+                            </SelectItem>
+                            <SelectItem value="90days">
+                              90 derniers jours
+                            </SelectItem>
                             <SelectItem value="year">Cette année</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div>
-                        <Label htmlFor="effective-period" className="text-sm font-medium mb-1">Période d'effet</Label>
-                        <Input 
+                        <Label
+                          htmlFor="effective-period"
+                          className="text-sm font-medium mb-1"
+                        >
+                          Période d'effet
+                        </Label>
+                        <Input
                           id="effective-period"
                           type="date"
                           className="w-full"
@@ -467,15 +594,27 @@ export default function Terminations() {
                       </div>
 
                       <div>
-                        <Label htmlFor="status-filter" className="text-sm font-medium mb-1">Statut</Label>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <Label
+                          htmlFor="status-filter"
+                          className="text-sm font-medium mb-1"
+                        >
+                          Statut
+                        </Label>
+                        <Select
+                          value={statusFilter}
+                          onValueChange={setStatusFilter}
+                        >
                           <SelectTrigger id="status-filter">
                             <SelectValue placeholder="Tous les statuts" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">Tous les statuts</SelectItem>
+                            <SelectItem value="all">
+                              Tous les statuts
+                            </SelectItem>
                             <SelectItem value="draft">Brouillon</SelectItem>
-                            <SelectItem value="to_validate">À valider</SelectItem>
+                            <SelectItem value="to_validate">
+                              À valider
+                            </SelectItem>
                             <SelectItem value="validated">Validée</SelectItem>
                             <SelectItem value="rejected">Rejetée</SelectItem>
                           </SelectContent>
@@ -483,7 +622,12 @@ export default function Terminations() {
                       </div>
 
                       <div>
-                        <Label htmlFor="search" className="text-sm font-medium mb-1">Recherche</Label>
+                        <Label
+                          htmlFor="search"
+                          className="text-sm font-medium mb-1"
+                        >
+                          Recherche
+                        </Label>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                           <Input
@@ -517,7 +661,7 @@ export default function Terminations() {
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button 
+                        <Button
                           onClick={() => setShowNewTerminationDialog(true)}
                           data-testid="button-create-termination"
                         >
@@ -538,14 +682,18 @@ export default function Terminations() {
                   <Card>
                     <CardContent className="p-12 text-center">
                       <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune demande</h3>
-                      <p className="text-gray-500">Aucune demande ne correspond à vos filtres.</p>
-                      <Button 
-                        variant="outline" 
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Aucune demande
+                      </h3>
+                      <p className="text-gray-500">
+                        Aucune demande ne correspond à vos filtres.
+                      </p>
+                      <Button
+                        variant="outline"
                         className="mt-4"
                         onClick={() => {
-                          setStatusFilter('all');
-                          setSearchQuery('');
+                          setStatusFilter("all");
+                          setSearchQuery("");
                         }}
                       >
                         Réinitialiser les filtres
@@ -571,9 +719,12 @@ export default function Terminations() {
                           </TableHeader>
                           <TableBody>
                             {filteredTerminations.map((termination) => (
-                              <TableRow key={termination.id} data-testid={`row-termination-${termination.id}`}>
+                              <TableRow
+                                key={termination.id}
+                                data-testid={`row-termination-${termination.id}`}
+                              >
                                 <TableCell>
-                                  <button 
+                                  <button
                                     className="text-primary hover:underline font-medium"
                                     onClick={() => {
                                       setSelectedTermination(termination);
@@ -585,36 +736,55 @@ export default function Terminations() {
                                 </TableCell>
                                 <TableCell>
                                   <div>
-                                    <div className="font-medium">{termination.contractNumber}</div>
-                                    <div className="text-sm text-gray-500">{termination.contractTitle}</div>
+                                    <div className="font-medium">
+                                      {termination.contractNumber}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                      {termination.contractTitle}
+                                    </div>
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <div className="max-w-xs truncate" title={termination.reason}>
+                                  <div
+                                    className="max-w-xs truncate"
+                                    title={termination.reason}
+                                  >
                                     {termination.reason.substring(0, 50)}...
                                   </div>
                                 </TableCell>
-                                <TableCell>{formatDate(termination.effectiveDate)}</TableCell>
+                                <TableCell>
+                                  {formatDate(termination.effectiveDate)}
+                                </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
                                     <StatusBadge
-                                      variant={getStatusVariant(termination.status)}
+                                      variant={getStatusVariant(
+                                        termination.status
+                                      )}
                                       text={getStatusLabel(termination.status)}
                                     />
-                                    {termination.sla && termination.sla < 24 && (
-                                      <Badge variant="default" className="text-xs bg-yellow-50 text-yellow-800 border-yellow-200">
-                                        <Timer className="w-3 h-3 mr-1" />
-                                        {termination.sla}h
-                                      </Badge>
-                                    )}
+                                    {termination.sla &&
+                                      termination.sla < 24 && (
+                                        <Badge
+                                          variant="default"
+                                          className="text-xs bg-yellow-50 text-yellow-800 border-yellow-200"
+                                        >
+                                          <Timer className="w-3 h-3 mr-1" />
+                                          {termination.sla}h
+                                        </Badge>
+                                      )}
                                   </div>
                                 </TableCell>
-                                <TableCell>{termination.assignedValidator || '-'}</TableCell>
-                                <TableCell>{formatDate(termination.lastUpdate)}</TableCell>
+                                <TableCell>
+                                  {termination.assignedValidator || "-"}
+                                </TableCell>
+                                <TableCell>
+                                  {formatDate(termination.lastUpdate)}
+                                </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
-                                    <Button 
-                                      variant="ghost" 
+                                    <Button
+                                      variant="ghost"
                                       size="sm"
                                       onClick={() => {
                                         setSelectedTermination(termination);
@@ -624,28 +794,28 @@ export default function Terminations() {
                                     >
                                       <Eye className="w-4 h-4" />
                                     </Button>
-                                    {termination.status === 'to_validate' && (
+                                    {termination.status === "to_validate" && (
                                       <>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
                                           className="text-green-600 hover:text-green-700"
                                           onClick={() => {
                                             setSelectedTermination(termination);
                                             setShowValidationModal(true);
-                                            setValidationDecision('validate');
+                                            setValidationDecision("validate");
                                           }}
                                         >
                                           <Check className="w-4 h-4" />
                                         </Button>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
                                           className="text-red-600 hover:text-red-700"
                                           onClick={() => {
                                             setSelectedTermination(termination);
                                             setShowValidationModal(true);
-                                            setValidationDecision('reject');
+                                            setValidationDecision("reject");
                                           }}
                                         >
                                           <X className="w-4 h-4" />
@@ -659,7 +829,7 @@ export default function Terminations() {
                           </TableBody>
                         </Table>
                       </div>
-                      
+
                       {/* Pagination Footer */}
                       <div className="px-6 py-4 border-t flex justify-between items-center">
                         <div className="text-sm text-gray-600">
@@ -689,7 +859,10 @@ export default function Terminations() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Historique des résiliations</CardTitle>
-                    <CardDescription>Journal complet des décisions sur les résiliations (lecture seule)</CardDescription>
+                    <CardDescription>
+                      Journal complet des décisions sur les résiliations
+                      (lecture seule)
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -723,12 +896,14 @@ export default function Terminations() {
                         </TableHeader>
                         <TableBody>
                           {terminations
-                            .filter(t => t.status !== 'draft')
+                            .filter((t) => t.status !== "draft")
                             .map((termination) => (
                               <TableRow key={`history-${termination.id}`}>
-                                <TableCell>{formatDateTime(termination.lastUpdate)}</TableCell>
                                 <TableCell>
-                                  <button 
+                                  {formatDateTime(termination.lastUpdate)}
+                                </TableCell>
+                                <TableCell>
+                                  <button
                                     className="text-primary hover:underline"
                                     onClick={() => {
                                       setSelectedTermination(termination);
@@ -743,15 +918,21 @@ export default function Terminations() {
                                 </TableCell>
                                 <TableCell>
                                   <StatusBadge
-                                    variant={getStatusVariant(termination.status)}
+                                    variant={getStatusVariant(
+                                      termination.status
+                                    )}
                                     text={getStatusLabel(termination.status)}
                                   />
                                 </TableCell>
-                                <TableCell>{formatDate(termination.effectiveDate)}</TableCell>
+                                <TableCell>
+                                  {formatDate(termination.effectiveDate)}
+                                </TableCell>
                                 <TableCell>{termination.requestedBy}</TableCell>
-                                <TableCell>{termination.validatedBy || '-'}</TableCell>
+                                <TableCell>
+                                  {termination.validatedBy || "-"}
+                                </TableCell>
                                 <TableCell className="font-mono text-xs">
-                                  {termination.history?.[0]?.traceId || '-'}
+                                  {termination.history?.[0]?.traceId || "-"}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -775,7 +956,8 @@ export default function Terminations() {
                   <Alert className="border-amber-200 bg-amber-50">
                     <Shield className="h-4 w-4 text-amber-600" />
                     <AlertDescription>
-                      <strong>Accès Admin uniquement</strong> - Ces paramètres affectent l'ensemble du système de résiliation.
+                      <strong>Accès Admin uniquement</strong> - Ces paramètres
+                      affectent l'ensemble du système de résiliation.
                     </AlertDescription>
                   </Alert>
 
@@ -783,18 +965,27 @@ export default function Terminations() {
                   <Card>
                     <CardHeader>
                       <CardTitle>Routage de validation</CardTitle>
-                      <CardDescription>Règles d'affectation par BU/entité, seuils et remplaçants</CardDescription>
+                      <CardDescription>
+                        Règles d'affectation par BU/entité, seuils et
+                        remplaçants
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         {routingRules.map((rule) => (
-                          <div key={rule.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div
+                            key={rule.id}
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
                             <div className="flex-1">
                               <div className="font-medium">{rule.name}</div>
                               <div className="text-sm text-gray-500">
-                                BU: {rule.businessUnit} | Valideur: {rule.validator}
-                                {rule.substitute && ` | Remplaçant: ${rule.substitute}`}
-                                {rule.threshold && ` | Seuil: ${rule.threshold}€`}
+                                BU: {rule.businessUnit} | Valideur:{" "}
+                                {rule.validator}
+                                {rule.substitute &&
+                                  ` | Remplaçant: ${rule.substitute}`}
+                                {rule.threshold &&
+                                  ` | Seuil: ${rule.threshold}€`}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -817,50 +1008,62 @@ export default function Terminations() {
                   <Card>
                     <CardHeader>
                       <CardTitle>SLA & Relances</CardTitle>
-                      <CardDescription>Délai cible et relances automatiques</CardDescription>
+                      <CardDescription>
+                        Délai cible et relances automatiques
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <Label htmlFor="sla-enabled">Activer le SLA</Label>
-                            <p className="text-sm text-gray-500">Surveiller les délais de traitement</p>
+                            <p className="text-sm text-gray-500">
+                              Surveiller les délais de traitement
+                            </p>
                           </div>
-                          <Switch 
+                          <Switch
                             id="sla-enabled"
                             checked={slaEnabled}
                             onCheckedChange={setSlaEnabled}
                           />
                         </div>
-                        
+
                         {slaEnabled && (
                           <>
                             <div>
-                              <Label htmlFor="sla-hours">Délai cible (heures)</Label>
-                              <Input 
+                              <Label htmlFor="sla-hours">
+                                Délai cible (heures)
+                              </Label>
+                              <Input
                                 id="sla-hours"
                                 type="number"
                                 value={slaHours}
-                                onChange={(e) => setSlaHours(parseInt(e.target.value))}
+                                onChange={(e) =>
+                                  setSlaHours(parseInt(e.target.value))
+                                }
                                 className="w-32"
                               />
                             </div>
-                            
+
                             <div className="flex items-center justify-between">
                               <div>
-                                <Label htmlFor="auto-reminders">Relances automatiques</Label>
-                                <p className="text-sm text-gray-500">Envoyer des rappels après {slaHours}h</p>
+                                <Label htmlFor="auto-reminders">
+                                  Relances automatiques
+                                </Label>
+                                <p className="text-sm text-gray-500">
+                                  Envoyer des rappels après {slaHours}h
+                                </p>
                               </div>
-                              <Switch 
+                              <Switch
                                 id="auto-reminders"
                                 checked={autoReminders}
                                 onCheckedChange={setAutoReminders}
                               />
                             </div>
-                            
+
                             <div>
                               <Label>Message type de relance</Label>
-                              <Textarea 
+                              <Textarea
                                 defaultValue="Rappel: La demande de résiliation {id} est en attente de validation depuis plus de {hours} heures."
                                 className="mt-2"
                               />
@@ -875,36 +1078,63 @@ export default function Terminations() {
                   <Card>
                     <CardHeader>
                       <CardTitle>Notifications</CardTitle>
-                      <CardDescription>Modèles d'alertes et canaux de communication</CardDescription>
+                      <CardDescription>
+                        Modèles d'alertes et canaux de communication
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         {notificationTemplates.map((template) => (
-                          <div key={template.id} className="border rounded-lg p-4">
+                          <div
+                            key={template.id}
+                            className="border rounded-lg p-4"
+                          >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <Badge variant={template.type === 'validated' ? 'default' : template.type === 'rejected' ? 'destructive' : 'secondary'} className={template.type === 'validated' ? 'bg-green-50 text-green-800 border-green-200' : ''}>
-                                  {template.type === 'submitted' && 'Soumise'}
-                                  {template.type === 'validated' && 'Validée'}
-                                  {template.type === 'rejected' && 'Rejetée'}
+                                <Badge
+                                  variant={
+                                    template.type === "validated"
+                                      ? "default"
+                                      : template.type === "rejected"
+                                      ? "destructive"
+                                      : "secondary"
+                                  }
+                                  className={
+                                    template.type === "validated"
+                                      ? "bg-green-50 text-green-800 border-green-200"
+                                      : ""
+                                  }
+                                >
+                                  {template.type === "submitted" && "Soumise"}
+                                  {template.type === "validated" && "Validée"}
+                                  {template.type === "rejected" && "Rejetée"}
                                 </Badge>
                                 <Badge variant="outline">
-                                  {template.channel === 'email' && <Mail className="w-3 h-3 mr-1" />}
-                                  {template.channel === 'in-app' && <Bell className="w-3 h-3 mr-1" />}
-                                  {template.channel === 'teams' && <MessageSquare className="w-3 h-3 mr-1" />}
+                                  {template.channel === "email" && (
+                                    <Mail className="w-3 h-3 mr-1" />
+                                  )}
+                                  {template.channel === "in-app" && (
+                                    <Bell className="w-3 h-3 mr-1" />
+                                  )}
+                                  {template.channel === "teams" && (
+                                    <MessageSquare className="w-3 h-3 mr-1" />
+                                  )}
                                   {template.channel}
                                 </Badge>
                               </div>
                               <Switch checked={template.active} />
                             </div>
-                            <div className="text-sm text-gray-600">{template.template}</div>
+                            <div className="text-sm text-gray-600">
+                              {template.template}
+                            </div>
                           </div>
                         ))}
-                        
+
                         <Alert>
                           <Info className="h-4 w-4" />
                           <AlertDescription>
-                            Rétention de l'historique des notifications : <strong>1 an</strong>
+                            Rétention de l'historique des notifications :{" "}
+                            <strong>1 an</strong>
                           </AlertDescription>
                         </Alert>
                       </div>
@@ -915,7 +1145,9 @@ export default function Terminations() {
                   <Card>
                     <CardHeader>
                       <CardTitle>Intégrations</CardTitle>
-                      <CardDescription>Synchronisation avec les systèmes externes</CardDescription>
+                      <CardDescription>
+                        Synchronisation avec les systèmes externes
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
@@ -923,22 +1155,27 @@ export default function Terminations() {
                           <div className="flex items-center gap-2">
                             <Database className="w-5 h-5 text-gray-500" />
                             <div>
-                              <Label htmlFor="sap-sync">Synchronisation SAP</Label>
-                              <p className="text-sm text-gray-500">Mettre à jour le statut lors des validations</p>
+                              <Label htmlFor="sap-sync">
+                                Synchronisation SAP
+                              </Label>
+                              <p className="text-sm text-gray-500">
+                                Mettre à jour le statut lors des validations
+                              </p>
                             </div>
                           </div>
-                          <Switch 
+                          <Switch
                             id="sap-sync"
                             checked={sapSync}
                             onCheckedChange={setSapSync}
                           />
                         </div>
-                        
+
                         {sapSync && (
                           <Alert className="border-green-200 bg-green-50">
                             <CheckCircle className="h-4 w-4 text-green-600" />
                             <AlertDescription>
-                              Synchronisation active - Dernière mise à jour : il y a 5 minutes
+                              Synchronisation active - Dernière mise à jour : il
+                              y a 5 minutes
                             </AlertDescription>
                           </Alert>
                         )}
@@ -947,9 +1184,7 @@ export default function Terminations() {
                   </Card>
 
                   <div className="flex justify-end">
-                    <Button>
-                      Enregistrer les modifications
-                    </Button>
+                    <Button>Enregistrer les modifications</Button>
                   </div>
                 </div>
               </TabsContent>
@@ -963,8 +1198,8 @@ export default function Terminations() {
                   {showError}
                   {showError.includes("Motif") && (
                     <div className="mt-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => setShowError(null)}
                       >
@@ -983,524 +1218,664 @@ export default function Terminations() {
           </div>
         </main>
 
-      {/* RE-3 - New Termination Dialog (Assistant) */}
-      <Dialog open={showNewTerminationDialog} onOpenChange={setShowNewTerminationDialog}>
-        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nouvelle résiliation</DialogTitle>
-            <Progress value={(currentStep / 3) * 100} className="mt-2" />
-            <DialogDescription>Étape {currentStep} sur 3</DialogDescription>
-          </DialogHeader>
+        {/* RE-3 - New Termination Dialog (Assistant) */}
+        <Dialog
+          open={showNewTerminationDialog}
+          onOpenChange={setShowNewTerminationDialog}
+        >
+          <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Nouvelle résiliation</DialogTitle>
+              <Progress value={(currentStep / 3) * 100} className="mt-2" />
+              <DialogDescription>Étape {currentStep} sur 3</DialogDescription>
+            </DialogHeader>
 
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <h3 className="font-medium">Étape 1 - Sélection du contrat</h3>
-              <div>
-                <Label htmlFor="contract-select">Sélectionner un contrat</Label>
-                <Select
-                  value={newTermination.contractId}
-                  onValueChange={(value) => {
-                    const selectedContract = contracts.find((c: any) => c.id === value);
-                    if (selectedContract) {
+            {currentStep === 1 && (
+              <div className="space-y-4">
+                <h3 className="font-medium">Étape 1 - Sélection du contrat</h3>
+                <div>
+                  <Label htmlFor="contract-select">
+                    Sélectionner un contrat
+                  </Label>
+                  <Select
+                    value={newTermination.contractId}
+                    onValueChange={(value) => {
+                      const selectedContract = contracts.find(
+                        (c: any) => c.id === value
+                      );
+                      if (selectedContract) {
+                        setNewTermination({
+                          ...newTermination,
+                          contractId: value,
+                          contractNumber: selectedContract.number,
+                          contractTitle: selectedContract.title,
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="contract-select">
+                      <SelectValue placeholder="Sélectionner un contrat actif..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contracts.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          Aucun contrat disponible
+                        </SelectItem>
+                      ) : (
+                        contracts
+                          .filter(
+                            (contract: any) =>
+                              contract.status !== "terminated" &&
+                              contract.status !== "expired"
+                          )
+                          .map((contract: any) => (
+                            <SelectItem key={contract.id} value={contract.id}>
+                              {contract.number} - {contract.title}
+                            </SelectItem>
+                          ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Seuls les contrats "Actifs" et non déjà résiliés sont
+                    sélectionnables
+                  </p>
+                </div>
+                {newTermination.contractId && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h4 className="font-medium mb-2">Contrat sélectionné</h4>
+                      <div className="text-sm space-y-1">
+                        <div>N°: {newTermination.contractNumber}</div>
+                        <div>Titre: {newTermination.contractTitle}</div>
+                        <div>
+                          Statut:{" "}
+                          <Badge
+                            variant="default"
+                            className="bg-green-50 text-green-800 border-green-200"
+                          >
+                            Actif
+                          </Badge>
+                        </div>
+                        {(() => {
+                          const contract = contracts.find(
+                            (c: any) => c.id === newTermination.contractId
+                          );
+                          return contract ? (
+                            <div>
+                              Dates:{" "}
+                              {new Date(contract.startDate).toLocaleDateString(
+                                "fr-FR"
+                              )}{" "}
+                              -{" "}
+                              {new Date(contract.endDate).toLocaleDateString(
+                                "fr-FR"
+                              )}
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {currentStep === 2 && (
+              <div className="space-y-4">
+                <h3 className="font-medium">
+                  Étape 2 - Paramètres de la demande
+                </h3>
+                <div>
+                  <Label htmlFor="effective-date">Date d'effet *</Label>
+                  <Input
+                    id="effective-date"
+                    type="date"
+                    value={newTermination.effectiveDate}
+                    onChange={(e) =>
                       setNewTermination({
                         ...newTermination,
-                        contractId: value,
-                        contractNumber: selectedContract.number,
-                        contractTitle: selectedContract.title
-                      });
+                        effectiveDate: e.target.value,
+                      })
                     }
-                  }}
-                >
-                  <SelectTrigger id="contract-select">
-                    <SelectValue placeholder="Sélectionner un contrat actif..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contracts.length === 0 ? (
-                      <SelectItem value="none" disabled>
-                        Aucun contrat disponible
-                      </SelectItem>
-                    ) : (
-                      contracts
-                        .filter((contract: any) => contract.status !== 'terminated' && contract.status !== 'expired')
-                        .map((contract: any) => (
-                          <SelectItem key={contract.id} value={contract.id}>
-                            {contract.number} - {contract.title}
-                          </SelectItem>
-                        ))
-                    )}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Seuls les contrats "Actifs" et non déjà résiliés sont sélectionnables
-                </p>
-              </div>
-              {newTermination.contractId && (
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-2">Contrat sélectionné</h4>
-                    <div className="text-sm space-y-1">
-                      <div>N°: {newTermination.contractNumber}</div>
-                      <div>Titre: {newTermination.contractTitle}</div>
-                      <div>Statut: <Badge variant="default" className="bg-green-50 text-green-800 border-green-200">Actif</Badge></div>
-                      {(() => {
-                        const contract = contracts.find((c: any) => c.id === newTermination.contractId);
-                        return contract ? (
-                          <div>Dates: {new Date(contract.startDate).toLocaleDateString('fr-FR')} - {new Date(contract.endDate).toLocaleDateString('fr-FR')}</div>
-                        ) : null;
-                      })()}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
-
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <h3 className="font-medium">Étape 2 - Paramètres de la demande</h3>
-              <div>
-                <Label htmlFor="effective-date">Date d'effet *</Label>
-                <Input 
-                  id="effective-date"
-                  type="date"
-                  value={newTermination.effectiveDate}
-                  onChange={(e) => setNewTermination({...newTermination, effectiveDate: e.target.value})}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Contrôles : ≥ aujourd'hui et ≥ date début du contrat
-                </p>
-              </div>
-              
-              <div>
-                <Label htmlFor="reason">Motif de résiliation (obligatoire) *</Label>
-                <Textarea 
-                  id="reason"
-                  placeholder="Expliquez la raison de la résiliation..."
-                  value={newTermination.reason}
-                  onChange={(e) => setNewTermination({...newTermination, reason: e.target.value})}
-                  className="h-32"
-                />
-                {!newTermination.reason && showError && (
-                  <p className="text-sm text-red-500 mt-1">Le motif est obligatoire</p>
-                )}
-              </div>
-              
-              <Card className="bg-amber-50">
-                <CardHeader>
-                  <CardTitle className="text-base">Aperçu d'impact</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm space-y-2">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
-                    <div>
-                      <strong>Échéances :</strong> Les échéances postérieures au {newTermination.effectiveDate || '[date d\'effet]'} seront supprimées
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
-                    <div>
-                      <strong>Statut :</strong> Le contrat passera à "Résilié" à la date d'effet
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
-                    <div>
-                      <strong>Intégrations :</strong> Mise à jour automatique dans SAP
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <h3 className="font-medium">Étape 3 - Récapitulatif & soumission</h3>
-              <Card className="bg-blue-50">
-                <CardContent className="p-4">
-                  <h4 className="font-medium mb-3">Récapitulatif de la demande</h4>
-                  <div className="text-sm space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Contrat :</span>
-                      <span className="font-medium">{newTermination.contractNumber || 'Non sélectionné'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Date d'effet :</span>
-                      <span className="font-medium">{newTermination.effectiveDate || 'Non définie'}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Motif :</span>
-                      <div className="mt-1 p-2 bg-white rounded text-sm">
-                        {newTermination.reason || 'Non renseigné'}
-                      </div>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Valideur assigné :</span>
-                      <span className="font-medium">Jean Martin (selon règles de routage)</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  En soumettant cette demande, vous déclenchez le workflow de validation et les notifications associées.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          <DialogFooter>
-            <div className="flex justify-between w-full">
-              <div>
-                {currentStep > 1 && (
-                  <Button 
-                    variant="outline"
-                    onClick={() => setCurrentStep(currentStep - 1)}
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-2" />
-                    Précédent
-                  </Button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    // Save as draft
-                    setShowNewTerminationDialog(false);
-                    resetNewTerminationForm();
-                  }}
-                >
-                  Enregistrer en brouillon
-                </Button>
-                {currentStep < 3 ? (
-                  <Button 
-                    onClick={() => {
-                      if (currentStep === 2 && !newTermination.reason) {
-                        setShowError("Le motif est obligatoire pour soumettre la demande");
-                        return;
-                      }
-                      setCurrentStep(currentStep + 1);
-                    }}
-                  >
-                    Suivant
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={() => {
-                      // Créer la demande de résiliation
-                      if (!newTermination.contractId || !newTermination.reason) {
-                        toast({
-                          title: "Erreur",
-                          description: "Veuillez sélectionner un contrat et fournir un motif",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-                      
-                      // Submit for validation
-                      const terminationData = {
-                        type: 'termination',
-                        contractId: newTermination.contractId,
-                        title: `Résiliation - ${newTermination.contractNumber}`,
-                        description: newTermination.reason,
-                        targetDate: newTermination.effectiveDate || new Date().toISOString().split('T')[0],
-                        priority: 'high',
-                        metadata: {
-                          contractNumber: newTermination.contractNumber,
-                          contractTitle: newTermination.contractTitle,
-                          effectiveDate: newTermination.effectiveDate,
-                          reason: newTermination.reason
-                        }
-                      };
-                      
-                      createTerminationMutation.mutate(terminationData);
-                    }}
-                  >
-                    Soumettre à validation
-                  </Button>
-                )}
-              </div>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* RE-2 - Termination Detail Panel */}
-      <Sheet open={showDetailPanel} onOpenChange={setShowDetailPanel}>
-        <SheetContent className="w-full sm:max-w-[90vw] md:max-w-[600px] lg:max-w-[700px] overflow-y-auto">
-          {selectedTermination && (
-            <>
-              <SheetHeader>
-                <SheetTitle>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div>{selectedTermination.contractNumber} - {selectedTermination.contractTitle}</div>
-                    </div>
-                    <StatusBadge
-                      variant={getStatusVariant(selectedTermination.status)}
-                      text={getStatusLabel(selectedTermination.status)}
-                    />
-                  </div>
-                </SheetTitle>
-                <div className="text-sm text-gray-500 mt-2">
-                  <div>Date d'effet: {formatDate(selectedTermination.effectiveDate)}</div>
-                  {selectedTermination.sla && (
-                    <div className="text-amber-600">SLA: {selectedTermination.sla}h restantes</div>
-                  )}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Contrôles : ≥ aujourd'hui et ≥ date début du contrat
+                  </p>
                 </div>
-              </SheetHeader>
-
-              <div className="mt-6 space-y-6">
-                {/* Bloc Demande */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Demande</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-xs text-gray-500">Motif de résiliation (obligatoire)</Label>
-                        <div className="mt-1 p-3 bg-gray-50 rounded text-sm">
-                          {selectedTermination.reason}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Demandeur:</span>
-                          <div className="font-medium">{selectedTermination.requestedBy}</div>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Date de création:</span>
-                          <div className="font-medium">{formatDate(selectedTermination.createdAt)}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Bloc Impact fonctionnel */}
-                {selectedTermination.impact && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Impact fonctionnel</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3 text-sm">
-                        <div>
-                          <div className="font-medium text-gray-700 mb-1">Cycle de vie</div>
-                          <div className="text-gray-600">{selectedTermination.impact.lifecycle}</div>
-                        </div>
-                        <Separator />
-                        <div>
-                          <div className="font-medium text-gray-700 mb-1">Échéances</div>
-                          <div className="text-gray-600">{selectedTermination.impact.deadlines}</div>
-                        </div>
-                        <Separator />
-                        <div>
-                          <div className="font-medium text-gray-700 mb-1">Intégrations</div>
-                          <div className="text-gray-600">{selectedTermination.impact.integrations}</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Bloc Workflow */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Workflow</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>Valideur assigné:</span>
-                        <span className="font-medium">{selectedTermination.assignedValidator || 'Non assigné'}</span>
-                      </div>
-                      {selectedTermination.sla && selectedTermination.sla < 24 && (
-                        <Alert className="border-amber-200 bg-amber-50">
-                          <Timer className="h-4 w-4 text-amber-600" />
-                          <AlertDescription className="text-sm">
-                            Relance automatique dans {selectedTermination.sla} heures
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                      {selectedTermination.validatedBy && (
-                        <div className="flex justify-between">
-                          <span>Validé par:</span>
-                          <span className="font-medium">{selectedTermination.validatedBy}</span>
-                        </div>
-                      )}
-                      {selectedTermination.rejectionReason && (
-                        <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>
-                            Motif de rejet: {selectedTermination.rejectionReason}
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Bloc Historisation */}
-                {selectedTermination.history && selectedTermination.history.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Historisation</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {selectedTermination.history.map((event) => (
-                          <div key={event.id} className="flex gap-3">
-                            <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-2"></div>
-                            <div className="flex-1">
-                              <div className="text-sm font-medium">{event.action}</div>
-                              <div className="text-xs text-gray-500">
-                                {formatDateTime(event.date)} • {event.user}
-                              </div>
-                              {event.details && (
-                                <div className="text-xs text-gray-600 mt-1">{event.details}</div>
-                              )}
-                              <div className="text-xs font-mono text-gray-400 mt-1">Trace-ID: {event.traceId}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  {selectedTermination.status === 'to_validate' && (
-                    <>
-                      <Button 
-                        className="flex-1"
-                        onClick={() => {
-                          setShowValidationModal(true);
-                          setValidationDecision('validate');
-                        }}
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        Valider
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        className="flex-1"
-                        onClick={() => {
-                          setShowValidationModal(true);
-                          setValidationDecision('reject');
-                        }}
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Rejeter
-                      </Button>
-                    </>
-                  )}
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      // Open contract details
-                    }}
-                  >
-                    Ouvrir la fiche contrat
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* RE-4 - Validation Modal */}
-      <Dialog open={showValidationModal} onOpenChange={setShowValidationModal}>
-        <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {validationDecision === 'validate' ? 'Valider' : 'Rejeter'} la résiliation
-            </DialogTitle>
-            <DialogDescription>
-              Examinez les détails de la demande de résiliation et prenez une décision
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedTermination && (
-            <>
-              <div className="space-y-4">
-                <Card className="bg-gray-50">
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-2">Résumé</h4>
-                    <div className="text-sm space-y-1">
-                      <div>Contrat: {selectedTermination.contractNumber} - {selectedTermination.contractTitle}</div>
-                      <div>Date d'effet: {formatDate(selectedTermination.effectiveDate)}</div>
-                      <div>Motif: {selectedTermination.reason}</div>
-                      <div>Demandeur: {selectedTermination.requestedBy}</div>
-                    </div>
-                  </CardContent>
-                </Card>
 
                 <div>
-                  <Label>Décision</Label>
-                  <RadioGroup 
-                    value={validationDecision}
-                    onValueChange={(v) => setValidationDecision(v as 'validate' | 'reject')}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="validate" id="validate" />
-                      <Label htmlFor="validate">Valider</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="reject" id="reject" />
-                      <Label htmlFor="reject">Rejeter</Label>
-                    </div>
-                  </RadioGroup>
+                  <Label htmlFor="reason">
+                    Motif de résiliation (obligatoire) *
+                  </Label>
+                  <Textarea
+                    id="reason"
+                    placeholder="Expliquez la raison de la résiliation..."
+                    value={newTermination.reason}
+                    onChange={(e) =>
+                      setNewTermination({
+                        ...newTermination,
+                        reason: e.target.value,
+                      })
+                    }
+                    className="h-32"
+                  />
+                  {!newTermination.reason && showError && (
+                    <p className="text-sm text-red-500 mt-1">
+                      Le motif est obligatoire
+                    </p>
+                  )}
                 </div>
 
-                {validationDecision === 'reject' && (
-                  <div>
-                    <Label htmlFor="rejection-reason">
-                      Motif du rejet (obligatoire)
-                    </Label>
-                    <Textarea 
-                      id="rejection-reason"
-                      placeholder="Expliquez la raison du rejet..."
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      className={!rejectionReason && showError ? 'border-red-500' : ''}
-                    />
-                  </div>
-                )}
+                <Card className="bg-amber-50">
+                  <CardHeader>
+                    <CardTitle className="text-base">Aperçu d'impact</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
+                      <div>
+                        <strong>Échéances :</strong> Les échéances postérieures
+                        au {newTermination.effectiveDate || "[date d'effet]"}{" "}
+                        seront supprimées
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
+                      <div>
+                        <strong>Statut :</strong> Le contrat passera à "Résilié"
+                        à la date d'effet
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
+                      <div>
+                        <strong>Intégrations :</strong> Mise à jour automatique
+                        dans SAP
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {currentStep === 3 && (
+              <div className="space-y-4">
+                <h3 className="font-medium">
+                  Étape 3 - Récapitulatif & soumission
+                </h3>
+                <Card className="bg-blue-50">
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-3">
+                      Récapitulatif de la demande
+                    </h4>
+                    <div className="text-sm space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Contrat :</span>
+                        <span className="font-medium">
+                          {newTermination.contractNumber || "Non sélectionné"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Date d'effet :</span>
+                        <span className="font-medium">
+                          {newTermination.effectiveDate || "Non définie"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Motif :</span>
+                        <div className="mt-1 p-2 bg-white rounded text-sm">
+                          {newTermination.reason || "Non renseigné"}
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">
+                          Valideur assigné :
+                        </span>
+                        <span className="font-medium">
+                          Jean Martin (selon règles de routage)
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <Alert>
                   <Info className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    {validationDecision === 'validate' 
-                      ? "Si validée : passage du contrat à Résilié selon le cycle de vie + mise à jour SAP + historisation + notification."
-                      : "Si rejetée : aucune application, la demande reste en attente avec journalisation du motif."
-                    }
+                  <AlertDescription>
+                    En soumettant cette demande, vous déclenchez le workflow de
+                    validation et les notifications associées.
                   </AlertDescription>
                 </Alert>
               </div>
+            )}
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowValidationModal(false)}>
-                  Fermer
-                </Button>
-                <Button 
-                  variant={validationDecision === 'validate' ? 'default' : 'destructive'}
-                  onClick={handleValidation}
-                >
-                  {validationDecision === 'validate' ? 'Valider' : 'Rejeter'}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <div className="flex justify-between w-full">
+                <div>
+                  {currentStep > 1 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentStep(currentStep - 1)}
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      Précédent
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Save as draft
+                      setShowNewTerminationDialog(false);
+                      resetNewTerminationForm();
+                    }}
+                  >
+                    Enregistrer en brouillon
+                  </Button>
+                  {currentStep < 3 ? (
+                    <Button
+                      onClick={() => {
+                        if (currentStep === 2 && !newTermination.reason) {
+                          setShowError(
+                            "Le motif est obligatoire pour soumettre la demande"
+                          );
+                          return;
+                        }
+                        setCurrentStep(currentStep + 1);
+                      }}
+                    >
+                      Suivant
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        // Créer la demande de résiliation
+                        if (
+                          !newTermination.contractId ||
+                          !newTermination.reason
+                        ) {
+                          toast({
+                            title: "Erreur",
+                            description:
+                              "Veuillez sélectionner un contrat et fournir un motif",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+
+                        // Submit for validation
+                        const terminationData = {
+                          type: "termination",
+                          contractId: newTermination.contractId,
+                          title: `Résiliation - ${newTermination.contractNumber}`,
+                          description: newTermination.reason,
+                          targetDate:
+                            newTermination.effectiveDate ||
+                            new Date().toISOString().split("T")[0],
+                          priority: "high",
+                          metadata: {
+                            contractNumber: newTermination.contractNumber,
+                            contractTitle: newTermination.contractTitle,
+                            effectiveDate: newTermination.effectiveDate,
+                            reason: newTermination.reason,
+                          },
+                        };
+
+                        createTerminationMutation.mutate(terminationData);
+                      }}
+                    >
+                      Soumettre à validation
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* RE-2 - Termination Detail Panel */}
+        <Sheet open={showDetailPanel} onOpenChange={setShowDetailPanel}>
+          <SheetContent className="w-full sm:max-w-[90vw] md:max-w-[600px] lg:max-w-[700px] overflow-y-auto">
+            {selectedTermination && (
+              <>
+                <SheetHeader>
+                  <SheetTitle>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div>
+                          {selectedTermination.contractNumber} -{" "}
+                          {selectedTermination.contractTitle}
+                        </div>
+                      </div>
+                      <StatusBadge
+                        variant={getStatusVariant(selectedTermination.status)}
+                        text={getStatusLabel(selectedTermination.status)}
+                      />
+                    </div>
+                  </SheetTitle>
+                  <div className="text-sm text-gray-500 mt-2">
+                    <div>
+                      Date d'effet:{" "}
+                      {formatDate(selectedTermination.effectiveDate)}
+                    </div>
+                    {selectedTermination.sla && (
+                      <div className="text-amber-600">
+                        SLA: {selectedTermination.sla}h restantes
+                      </div>
+                    )}
+                  </div>
+                </SheetHeader>
+
+                <div className="mt-6 space-y-6">
+                  {/* Bloc Demande */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Demande</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-xs text-gray-500">
+                            Motif de résiliation (obligatoire)
+                          </Label>
+                          <div className="mt-1 p-3 bg-gray-50 rounded text-sm">
+                            {selectedTermination.reason}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-500">Demandeur:</span>
+                            <div className="font-medium">
+                              {selectedTermination.requestedBy}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">
+                              Date de création:
+                            </span>
+                            <div className="font-medium">
+                              {formatDate(selectedTermination.createdAt)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Bloc Impact fonctionnel */}
+                  {selectedTermination.impact && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">
+                          Impact fonctionnel
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3 text-sm">
+                          <div>
+                            <div className="font-medium text-gray-700 mb-1">
+                              Cycle de vie
+                            </div>
+                            <div className="text-gray-600">
+                              {selectedTermination.impact.lifecycle}
+                            </div>
+                          </div>
+                          <Separator />
+                          <div>
+                            <div className="font-medium text-gray-700 mb-1">
+                              Échéances
+                            </div>
+                            <div className="text-gray-600">
+                              {selectedTermination.impact.deadlines}
+                            </div>
+                          </div>
+                          <Separator />
+                          <div>
+                            <div className="font-medium text-gray-700 mb-1">
+                              Intégrations
+                            </div>
+                            <div className="text-gray-600">
+                              {selectedTermination.impact.integrations}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Bloc Workflow */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Workflow</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Valideur assigné:</span>
+                          <span className="font-medium">
+                            {selectedTermination.assignedValidator ||
+                              "Non assigné"}
+                          </span>
+                        </div>
+                        {selectedTermination.sla &&
+                          selectedTermination.sla < 24 && (
+                            <Alert className="border-amber-200 bg-amber-50">
+                              <Timer className="h-4 w-4 text-amber-600" />
+                              <AlertDescription className="text-sm">
+                                Relance automatique dans{" "}
+                                {selectedTermination.sla} heures
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        {selectedTermination.validatedBy && (
+                          <div className="flex justify-between">
+                            <span>Validé par:</span>
+                            <span className="font-medium">
+                              {selectedTermination.validatedBy}
+                            </span>
+                          </div>
+                        )}
+                        {selectedTermination.rejectionReason && (
+                          <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                              Motif de rejet:{" "}
+                              {selectedTermination.rejectionReason}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Bloc Historisation */}
+                  {selectedTermination.history &&
+                    selectedTermination.history.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">
+                            Historisation
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {selectedTermination.history.map((event) => (
+                              <div key={event.id} className="flex gap-3">
+                                <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-2"></div>
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium">
+                                    {event.action}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {formatDateTime(event.date)} • {event.user}
+                                  </div>
+                                  {event.details && (
+                                    <div className="text-xs text-gray-600 mt-1">
+                                      {event.details}
+                                    </div>
+                                  )}
+                                  <div className="text-xs font-mono text-gray-400 mt-1">
+                                    Trace-ID: {event.traceId}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    {selectedTermination.status === "to_validate" && (
+                      <>
+                        <Button
+                          className="flex-1"
+                          onClick={() => {
+                            setShowValidationModal(true);
+                            setValidationDecision("validate");
+                          }}
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Valider
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="flex-1"
+                          onClick={() => {
+                            setShowValidationModal(true);
+                            setValidationDecision("reject");
+                          }}
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Rejeter
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Open contract details
+                      }}
+                    >
+                      Ouvrir la fiche contrat
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </SheetContent>
+        </Sheet>
+
+        {/* RE-4 - Validation Modal */}
+        <Dialog
+          open={showValidationModal}
+          onOpenChange={setShowValidationModal}
+        >
+          <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {validationDecision === "validate" ? "Valider" : "Rejeter"} la
+                résiliation
+              </DialogTitle>
+              <DialogDescription>
+                Examinez les détails de la demande de résiliation et prenez une
+                décision
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedTermination && (
+              <>
+                <div className="space-y-4">
+                  <Card className="bg-gray-50">
+                    <CardContent className="p-4">
+                      <h4 className="font-medium mb-2">Résumé</h4>
+                      <div className="text-sm space-y-1">
+                        <div>
+                          Contrat: {selectedTermination.contractNumber} -{" "}
+                          {selectedTermination.contractTitle}
+                        </div>
+                        <div>
+                          Date d'effet:{" "}
+                          {formatDate(selectedTermination.effectiveDate)}
+                        </div>
+                        <div>Motif: {selectedTermination.reason}</div>
+                        <div>Demandeur: {selectedTermination.requestedBy}</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div>
+                    <Label>Décision</Label>
+                    <RadioGroup
+                      value={validationDecision}
+                      onValueChange={(v) =>
+                        setValidationDecision(v as "validate" | "reject")
+                      }
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="validate" id="validate" />
+                        <Label htmlFor="validate">Valider</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="reject" id="reject" />
+                        <Label htmlFor="reject">Rejeter</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {validationDecision === "reject" && (
+                    <div>
+                      <Label htmlFor="rejection-reason">
+                        Motif du rejet (obligatoire)
+                      </Label>
+                      <Textarea
+                        id="rejection-reason"
+                        placeholder="Expliquez la raison du rejet..."
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        className={
+                          !rejectionReason && showError ? "border-red-500" : ""
+                        }
+                      />
+                    </div>
+                  )}
+
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      {validationDecision === "validate"
+                        ? "Si validée : passage du contrat à Résilié selon le cycle de vie + mise à jour SAP + historisation + notification."
+                        : "Si rejetée : aucune application, la demande reste en attente avec journalisation du motif."}
+                    </AlertDescription>
+                  </Alert>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowValidationModal(false)}
+                  >
+                    Fermer
+                  </Button>
+                  <Button
+                    variant={
+                      validationDecision === "validate"
+                        ? "default"
+                        : "destructive"
+                    }
+                    onClick={handleValidation}
+                  >
+                    {validationDecision === "validate" ? "Valider" : "Rejeter"}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );
