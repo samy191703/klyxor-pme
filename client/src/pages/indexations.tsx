@@ -110,6 +110,7 @@ import {
 import { useRouter } from "wouter";
 import { usePathname } from "wouter/use-browser-location";
 import { useLocation } from "wouter";
+import Header from "@/components/layout/header";
 
 /**
  * Composant principal de la page d'indexation
@@ -896,6 +897,7 @@ export default function Indexations() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
+      <Header />
       <main
         className="flex-1 overflow-y-auto p-4 lg:p-6"
         data-testid="indexations-main"
@@ -2149,9 +2151,9 @@ export default function Indexations() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {reportsData?.reports &&
-                          reportsData.reports.length > 0 ? (
-                            reportsData.reports.map((report: any) => (
+                          {(reportsData as any)?.reports &&
+                          (reportsData as any).reports.length > 0 ? (
+                            (reportsData as any).reports.map((report: any) => (
                               <TableRow key={report.id}>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
@@ -2405,30 +2407,32 @@ export default function Indexations() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {indexationFrequencies.length > 0 ? (
-                          indexationFrequencies.map((frequency: any) => (
-                            <TableRow key={frequency.id}>
-                              <TableCell className="font-mono font-bold">
-                                {frequency.contractCode}
-                              </TableCell>
-                              <TableCell>{frequency.frequency}</TableCell>
-                              <TableCell>{frequency.scope}</TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedFrequency(frequency);
-                                    setFrequencyValue(frequency.frequency);
-                                    setFrequencyScope(frequency.scope);
-                                    setShowFrequencyModal(true);
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
+                        {(indexationFrequencies as any).length > 0 ? (
+                          (indexationFrequencies as any).map(
+                            (frequency: any) => (
+                              <TableRow key={frequency.id}>
+                                <TableCell className="font-mono font-bold">
+                                  {frequency.contractCode}
+                                </TableCell>
+                                <TableCell>{frequency.frequency}</TableCell>
+                                <TableCell>{frequency.scope}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedFrequency(frequency);
+                                      setFrequencyValue(frequency.frequency);
+                                      setFrequencyScope(frequency.scope);
+                                      setShowFrequencyModal(true);
+                                    }}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          )
                         ) : (
                           <TableRow>
                             <TableCell
@@ -2676,39 +2680,43 @@ export default function Indexations() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {validationAssignments.length > 0 ? (
-                            validationAssignments.map((assignment: any) => (
-                              <TableRow key={assignment.id}>
-                                <TableCell className="font-mono">
-                                  {assignment.parkCode}
-                                </TableCell>
-                                <TableCell>{assignment.businessUnit}</TableCell>
-                                <TableCell>
-                                  {assignment.mainValidatorName}
-                                </TableCell>
-                                <TableCell>
-                                  {assignment.backupValidatorName || "-"}
-                                </TableCell>
-                                <TableCell>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedAssignment(assignment);
-                                      setAssignmentMainValidator(
-                                        assignment.mainValidatorName
-                                      );
-                                      setAssignmentBackupValidator(
-                                        assignment.backupValidatorName || ""
-                                      );
-                                      setShowAssignmentModal(true);
-                                    }}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))
+                          {(validationAssignments as any).length > 0 ? (
+                            (validationAssignments as any).map(
+                              (assignment: any) => (
+                                <TableRow key={assignment.id}>
+                                  <TableCell className="font-mono">
+                                    {assignment.parkCode}
+                                  </TableCell>
+                                  <TableCell>
+                                    {assignment.businessUnit}
+                                  </TableCell>
+                                  <TableCell>
+                                    {assignment.mainValidatorName}
+                                  </TableCell>
+                                  <TableCell>
+                                    {assignment.backupValidatorName || "-"}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedAssignment(assignment);
+                                        setAssignmentMainValidator(
+                                          assignment.mainValidatorName
+                                        );
+                                        setAssignmentBackupValidator(
+                                          assignment.backupValidatorName || ""
+                                        );
+                                        setShowAssignmentModal(true);
+                                      }}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            )
                           ) : (
                             <TableRow>
                               <TableCell
@@ -2728,7 +2736,8 @@ export default function Indexations() {
                             type="checkbox"
                             id="auto-reminder"
                             defaultChecked={
-                              validationAssignments[0]?.autoReminder ?? true
+                              (validationAssignments as any)[0]?.autoReminder ??
+                              true
                             }
                           />
                           <Label
