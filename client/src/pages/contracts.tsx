@@ -507,7 +507,7 @@ export default function Contracts() {
       const preview = await runIndexationFromAssets(
         wizardData,
         indexationFormulas,
-        "https://index.klyxor.com/api/v1/calculate-from-assets"
+        process.env.INDEXATION_ENGINE_URL + "/api/v1/calculate-from-assets"
       );
       setCalcResult(preview);
     } catch (e: any) {

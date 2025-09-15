@@ -68,8 +68,9 @@ export default function Header() {
           </div>
         </div>
 
-        {/* ⚡ Actions rapides */}
-        <div className="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
+        {/* 🔔 Notifications & Profil */}
+        <div className="flex items-center gap-2 sm:gap-4 order-3">
+          {/* ⚡ Actions rapides */}
           {canCreateContract() && (
             <Button variant="ghost" size="sm" title="Créer une alerte">
               <Plus className="w-4 h-4" />
@@ -83,10 +84,6 @@ export default function Header() {
               <Download className="w-4 h-4" />
             </Button>
           )}
-        </div>
-
-        {/* 🔔 Notifications & Profil */}
-        <div className="flex items-center gap-2 sm:gap-4 order-3">
           {/* Notifications */}
           <Sheet open={showNotifications} onOpenChange={setShowNotifications}>
             <SheetTrigger asChild>
