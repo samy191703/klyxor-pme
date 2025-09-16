@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Login from "@/pages/Login";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/dashboard";
-import Contracts from "@/pages/contracts";
+//import Contracts from "@/pages/contracts";
 import Validation from "@/pages/validation";
 import Workflows from "@/pages/workflows";
 import Deadlines from "@/pages/deadlines";
@@ -43,6 +43,7 @@ import AdminDocuments from "@/pages/admin/documents";
 import IndexationConfig from "@/pages/IndexationConfig";
 import IndexationDashboard from "@/pages/IndexationDashboard";
 import CodeSnippets from "@/pages/CodeSnippets";
+import MainContractsPage from "./modules/contracts";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -79,7 +80,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/contracts">
             <ProtectedRoute route="/contracts">
-              <Contracts />
+              <MainContractsPage />
             </ProtectedRoute>
           </Route>
           <Route path="/validation">

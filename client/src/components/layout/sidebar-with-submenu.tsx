@@ -26,6 +26,7 @@ import {
   Activity,
   Calculator,
 } from "lucide-react";
+import { UserIdentityButton } from "../common/user-identity-button";
 
 /** --- Drop-in link that always navigates, even for same-path + different query --- */
 function QueryLink({
@@ -275,7 +276,12 @@ export default function SidebarWithSubmenu() {
           <span>Relancer le tutoriel</span>
         </button>
 
-        <div className="flex items-center gap-3">
+        <UserIdentityButton
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start hover:bg-transparent focus-visible:ring-0"
+        />
+        {/*  <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[var(--klyxor-bleu-nuit)] flex items-center justify-center text-white text-sm font-medium">
             AD
           </div>
@@ -285,7 +291,7 @@ export default function SidebarWithSubmenu() {
             </p>
             <p className="text-xs text-gray-500">admin@KLYXOR.fr</p>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

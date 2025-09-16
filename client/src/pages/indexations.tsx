@@ -2620,7 +2620,7 @@ export default function Indexations() {
                                 readOnly
                                 className="flex-1"
                               />
-                              <Badge variant="outline">ICHT-IME</Badge>
+                              <Badge variant="outline">ICHT</Badge>
                             </div>
                             <div className="flex items-center space-x-2">
                               <Input
@@ -2628,7 +2628,7 @@ export default function Indexations() {
                                 readOnly
                                 className="flex-1"
                               />
-                              <Badge variant="outline">FM0ABE0</Badge>
+                              <Badge variant="outline">FMOA</Badge>
                             </div>
                             <div className="flex items-center space-x-2">
                               <Input
@@ -2636,7 +2636,7 @@ export default function Indexations() {
                                 readOnly
                                 className="flex-1"
                               />
-                              <Badge variant="outline">ICC</Badge>
+                              <Badge variant="outline">CPI</Badge>
                             </div>
                             <p className="text-xs text-gray-500 mt-1">
                               Séries chronologiques INSEE pour le calcul des
