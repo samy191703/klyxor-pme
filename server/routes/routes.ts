@@ -28,6 +28,7 @@ import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 import { ObjectPermission } from "../objectAcl";
 import { registerContractRoutes } from "./contracts.routes";
 import { registerAuthRoutes } from "./auth.routes";
+import { registerUploadRoutes } from "./uploads.routes";
 
 /**
  * Fonction principale d'enregistrement des routes
@@ -97,6 +98,7 @@ export async function registerRoutes(
    * Initialisation des routes de gestion des contrats
    */
   registerContractRoutes(app);
+  registerUploadRoutes(app);
 
   app.get("/api/kpis", isAuthenticated, async (req, res) => {
     try {
@@ -1531,7 +1533,7 @@ export async function registerRoutes(
     }
   });
 
-  // Documents (GED) routes
+  /*  // Documents (GED) routes
   app.get("/api/documents", isAuthenticated, async (req, res) => {
     try {
       const { contractId } = req.query;
@@ -1564,7 +1566,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to delete document" });
     }
   });
-
+ */
   // ========== OBJECT STORAGE ROUTES ==========
   // Routes pour la gestion des fichiers dans l'object storage
 

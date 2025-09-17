@@ -1026,4 +1026,51 @@ export function registerContractRoutes(app: Express): void {
       }
     }
   );
+
+  /**
+   * @openapi
+   * /api/contracts/{contractId}/uploads:
+   *   get:
+   *     summary: List uploads (documents) for a contract
+   *     tags: [Contracts]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: contractId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: List of documents attached to the contract
+   *       404:
+   *         description: Contract not found
+   *       500:
+   *         description: Server error
+   */
+  app.get(
+    "/api/contracts/:contractId/uploads",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        const { contractId } = req.params;
+
+        // Optional: ensure contract exists
+        const contract = await storage.getContract(contractId);
+        if (!contract) {
+          return res.status(404).json({ error: "Contract not found" });
+        }
+
+        const docs = await storage.getDocumentsByContractId(contractId);
+        // If you want to hide soft-deleted docs, filter here:
+        // const docs = (await storage.getDocumentsByContractId(contractId)).filter(d => d.status !== "deleted");
+
+        res.json(docs);
+      } catch (err) {
+        console.error("GET /api/contracts/:contractId/uploads error:", err);
+        res.status(500).json({ error: "Failed to fetch contract uploads" });
+      }
+    }
+  );
 }

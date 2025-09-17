@@ -22,6 +22,7 @@ import { stateTransitionManager } from "./services/stateTransitionManager";
 import { sapSyncService } from "./services/sapSynchronization";
 import { alertService } from "./services/alertNotificationService";
 import { setupSwagger } from "./swagger";
+import path from "path";
 
 const CALC_ORIGIN = "https://index.klyxor.com";
 const app = express();
@@ -250,6 +251,14 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
     // Remove throw statement to prevent server crashes
   });
+
+  log(`Début de la configuration du répertoire d'uploads}`);
+
+  const UPLOADS_ROOT =
+    process.env.UPLOADS_DIR || path.join(process.cwd(), "server", "uploads");
+
+  app.use("/uploads", express.static(UPLOADS_ROOT));
+  log(`Répertoire d'uploads configuré: ${UPLOADS_ROOT}`);
 
   setupSwagger(app, {
     route: "/api/docs",
