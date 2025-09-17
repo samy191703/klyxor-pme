@@ -4,7 +4,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import passport from "./auth";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes/routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { pool } from "./db";
 import { initializeKeycloakAuth } from "./auth.keycloak";
@@ -21,6 +21,7 @@ import { validationReminderService } from "./services/validationReminder";
 import { stateTransitionManager } from "./services/stateTransitionManager";
 import { sapSyncService } from "./services/sapSynchronization";
 import { alertService } from "./services/alertNotificationService";
+import { setupSwagger } from "./swagger";
 
 const CALC_ORIGIN = "https://index.klyxor.com";
 const app = express();
@@ -123,7 +124,7 @@ app.use(
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: "strict", // Protection CSRF
+      sameSite: "lax", // Protection CSRF
       domain: process.env.COOKIE_DOMAIN || undefined,
       path: "/",
     },
@@ -250,6 +251,17 @@ app.use((req, res, next) => {
     // Remove throw statement to prevent server crashes
   });
 
+  setupSwagger(app, {
+    route: "/api/docs",
+    jsonRoute: "/api/docs.json",
+    title: "KLYXOR Contract Lifecycle Management API",
+    version: "1.0.0",
+    // apiPrefix intentionally empty to match documented paths like "/api/contracts"
+    apiPrefix: "",
+    apis: ["server/routes/**/*.ts", "server/models/**/*.ts"],
+  });
+
+  log(`SWAGGER server setup complete`);
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes

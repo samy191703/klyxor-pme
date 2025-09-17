@@ -100,13 +100,19 @@ export interface IStorage {
   getUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<User>): Promise<User | undefined>;
-  
+
   // ========== GESTION DES SNIPPETS DE CODE ==========
   getCodeSnippets(userId?: string): Promise<CodeSnippet[]>;
   getCodeSnippet(id: string): Promise<CodeSnippet | undefined>;
-  getCodeSnippetsByContext(context: string, contextId?: string): Promise<CodeSnippet[]>;
+  getCodeSnippetsByContext(
+    context: string,
+    contextId?: string
+  ): Promise<CodeSnippet[]>;
   createCodeSnippet(snippet: InsertCodeSnippet): Promise<CodeSnippet>;
-  updateCodeSnippet(id: string, snippet: Partial<CodeSnippet>): Promise<CodeSnippet | undefined>;
+  updateCodeSnippet(
+    id: string,
+    snippet: Partial<CodeSnippet>
+  ): Promise<CodeSnippet | undefined>;
   deleteCodeSnippet(id: string): Promise<boolean>;
   incrementSnippetViewCount(id: string): Promise<void>;
   incrementSnippetCopyCount(id: string): Promise<void>;
@@ -115,15 +121,21 @@ export interface IStorage {
   getContracts(): Promise<Contract[]>;
   getContract(id: string): Promise<Contract | undefined>;
   createContract(contract: InsertContract): Promise<Contract>;
-  updateContract(id: string, contract: Partial<Contract>): Promise<Contract | undefined>;
+  updateContract(
+    id: string,
+    contract: Partial<Contract>
+  ): Promise<Contract | undefined>;
   deleteContract(id: string): Promise<boolean>;
-  
+
   // ========== GESTION DES AVENANTS ==========
   getAmendments(): Promise<Amendment[]>;
   getAmendmentsByContractId(contractId: string): Promise<Amendment[]>;
   getAmendment(id: string): Promise<Amendment | undefined>;
   createAmendment(amendment: InsertAmendment): Promise<Amendment>;
-  updateAmendment(id: string, amendment: Partial<Amendment>): Promise<Amendment | undefined>;
+  updateAmendment(
+    id: string,
+    amendment: Partial<Amendment>
+  ): Promise<Amendment | undefined>;
   deleteAmendment(id: string): Promise<boolean>;
 
   // Terminations
@@ -131,29 +143,47 @@ export interface IStorage {
   getTerminationsByContractId(contractId: string): Promise<Termination[]>;
   getTermination(id: string): Promise<Termination | undefined>;
   createTermination(termination: InsertTermination): Promise<Termination>;
-  updateTermination(id: string, termination: Partial<Termination>): Promise<Termination | undefined>;
+  updateTermination(
+    id: string,
+    termination: Partial<Termination>
+  ): Promise<Termination | undefined>;
   deleteTermination(id: string): Promise<boolean>;
 
   // ========== WORKFLOW DE VALIDATION ==========
   getValidationRequests(): Promise<ValidationRequest[]>;
   getValidationRequest(id: string): Promise<ValidationRequest | undefined>;
-  createValidationRequest(request: InsertValidationRequest): Promise<ValidationRequest>;
-  updateValidationRequest(id: string, request: Partial<ValidationRequest>): Promise<ValidationRequest | undefined>;
+  createValidationRequest(
+    request: InsertValidationRequest
+  ): Promise<ValidationRequest>;
+  updateValidationRequest(
+    id: string,
+    request: Partial<ValidationRequest>
+  ): Promise<ValidationRequest | undefined>;
 
   // ========== GESTION DES INDEXATIONS ==========
   getIndexations(): Promise<Indexation[]>;
   getIndexation(id: string): Promise<Indexation | undefined>;
   createIndexation(indexation: InsertIndexation): Promise<Indexation>;
-  updateIndexation(id: string, indexation: Partial<Indexation>): Promise<Indexation | undefined>;
+  updateIndexation(
+    id: string,
+    indexation: Partial<Indexation>
+  ): Promise<Indexation | undefined>;
   getContractsEligibleForIndexation(date?: Date): Promise<Contract[]>;
-  
+
   // ========== GESTION DES PROPOSITIONS D'INDEXATION ==========
   getIndexationProposals(): Promise<IndexationProposal[]>;
   getIndexationProposal(id: string): Promise<IndexationProposal | undefined>;
-  createIndexationProposal(proposal: InsertIndexationProposal): Promise<IndexationProposal>;
-  updateIndexationProposal(id: string, proposal: Partial<IndexationProposal>): Promise<IndexationProposal | undefined>;
+  createIndexationProposal(
+    proposal: InsertIndexationProposal
+  ): Promise<IndexationProposal>;
+  updateIndexationProposal(
+    id: string,
+    proposal: Partial<IndexationProposal>
+  ): Promise<IndexationProposal | undefined>;
   getIndexationProposalsByStatus(status: string): Promise<IndexationProposal[]>;
-  getIndexationProposalsByContractId(contractId: string): Promise<IndexationProposal[]>;
+  getIndexationProposalsByContractId(
+    contractId: string
+  ): Promise<IndexationProposal[]>;
 
   // Deadlines
   getDeadlines(): Promise<Deadline[]>;
@@ -163,11 +193,16 @@ export interface IStorage {
   createAlert(alert: InsertAlert): Promise<Alert>;
   markAlertAsRead(id: string): Promise<void>;
   markAllAlertsAsRead(): Promise<void>;
-  
+
   // Notification Preferences
   getNotificationPreferences(userId: string): Promise<NotificationPreference[]>;
-  createNotificationPreference(preference: InsertNotificationPreference): Promise<NotificationPreference>;
-  updateNotificationPreferences(userId: string, preferences: InsertNotificationPreference[]): Promise<void>;
+  createNotificationPreference(
+    preference: InsertNotificationPreference
+  ): Promise<NotificationPreference>;
+  updateNotificationPreferences(
+    userId: string,
+    preferences: InsertNotificationPreference[]
+  ): Promise<void>;
 
   // Audit Logs
   getAuditLogs(): Promise<AuditLog[]>;
@@ -183,15 +218,23 @@ export interface IStorage {
   // Indexation Formulas
   getIndexationFormulas(): Promise<IndexationFormula[]>;
   getIndexationFormulaById(id: string): Promise<IndexationFormula | undefined>;
-  createIndexationFormula(formula: InsertIndexationFormula): Promise<IndexationFormula>;
-  updateIndexationFormula(id: string, formula: Partial<InsertIndexationFormula>): Promise<IndexationFormula | undefined>;
+  createIndexationFormula(
+    formula: InsertIndexationFormula
+  ): Promise<IndexationFormula>;
+  updateIndexationFormula(
+    id: string,
+    formula: Partial<InsertIndexationFormula>
+  ): Promise<IndexationFormula | undefined>;
   deleteIndexationFormula(id: string): Promise<boolean>;
-  
+
   // Index Values - Valeurs d'indices économiques
   getIndexValues(): Promise<IndexValue[]>;
   getIndexValue(id: string): Promise<IndexValue | undefined>;
   createIndexValue(value: InsertIndexValue): Promise<IndexValue>;
-  updateIndexValue(id: string, value: Partial<IndexValue>): Promise<IndexValue | undefined>;
+  updateIndexValue(
+    id: string,
+    value: Partial<IndexValue>
+  ): Promise<IndexValue | undefined>;
 
   // KPIs
   getKPIs(): Promise<{
@@ -211,27 +254,39 @@ export interface IStorage {
   getPaymentBlocks(): Promise<PaymentBlock[]>;
   getPaymentBlock(id: string): Promise<PaymentBlock | undefined>;
   createPaymentBlock(block: InsertPaymentBlock): Promise<PaymentBlock>;
-  updatePaymentBlock(id: string, block: Partial<PaymentBlock>): Promise<PaymentBlock | undefined>;
+  updatePaymentBlock(
+    id: string,
+    block: Partial<PaymentBlock>
+  ): Promise<PaymentBlock | undefined>;
 
   // Payment Proofs
   getPaymentProofs(): Promise<PaymentProof[]>;
   getPaymentProof(id: string): Promise<PaymentProof | undefined>;
   createPaymentProof(proof: InsertPaymentProof): Promise<PaymentProof>;
-  updatePaymentProof(id: string, proof: Partial<PaymentProof>): Promise<PaymentProof | undefined>;
+  updatePaymentProof(
+    id: string,
+    proof: Partial<PaymentProof>
+  ): Promise<PaymentProof | undefined>;
 
   // Documents
   getDocuments(): Promise<Document[]>;
   getDocument(id: string): Promise<Document | undefined>;
   getDocumentsByContractId(contractId: string): Promise<Document[]>;
   createDocument(document: InsertDocument): Promise<Document>;
-  updateDocument(id: string, document: Partial<Document>): Promise<Document | undefined>;
+  updateDocument(
+    id: string,
+    document: Partial<Document>
+  ): Promise<Document | undefined>;
   deleteDocument(id: string): Promise<boolean>;
 
   // Export Jobs
   getExportJobs(): Promise<ExportJob[]>;
   getExportJob(id: string): Promise<ExportJob | undefined>;
   createExportJob(job: InsertExportJob): Promise<ExportJob>;
-  updateExportJob(id: string, job: Partial<ExportJob>): Promise<ExportJob | undefined>;
+  updateExportJob(
+    id: string,
+    job: Partial<ExportJob>
+  ): Promise<ExportJob | undefined>;
 
   // Security Events
   getSecurityEvents(): Promise<SecurityEvent[]>;
@@ -241,39 +296,77 @@ export interface IStorage {
   getReminders(): Promise<Reminder[]>;
   getReminder(id: string): Promise<Reminder | undefined>;
   createReminder(reminder: InsertReminder): Promise<Reminder>;
-  updateReminder(id: string, reminder: Partial<Reminder>): Promise<Reminder | undefined>;
+  updateReminder(
+    id: string,
+    reminder: Partial<Reminder>
+  ): Promise<Reminder | undefined>;
 
   // Workflow Definitions
   getWorkflowDefinitions(): Promise<WorkflowDefinition[]>;
   getWorkflowDefinition(id: string): Promise<WorkflowDefinition | undefined>;
-  createWorkflowDefinition(definition: InsertWorkflowDefinition): Promise<WorkflowDefinition>;
-  updateWorkflowDefinition(id: string, definition: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | undefined>;
+  createWorkflowDefinition(
+    definition: InsertWorkflowDefinition
+  ): Promise<WorkflowDefinition>;
+  updateWorkflowDefinition(
+    id: string,
+    definition: Partial<WorkflowDefinition>
+  ): Promise<WorkflowDefinition | undefined>;
 
   // Workflow Instances
   getWorkflowInstances(): Promise<WorkflowInstance[]>;
   getWorkflowInstance(id: string): Promise<WorkflowInstance | undefined>;
-  createWorkflowInstance(instance: InsertWorkflowInstance): Promise<WorkflowInstance>;
-  updateWorkflowInstance(id: string, instance: Partial<WorkflowInstance>): Promise<WorkflowInstance | undefined>;
+  createWorkflowInstance(
+    instance: InsertWorkflowInstance
+  ): Promise<WorkflowInstance>;
+  updateWorkflowInstance(
+    id: string,
+    instance: Partial<WorkflowInstance>
+  ): Promise<WorkflowInstance | undefined>;
 
   // Economic Indices INSEE
   upsertEconomicIndex(index: InsertEconomicIndex): Promise<SelectEconomicIndex>;
-  getLatestEconomicIndex(code: string, targetDate: Date): Promise<SelectEconomicIndex | null>;
-  getEconomicIndices(filters?: { code?: string; startDate?: Date; endDate?: Date }): Promise<SelectEconomicIndex[]>;
+  getLatestEconomicIndex(
+    code: string,
+    targetDate: Date
+  ): Promise<SelectEconomicIndex | null>;
+  getEconomicIndices(filters?: {
+    code?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<SelectEconomicIndex[]>;
 
   // Validation Assignments (Affectations de validation)
   getValidationAssignments(): Promise<SelectValidationAssignment[]>;
-  getValidationAssignment(id: string): Promise<SelectValidationAssignment | undefined>;
-  getValidationAssignmentByParkCode(parkCode: string): Promise<SelectValidationAssignment | undefined>;
-  createValidationAssignment(assignment: InsertValidationAssignment): Promise<SelectValidationAssignment>;
-  updateValidationAssignment(id: string, assignment: Partial<InsertValidationAssignment>): Promise<SelectValidationAssignment | undefined>;
+  getValidationAssignment(
+    id: string
+  ): Promise<SelectValidationAssignment | undefined>;
+  getValidationAssignmentByParkCode(
+    parkCode: string
+  ): Promise<SelectValidationAssignment | undefined>;
+  createValidationAssignment(
+    assignment: InsertValidationAssignment
+  ): Promise<SelectValidationAssignment>;
+  updateValidationAssignment(
+    id: string,
+    assignment: Partial<InsertValidationAssignment>
+  ): Promise<SelectValidationAssignment | undefined>;
   deleteValidationAssignment(id: string): Promise<boolean>;
 
   // Indexation Frequencies (Fréquences et périmètres d'indexation)
   getIndexationFrequencies(): Promise<SelectIndexationFrequency[]>;
-  getIndexationFrequency(id: string): Promise<SelectIndexationFrequency | undefined>;
-  getIndexationFrequencyByContractCode(contractCode: string): Promise<SelectIndexationFrequency | undefined>;
-  createIndexationFrequency(frequency: InsertIndexationFrequency): Promise<SelectIndexationFrequency>;
-  updateIndexationFrequency(id: string, frequency: Partial<InsertIndexationFrequency>): Promise<SelectIndexationFrequency | undefined>;
+  getIndexationFrequency(
+    id: string
+  ): Promise<SelectIndexationFrequency | undefined>;
+  getIndexationFrequencyByContractCode(
+    contractCode: string
+  ): Promise<SelectIndexationFrequency | undefined>;
+  createIndexationFrequency(
+    frequency: InsertIndexationFrequency
+  ): Promise<SelectIndexationFrequency>;
+  updateIndexationFrequency(
+    id: string,
+    frequency: Partial<InsertIndexationFrequency>
+  ): Promise<SelectIndexationFrequency | undefined>;
   deleteIndexationFrequency(id: string): Promise<boolean>;
 }
 
@@ -294,7 +387,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username));
     return user || undefined;
   }
 
@@ -303,14 +399,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
-  async updateUser(id: string, userData: Partial<User>): Promise<User | undefined> {
+  async updateUser(
+    id: string,
+    userData: Partial<User>
+  ): Promise<User | undefined> {
     const [updatedUser] = await db
       .update(users)
       .set(userData)
@@ -328,7 +424,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContract(id: string): Promise<Contract | undefined> {
-    const [contract] = await db.select().from(contracts).where(eq(contracts.id, id));
+    const [contract] = await db
+      .select()
+      .from(contracts)
+      .where(eq(contracts.id, id));
     return contract || undefined;
   }
 
@@ -348,7 +447,10 @@ export class DatabaseStorage implements IStorage {
     return contract;
   }
 
-  async updateContract(id: string, updates: Partial<Contract>): Promise<Contract | undefined> {
+  async updateContract(
+    id: string,
+    updates: Partial<Contract>
+  ): Promise<Contract | undefined> {
     const [contract] = await db
       .update(contracts)
       .set({
@@ -366,15 +468,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAmendments(): Promise<Amendment[]> {
-    return await db.select().from(amendments).orderBy(desc(amendments.createdAt));
+    return await db
+      .select()
+      .from(amendments)
+      .orderBy(desc(amendments.createdAt));
   }
 
   async getAmendmentsByContractId(contractId: string): Promise<Amendment[]> {
-    return await db.select().from(amendments).where(eq(amendments.contractId, contractId)).orderBy(desc(amendments.createdAt));
+    return await db
+      .select()
+      .from(amendments)
+      .where(eq(amendments.contractId, contractId))
+      .orderBy(desc(amendments.createdAt));
   }
 
   async getAmendment(id: string): Promise<Amendment | undefined> {
-    const [amendment] = await db.select().from(amendments).where(eq(amendments.id, id));
+    const [amendment] = await db
+      .select()
+      .from(amendments)
+      .where(eq(amendments.id, id));
     return amendment || undefined;
   }
 
@@ -389,7 +501,10 @@ export class DatabaseStorage implements IStorage {
     return amendment;
   }
 
-  async updateAmendment(id: string, updates: Partial<Amendment>): Promise<Amendment | undefined> {
+  async updateAmendment(
+    id: string,
+    updates: Partial<Amendment>
+  ): Promise<Amendment | undefined> {
     const [amendment] = await db
       .update(amendments)
       .set({
@@ -407,19 +522,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTerminations(): Promise<Termination[]> {
-    return await db.select().from(terminations).orderBy(desc(terminations.createdAt));
+    return await db
+      .select()
+      .from(terminations)
+      .orderBy(desc(terminations.createdAt));
   }
 
-  async getTerminationsByContractId(contractId: string): Promise<Termination[]> {
-    return await db.select().from(terminations).where(eq(terminations.contractId, contractId)).orderBy(desc(terminations.createdAt));
+  async getTerminationsByContractId(
+    contractId: string
+  ): Promise<Termination[]> {
+    return await db
+      .select()
+      .from(terminations)
+      .where(eq(terminations.contractId, contractId))
+      .orderBy(desc(terminations.createdAt));
   }
 
   async getTermination(id: string): Promise<Termination | undefined> {
-    const [termination] = await db.select().from(terminations).where(eq(terminations.id, id));
+    const [termination] = await db
+      .select()
+      .from(terminations)
+      .where(eq(terminations.id, id));
     return termination || undefined;
   }
 
-  async createTermination(insertTermination: InsertTermination): Promise<Termination> {
+  async createTermination(
+    insertTermination: InsertTermination
+  ): Promise<Termination> {
     const [termination] = await db
       .insert(terminations)
       .values({
@@ -430,7 +559,10 @@ export class DatabaseStorage implements IStorage {
     return termination;
   }
 
-  async updateTermination(id: string, updates: Partial<Termination>): Promise<Termination | undefined> {
+  async updateTermination(
+    id: string,
+    updates: Partial<Termination>
+  ): Promise<Termination | undefined> {
     const [termination] = await db
       .update(terminations)
       .set({
@@ -448,15 +580,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getValidationRequests(): Promise<ValidationRequest[]> {
-    return await db.select().from(validationRequests).orderBy(desc(validationRequests.createdAt));
+    return await db
+      .select()
+      .from(validationRequests)
+      .orderBy(desc(validationRequests.createdAt));
   }
 
-  async getValidationRequest(id: string): Promise<ValidationRequest | undefined> {
-    const [request] = await db.select().from(validationRequests).where(eq(validationRequests.id, id));
+  async getValidationRequest(
+    id: string
+  ): Promise<ValidationRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(validationRequests)
+      .where(eq(validationRequests.id, id));
     return request || undefined;
   }
 
-  async createValidationRequest(insertRequest: InsertValidationRequest): Promise<ValidationRequest> {
+  async createValidationRequest(
+    insertRequest: InsertValidationRequest
+  ): Promise<ValidationRequest> {
     const [request] = await db
       .insert(validationRequests)
       .values(insertRequest)
@@ -464,7 +606,10 @@ export class DatabaseStorage implements IStorage {
     return request;
   }
 
-  async updateValidationRequest(id: string, updates: Partial<ValidationRequest>): Promise<ValidationRequest | undefined> {
+  async updateValidationRequest(
+    id: string,
+    updates: Partial<ValidationRequest>
+  ): Promise<ValidationRequest | undefined> {
     const [request] = await db
       .update(validationRequests)
       .set(updates)
@@ -484,179 +629,216 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(indexations)
       .orderBy(desc(indexations.createdAt));
-    
+
     // Si aucune donnée en base, retourner des données de test pour démonstration
     if (dbIndexations.length === 0) {
       const mockIndexations: Indexation[] = [
-      {
-        id: "idx-001",
-        contractId: "fff46e48-192f-4d58-aebf-817450d6c376",
-        contractNumber: "GLB04-2024",
-        contractTitle: "Parc Gréoux 1 - Géothermie",
-        indexationDate: new Date("2024-10-01"),
-        frequency: "Trimestrielle",
-        formula: "Type 2.A",
-        indexKey: "ICHT/FMOA",
-        originalIndexDate: new Date("2023-10-01"),
-        revisionIndexDate: new Date("2024-10-01"),
-        periodFrom: new Date("2024-07-01"),
-        periodTo: new Date("2024-09-30"),
-        indices: [{code: "ICHT", valueN1: "128.5", valueN: "131.2", source: "INSEE", date: "2024-10-01"}],
-        oldAmount: "180000",
-        newAmount: "191550",
-        previousAmount: "185000",
-        proposedAmount: "191550",
-        deltaAmount: "6550",
-        deltaPercentage: "3.54",
-        status: "pending",
-        assignedValidator: "Marie Dupont",
-        responsible: "Jean Martin",
-        businessUnit: "ENGIE Green",
-        source: "INSEE",
-        validatedBy: null,
-        rejectionReason: null,
-        createdAt: new Date("2024-10-01"),
-        updatedAt: new Date("2024-10-02"),
-        validatedAt: null
-      },
-      {
-        id: "idx-002",
-        contractId: "cbff4712-ec93-49db-9d1a-d856ed1aa07a",
-        contractNumber: "SCM29-2024",
-        contractTitle: "Parc SCAER LE MERDY - Biomasse",
-        indexationDate: new Date("2024-09-15"),
-        frequency: "Annuelle",
-        formula: "Type 1",
-        indexKey: "ICHT",
-        originalIndexDate: new Date("2023-09-15"),
-        revisionIndexDate: new Date("2024-09-15"),
-        periodFrom: new Date("2023-09-15"),
-        periodTo: new Date("2024-09-14"),
-        indices: [{code: "ICHT", valueN1: "125.3", valueN: "128.0", source: "INSEE", date: "2024-09-15"}],
-        oldAmount: "520000",
-        newAmount: "531400",
-        previousAmount: "520000",
-        proposedAmount: "531400",
-        deltaAmount: "11400",
-        deltaPercentage: "2.19",
-        status: "validated",
-        assignedValidator: "Sophie Bernard",
-        responsible: "Pierre Leclerc",
-        businessUnit: "ENGIE Solutions France",
-        source: "INSEE",
-        validatedBy: "user-001",
-        rejectionReason: null,
-        createdAt: new Date("2024-09-15"),
-        updatedAt: new Date("2024-09-16"),
-        validatedAt: new Date("2024-09-17")
-      },
-      {
-        id: "idx-003",
-        contractId: "42456a9c-9aec-411b-9e51-98023440db47",
-        contractNumber: "FIG83-2024",
-        contractTitle: "Parc Figanières - Production solaire",
-        indexationDate: new Date("2024-11-01"),
-        frequency: "Semestrielle",
-        formula: "Type 3",
-        indexKey: "CPI",
-        originalIndexDate: new Date("2024-05-01"),
-        revisionIndexDate: new Date("2024-11-01"),
-        periodFrom: new Date("2024-05-01"),
-        periodTo: new Date("2024-10-31"),
-        indices: [{code: "CPI", valueN1: "115.5", valueN: "118.1", source: "Eurostat", date: "2024-11-01"}],
-        oldAmount: "315000",
-        newAmount: "322125",
-        previousAmount: "315000",
-        proposedAmount: "322125",
-        deltaAmount: "7125",
-        deltaPercentage: "2.26",
-        status: "pending",
-        assignedValidator: "Jean Martin",
-        responsible: "Marie Dupont",
-        businessUnit: "ENGIE Flex",
-        source: "Eurostat",
-        validatedBy: null,
-        rejectionReason: null,
-        createdAt: new Date("2024-11-01"),
-        updatedAt: new Date("2024-11-01"),
-        validatedAt: null
-      },
-      {
-        id: "idx-004",
-        contractId: "0ff277e0-0d10-4738-864b-6e72ffdc757b",
-        contractNumber: "AUX89-2024",
-        contractTitle: "Parc Auxerrois - Maintenance éolienne",
-        indexationDate: new Date("2024-08-01"),
-        frequency: "Mensuelle",
-        formula: "ICC",
-        indexKey: "ICC",
-        originalIndexDate: new Date("2024-07-01"),
-        revisionIndexDate: new Date("2024-08-01"),
-        periodFrom: new Date("2024-07-01"),
-        periodTo: new Date("2024-07-31"),
-        indices: [{code: "ICC", valueN1: "134.2", valueN: "136.9", source: "INSEE", date: "2024-08-01"}],
-        oldAmount: "92000",
-        newAmount: "93840",
-        previousAmount: "92000",
-        proposedAmount: "93840",
-        deltaAmount: "1840",
-        deltaPercentage: "2.0",
-        status: "rejected",
-        assignedValidator: "Pierre Leclerc",
-        responsible: "Sophie Bernard",
-        businessUnit: "ENGIE Global Energy Management",
-        source: "INSEE",
-        validatedBy: null,
-        rejectionReason: "Dépassement du plafond contractuel",
-        createdAt: new Date("2024-08-01"),
-        updatedAt: new Date("2024-08-03"),
-        validatedAt: null
-      },
-      {
-        id: "idx-005",
-        contractId: "contract-005",
-        contractNumber: "NAN88",
-        contractTitle: "Nantes Atlantic Wind",
-        indexationDate: new Date("2024-12-01"),
-        frequency: "Annuelle",
-        formula: "Type 2.B",
-        indexKey: "ICHT/FMOA",
-        originalIndexDate: new Date("2023-12-01"),
-        revisionIndexDate: new Date("2024-12-01"),
-        periodFrom: new Date("2023-12-01"),
-        periodTo: new Date("2024-11-30"),
-        indices: [],
-        oldAmount: "675000",
-        newAmount: "0",
-        previousAmount: "675000",
-        proposedAmount: "0",
-        deltaAmount: "0",
-        deltaPercentage: "0",
-        status: "waiting_index",
-        assignedValidator: null,
-        responsible: "Jean Martin",
-        businessUnit: "ENGIE Green",
-        source: "INSEE",
-        validatedBy: null,
-        rejectionReason: null,
-        createdAt: new Date("2024-12-01"),
-        updatedAt: new Date("2024-12-01"),
-        validatedAt: null
-      }
-    ];
+        {
+          id: "idx-001",
+          contractId: "fff46e48-192f-4d58-aebf-817450d6c376",
+          contractNumber: "GLB04-2024",
+          contractTitle: "Parc Gréoux 1 - Géothermie",
+          indexationDate: new Date("2024-10-01"),
+          frequency: "Trimestrielle",
+          formula: "Type 2.A",
+          indexKey: "ICHT/FMOA",
+          originalIndexDate: new Date("2023-10-01"),
+          revisionIndexDate: new Date("2024-10-01"),
+          periodFrom: new Date("2024-07-01"),
+          periodTo: new Date("2024-09-30"),
+          indices: [
+            {
+              code: "ICHT",
+              valueN1: "128.5",
+              valueN: "131.2",
+              source: "INSEE",
+              date: "2024-10-01",
+            },
+          ],
+          oldAmount: "180000",
+          newAmount: "191550",
+          previousAmount: "185000",
+          proposedAmount: "191550",
+          deltaAmount: "6550",
+          deltaPercentage: "3.54",
+          status: "pending",
+          assignedValidator: "Marie Dupont",
+          responsible: "Jean Martin",
+          businessUnit: "ENGIE Green",
+          source: "INSEE",
+          validatedBy: null,
+          rejectionReason: null,
+          createdAt: new Date("2024-10-01"),
+          updatedAt: new Date("2024-10-02"),
+          validatedAt: null,
+        },
+        {
+          id: "idx-002",
+          contractId: "cbff4712-ec93-49db-9d1a-d856ed1aa07a",
+          contractNumber: "SCM29-2024",
+          contractTitle: "Parc SCAER LE MERDY - Biomasse",
+          indexationDate: new Date("2024-09-15"),
+          frequency: "Annuelle",
+          formula: "Type 1",
+          indexKey: "ICHT",
+          originalIndexDate: new Date("2023-09-15"),
+          revisionIndexDate: new Date("2024-09-15"),
+          periodFrom: new Date("2023-09-15"),
+          periodTo: new Date("2024-09-14"),
+          indices: [
+            {
+              code: "ICHT",
+              valueN1: "125.3",
+              valueN: "128.0",
+              source: "INSEE",
+              date: "2024-09-15",
+            },
+          ],
+          oldAmount: "520000",
+          newAmount: "531400",
+          previousAmount: "520000",
+          proposedAmount: "531400",
+          deltaAmount: "11400",
+          deltaPercentage: "2.19",
+          status: "validated",
+          assignedValidator: "Sophie Bernard",
+          responsible: "Pierre Leclerc",
+          businessUnit: "ENGIE Solutions France",
+          source: "INSEE",
+          validatedBy: "user-001",
+          rejectionReason: null,
+          createdAt: new Date("2024-09-15"),
+          updatedAt: new Date("2024-09-16"),
+          validatedAt: new Date("2024-09-17"),
+        },
+        {
+          id: "idx-003",
+          contractId: "42456a9c-9aec-411b-9e51-98023440db47",
+          contractNumber: "FIG83-2024",
+          contractTitle: "Parc Figanières - Production solaire",
+          indexationDate: new Date("2024-11-01"),
+          frequency: "Semestrielle",
+          formula: "Type 3",
+          indexKey: "CPI",
+          originalIndexDate: new Date("2024-05-01"),
+          revisionIndexDate: new Date("2024-11-01"),
+          periodFrom: new Date("2024-05-01"),
+          periodTo: new Date("2024-10-31"),
+          indices: [
+            {
+              code: "CPI",
+              valueN1: "115.5",
+              valueN: "118.1",
+              source: "Eurostat",
+              date: "2024-11-01",
+            },
+          ],
+          oldAmount: "315000",
+          newAmount: "322125",
+          previousAmount: "315000",
+          proposedAmount: "322125",
+          deltaAmount: "7125",
+          deltaPercentage: "2.26",
+          status: "pending",
+          assignedValidator: "Jean Martin",
+          responsible: "Marie Dupont",
+          businessUnit: "ENGIE Flex",
+          source: "Eurostat",
+          validatedBy: null,
+          rejectionReason: null,
+          createdAt: new Date("2024-11-01"),
+          updatedAt: new Date("2024-11-01"),
+          validatedAt: null,
+        },
+        {
+          id: "idx-004",
+          contractId: "0ff277e0-0d10-4738-864b-6e72ffdc757b",
+          contractNumber: "AUX89-2024",
+          contractTitle: "Parc Auxerrois - Maintenance éolienne",
+          indexationDate: new Date("2024-08-01"),
+          frequency: "Mensuelle",
+          formula: "ICC",
+          indexKey: "ICC",
+          originalIndexDate: new Date("2024-07-01"),
+          revisionIndexDate: new Date("2024-08-01"),
+          periodFrom: new Date("2024-07-01"),
+          periodTo: new Date("2024-07-31"),
+          indices: [
+            {
+              code: "ICC",
+              valueN1: "134.2",
+              valueN: "136.9",
+              source: "INSEE",
+              date: "2024-08-01",
+            },
+          ],
+          oldAmount: "92000",
+          newAmount: "93840",
+          previousAmount: "92000",
+          proposedAmount: "93840",
+          deltaAmount: "1840",
+          deltaPercentage: "2.0",
+          status: "rejected",
+          assignedValidator: "Pierre Leclerc",
+          responsible: "Sophie Bernard",
+          businessUnit: "ENGIE Global Energy Management",
+          source: "INSEE",
+          validatedBy: null,
+          rejectionReason: "Dépassement du plafond contractuel",
+          createdAt: new Date("2024-08-01"),
+          updatedAt: new Date("2024-08-03"),
+          validatedAt: null,
+        },
+        {
+          id: "idx-005",
+          contractId: "contract-005",
+          contractNumber: "NAN88",
+          contractTitle: "Nantes Atlantic Wind",
+          indexationDate: new Date("2024-12-01"),
+          frequency: "Annuelle",
+          formula: "Type 2.B",
+          indexKey: "ICHT/FMOA",
+          originalIndexDate: new Date("2023-12-01"),
+          revisionIndexDate: new Date("2024-12-01"),
+          periodFrom: new Date("2023-12-01"),
+          periodTo: new Date("2024-11-30"),
+          indices: [],
+          oldAmount: "675000",
+          newAmount: "0",
+          previousAmount: "675000",
+          proposedAmount: "0",
+          deltaAmount: "0",
+          deltaPercentage: "0",
+          status: "waiting_index",
+          assignedValidator: null,
+          responsible: "Jean Martin",
+          businessUnit: "ENGIE Green",
+          source: "INSEE",
+          validatedBy: null,
+          rejectionReason: null,
+          createdAt: new Date("2024-12-01"),
+          updatedAt: new Date("2024-12-01"),
+          validatedAt: null,
+        },
+      ];
       return mockIndexations;
     }
-    
+
     // Retourner les vraies données de la base
     return dbIndexations;
   }
 
   async getIndexation(id: string): Promise<Indexation | undefined> {
-    const [indexation] = await db.select().from(indexations).where(eq(indexations.id, id));
+    const [indexation] = await db
+      .select()
+      .from(indexations)
+      .where(eq(indexations.id, id));
     return indexation || undefined;
   }
 
-  async createIndexation(insertIndexation: InsertIndexation): Promise<Indexation> {
+  async createIndexation(
+    insertIndexation: InsertIndexation
+  ): Promise<Indexation> {
     const [indexation] = await db
       .insert(indexations)
       .values(insertIndexation)
@@ -664,7 +846,10 @@ export class DatabaseStorage implements IStorage {
     return indexation;
   }
 
-  async updateIndexation(id: string, updates: Partial<Indexation>): Promise<Indexation | undefined> {
+  async updateIndexation(
+    id: string,
+    updates: Partial<Indexation>
+  ): Promise<Indexation | undefined> {
     const [indexation] = await db
       .update(indexations)
       .set(updates)
@@ -673,29 +858,42 @@ export class DatabaseStorage implements IStorage {
     return indexation || undefined;
   }
 
-  async getContractsEligibleForIndexation(date: Date = new Date()): Promise<Contract[]> {
+  async getContractsEligibleForIndexation(
+    date: Date = new Date()
+  ): Promise<Contract[]> {
     // Récupère les contrats actifs avec indexation configurée et date d'indexation proche
-    return await db.select()
+    return await db
+      .select()
       .from(contracts)
       .where(
         and(
-          eq(contracts.status, 'active'),
-          lte(contracts.nextIndexationDate, date),
+          eq(contracts.status, "active"),
+          lte(contracts.nextIndexationDate, date)
         )
       )
       .orderBy(contracts.nextIndexationDate);
   }
 
   async getIndexationProposals(): Promise<IndexationProposal[]> {
-    return await db.select().from(indexationProposals).orderBy(desc(indexationProposals.createdAt));
+    return await db
+      .select()
+      .from(indexationProposals)
+      .orderBy(desc(indexationProposals.createdAt));
   }
 
-  async getIndexationProposal(id: string): Promise<IndexationProposal | undefined> {
-    const [proposal] = await db.select().from(indexationProposals).where(eq(indexationProposals.id, id));
+  async getIndexationProposal(
+    id: string
+  ): Promise<IndexationProposal | undefined> {
+    const [proposal] = await db
+      .select()
+      .from(indexationProposals)
+      .where(eq(indexationProposals.id, id));
     return proposal || undefined;
   }
 
-  async createIndexationProposal(insertProposal: InsertIndexationProposal): Promise<IndexationProposal> {
+  async createIndexationProposal(
+    insertProposal: InsertIndexationProposal
+  ): Promise<IndexationProposal> {
     const [proposal] = await db
       .insert(indexationProposals)
       .values({
@@ -707,7 +905,10 @@ export class DatabaseStorage implements IStorage {
     return proposal;
   }
 
-  async updateIndexationProposal(id: string, updates: Partial<IndexationProposal>): Promise<IndexationProposal | undefined> {
+  async updateIndexationProposal(
+    id: string,
+    updates: Partial<IndexationProposal>
+  ): Promise<IndexationProposal | undefined> {
     const [proposal] = await db
       .update(indexationProposals)
       .set({
@@ -719,15 +920,24 @@ export class DatabaseStorage implements IStorage {
     return proposal || undefined;
   }
 
-  async getIndexationProposalsByStatus(status: string): Promise<IndexationProposal[]> {
-    return await db.select()
+  async getIndexationProposalsByStatus(
+    status: string
+  ): Promise<IndexationProposal[]> {
+    return await db
+      .select()
       .from(indexationProposals)
       .where(eq(indexationProposals.status, status))
-      .orderBy(desc(indexationProposals.priority), indexationProposals.indexationDate);
+      .orderBy(
+        desc(indexationProposals.priority),
+        indexationProposals.indexationDate
+      );
   }
 
-  async getIndexationProposalsByContractId(contractId: string): Promise<IndexationProposal[]> {
-    return await db.select()
+  async getIndexationProposalsByContractId(
+    contractId: string
+  ): Promise<IndexationProposal[]> {
+    return await db
+      .select()
       .from(indexationProposals)
       .where(eq(indexationProposals.contractId, contractId))
       .orderBy(desc(indexationProposals.createdAt));
@@ -747,26 +957,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markAlertAsRead(id: string): Promise<void> {
-    await db
-      .update(alerts)
-      .set({ readStatus: true })
-      .where(eq(alerts.id, id));
+    await db.update(alerts).set({ readStatus: true }).where(eq(alerts.id, id));
   }
 
   async markAllAlertsAsRead(): Promise<void> {
-    await db
-      .update(alerts)
-      .set({ readStatus: true });
+    await db.update(alerts).set({ readStatus: true });
   }
 
-  async getNotificationPreferences(userId: string): Promise<NotificationPreference[]> {
+  async getNotificationPreferences(
+    userId: string
+  ): Promise<NotificationPreference[]> {
     return await db
       .select()
       .from(notificationPreferences)
       .where(eq(notificationPreferences.userId, userId));
   }
 
-  async createNotificationPreference(preference: InsertNotificationPreference): Promise<NotificationPreference> {
+  async createNotificationPreference(
+    preference: InsertNotificationPreference
+  ): Promise<NotificationPreference> {
     const [newPref] = await db
       .insert(notificationPreferences)
       .values(preference)
@@ -774,25 +983,25 @@ export class DatabaseStorage implements IStorage {
     return newPref;
   }
 
-  async updateNotificationPreferences(userId: string, preferences: InsertNotificationPreference[]): Promise<void> {
+  async updateNotificationPreferences(
+    userId: string,
+    preferences: InsertNotificationPreference[]
+  ): Promise<void> {
     // Delete existing preferences
     await db
       .delete(notificationPreferences)
       .where(eq(notificationPreferences.userId, userId));
-    
+
     // Insert new preferences
     if (preferences.length > 0) {
       await db
         .insert(notificationPreferences)
-        .values(preferences.map(pref => ({ ...pref, userId })));
+        .values(preferences.map((pref) => ({ ...pref, userId })));
     }
   }
 
   async getAuditLogs(): Promise<AuditLog[]> {
-    return await db
-      .select()
-      .from(auditLogs)
-      .orderBy(desc(auditLogs.timestamp));
+    return await db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp));
   }
 
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
@@ -801,19 +1010,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivityLogs(): Promise<ActivityLog[]> {
-    return await db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt));
+    return await db
+      .select()
+      .from(activityLogs)
+      .orderBy(desc(activityLogs.createdAt));
   }
 
   async createActivityLog(insertLog: InsertActivityLog): Promise<ActivityLog> {
-    const [log] = await db
-      .insert(activityLogs)
-      .values(insertLog)
-      .returning();
+    const [log] = await db.insert(activityLogs).values(insertLog).returning();
     return log;
   }
 
   async getImportLogs(): Promise<ImportLog[]> {
-    return await db.select().from(importLogs).orderBy(desc(importLogs.createdAt));
+    return await db
+      .select()
+      .from(importLogs)
+      .orderBy(desc(importLogs.createdAt));
   }
 
   async createImportLog(log: InsertImportLog): Promise<ImportLog> {
@@ -822,15 +1034,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getIndexationFormulas(): Promise<IndexationFormula[]> {
-    return await db.select().from(indexationFormulas).where(eq(indexationFormulas.isActive, true)).orderBy(desc(indexationFormulas.createdAt));
+    return await db
+      .select()
+      .from(indexationFormulas)
+      .where(eq(indexationFormulas.isActive, true))
+      .orderBy(indexationFormulas.createdAt);
   }
 
-  async getIndexationFormulaById(id: string): Promise<IndexationFormula | undefined> {
-    const [formula] = await db.select().from(indexationFormulas).where(eq(indexationFormulas.id, id));
+  async getIndexationFormulaById(
+    id: string
+  ): Promise<IndexationFormula | undefined> {
+    const [formula] = await db
+      .select()
+      .from(indexationFormulas)
+      .where(eq(indexationFormulas.id, id));
     return formula || undefined;
   }
 
-  async createIndexationFormula(insertFormula: InsertIndexationFormula): Promise<IndexationFormula> {
+  async createIndexationFormula(
+    insertFormula: InsertIndexationFormula
+  ): Promise<IndexationFormula> {
     const [formula] = await db
       .insert(indexationFormulas)
       .values({
@@ -841,7 +1064,10 @@ export class DatabaseStorage implements IStorage {
     return formula;
   }
 
-  async updateIndexationFormula(id: string, updates: Partial<InsertIndexationFormula>): Promise<IndexationFormula | undefined> {
+  async updateIndexationFormula(
+    id: string,
+    updates: Partial<InsertIndexationFormula>
+  ): Promise<IndexationFormula | undefined> {
     const [formula] = await db
       .update(indexationFormulas)
       .set({
@@ -867,20 +1093,34 @@ export class DatabaseStorage implements IStorage {
 
   // Payment Blocks
   async getPaymentBlocks(): Promise<PaymentBlock[]> {
-    return await db.select().from(paymentBlocks).orderBy(desc(paymentBlocks.createdAt));
+    return await db
+      .select()
+      .from(paymentBlocks)
+      .orderBy(desc(paymentBlocks.createdAt));
   }
 
   async getPaymentBlock(id: string): Promise<PaymentBlock | undefined> {
-    const [block] = await db.select().from(paymentBlocks).where(eq(paymentBlocks.id, id));
+    const [block] = await db
+      .select()
+      .from(paymentBlocks)
+      .where(eq(paymentBlocks.id, id));
     return block || undefined;
   }
 
-  async createPaymentBlock(insertBlock: InsertPaymentBlock): Promise<PaymentBlock> {
-    const [block] = await db.insert(paymentBlocks).values(insertBlock).returning();
+  async createPaymentBlock(
+    insertBlock: InsertPaymentBlock
+  ): Promise<PaymentBlock> {
+    const [block] = await db
+      .insert(paymentBlocks)
+      .values(insertBlock)
+      .returning();
     return block;
   }
 
-  async updatePaymentBlock(id: string, updates: Partial<PaymentBlock>): Promise<PaymentBlock | undefined> {
+  async updatePaymentBlock(
+    id: string,
+    updates: Partial<PaymentBlock>
+  ): Promise<PaymentBlock | undefined> {
     const [block] = await db
       .update(paymentBlocks)
       .set(updates)
@@ -891,20 +1131,34 @@ export class DatabaseStorage implements IStorage {
 
   // Payment Proofs
   async getPaymentProofs(): Promise<PaymentProof[]> {
-    return await db.select().from(paymentProofs).orderBy(desc(paymentProofs.createdAt));
+    return await db
+      .select()
+      .from(paymentProofs)
+      .orderBy(desc(paymentProofs.createdAt));
   }
 
   async getPaymentProof(id: string): Promise<PaymentProof | undefined> {
-    const [proof] = await db.select().from(paymentProofs).where(eq(paymentProofs.id, id));
+    const [proof] = await db
+      .select()
+      .from(paymentProofs)
+      .where(eq(paymentProofs.id, id));
     return proof || undefined;
   }
 
-  async createPaymentProof(insertProof: InsertPaymentProof): Promise<PaymentProof> {
-    const [proof] = await db.insert(paymentProofs).values(insertProof).returning();
+  async createPaymentProof(
+    insertProof: InsertPaymentProof
+  ): Promise<PaymentProof> {
+    const [proof] = await db
+      .insert(paymentProofs)
+      .values(insertProof)
+      .returning();
     return proof;
   }
 
-  async updatePaymentProof(id: string, updates: Partial<PaymentProof>): Promise<PaymentProof | undefined> {
+  async updatePaymentProof(
+    id: string,
+    updates: Partial<PaymentProof>
+  ): Promise<PaymentProof | undefined> {
     const [proof] = await db
       .update(paymentProofs)
       .set(updates)
@@ -919,7 +1173,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDocument(id: string): Promise<Document | undefined> {
-    const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    const [document] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, id));
     return document || undefined;
   }
 
@@ -932,11 +1189,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
-    const [document] = await db.insert(documents).values(insertDocument).returning();
+    const [document] = await db
+      .insert(documents)
+      .values(insertDocument)
+      .returning();
     return document;
   }
 
-  async updateDocument(id: string, updates: Partial<Document>): Promise<Document | undefined> {
+  async updateDocument(
+    id: string,
+    updates: Partial<Document>
+  ): Promise<Document | undefined> {
     const [document] = await db
       .update(documents)
       .set(updates)
@@ -956,11 +1219,17 @@ export class DatabaseStorage implements IStorage {
 
   // Export Jobs
   async getExportJobs(): Promise<ExportJob[]> {
-    return await db.select().from(exportJobs).orderBy(desc(exportJobs.createdAt));
+    return await db
+      .select()
+      .from(exportJobs)
+      .orderBy(desc(exportJobs.createdAt));
   }
 
   async getExportJob(id: string): Promise<ExportJob | undefined> {
-    const [job] = await db.select().from(exportJobs).where(eq(exportJobs.id, id));
+    const [job] = await db
+      .select()
+      .from(exportJobs)
+      .where(eq(exportJobs.id, id));
     return job || undefined;
   }
 
@@ -969,7 +1238,10 @@ export class DatabaseStorage implements IStorage {
     return job;
   }
 
-  async updateExportJob(id: string, updates: Partial<ExportJob>): Promise<ExportJob | undefined> {
+  async updateExportJob(
+    id: string,
+    updates: Partial<ExportJob>
+  ): Promise<ExportJob | undefined> {
     const [job] = await db
       .update(exportJobs)
       .set(updates)
@@ -980,11 +1252,19 @@ export class DatabaseStorage implements IStorage {
 
   // Security Events
   async getSecurityEvents(): Promise<SecurityEvent[]> {
-    return await db.select().from(securityEvents).orderBy(desc(securityEvents.createdAt));
+    return await db
+      .select()
+      .from(securityEvents)
+      .orderBy(desc(securityEvents.createdAt));
   }
 
-  async createSecurityEvent(insertEvent: InsertSecurityEvent): Promise<SecurityEvent> {
-    const [event] = await db.insert(securityEvents).values(insertEvent).returning();
+  async createSecurityEvent(
+    insertEvent: InsertSecurityEvent
+  ): Promise<SecurityEvent> {
+    const [event] = await db
+      .insert(securityEvents)
+      .values(insertEvent)
+      .returning();
     return event;
   }
 
@@ -994,16 +1274,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReminder(id: string): Promise<Reminder | undefined> {
-    const [reminder] = await db.select().from(reminders).where(eq(reminders.id, id));
+    const [reminder] = await db
+      .select()
+      .from(reminders)
+      .where(eq(reminders.id, id));
     return reminder || undefined;
   }
 
   async createReminder(insertReminder: InsertReminder): Promise<Reminder> {
-    const [reminder] = await db.insert(reminders).values(insertReminder).returning();
+    const [reminder] = await db
+      .insert(reminders)
+      .values(insertReminder)
+      .returning();
     return reminder;
   }
 
-  async updateReminder(id: string, updates: Partial<Reminder>): Promise<Reminder | undefined> {
+  async updateReminder(
+    id: string,
+    updates: Partial<Reminder>
+  ): Promise<Reminder | undefined> {
     const [reminder] = await db
       .update(reminders)
       .set(updates)
@@ -1014,20 +1303,36 @@ export class DatabaseStorage implements IStorage {
 
   // Workflow Definitions
   async getWorkflowDefinitions(): Promise<WorkflowDefinition[]> {
-    return await db.select().from(workflowDefinitions).where(eq(workflowDefinitions.isActive, true));
+    return await db
+      .select()
+      .from(workflowDefinitions)
+      .where(eq(workflowDefinitions.isActive, true));
   }
 
-  async getWorkflowDefinition(id: string): Promise<WorkflowDefinition | undefined> {
-    const [definition] = await db.select().from(workflowDefinitions).where(eq(workflowDefinitions.id, id));
+  async getWorkflowDefinition(
+    id: string
+  ): Promise<WorkflowDefinition | undefined> {
+    const [definition] = await db
+      .select()
+      .from(workflowDefinitions)
+      .where(eq(workflowDefinitions.id, id));
     return definition || undefined;
   }
 
-  async createWorkflowDefinition(insertDefinition: InsertWorkflowDefinition): Promise<WorkflowDefinition> {
-    const [definition] = await db.insert(workflowDefinitions).values(insertDefinition).returning();
+  async createWorkflowDefinition(
+    insertDefinition: InsertWorkflowDefinition
+  ): Promise<WorkflowDefinition> {
+    const [definition] = await db
+      .insert(workflowDefinitions)
+      .values(insertDefinition)
+      .returning();
     return definition;
   }
 
-  async updateWorkflowDefinition(id: string, updates: Partial<WorkflowDefinition>): Promise<WorkflowDefinition | undefined> {
+  async updateWorkflowDefinition(
+    id: string,
+    updates: Partial<WorkflowDefinition>
+  ): Promise<WorkflowDefinition | undefined> {
     const [definition] = await db
       .update(workflowDefinitions)
       .set(updates)
@@ -1038,20 +1343,32 @@ export class DatabaseStorage implements IStorage {
 
   // Index Values - Valeurs d'indices économiques
   async getIndexValues(): Promise<IndexValue[]> {
-    return await db.select().from(indexValues).orderBy(desc(indexValues.period));
+    return await db
+      .select()
+      .from(indexValues)
+      .orderBy(desc(indexValues.period));
   }
 
   async getIndexValue(id: string): Promise<IndexValue | undefined> {
-    const [value] = await db.select().from(indexValues).where(eq(indexValues.id, id));
+    const [value] = await db
+      .select()
+      .from(indexValues)
+      .where(eq(indexValues.id, id));
     return value || undefined;
   }
 
   async createIndexValue(insertValue: InsertIndexValue): Promise<IndexValue> {
-    const [value] = await db.insert(indexValues).values(insertValue).returning();
+    const [value] = await db
+      .insert(indexValues)
+      .values(insertValue)
+      .returning();
     return value;
   }
 
-  async updateIndexValue(id: string, updates: Partial<IndexValue>): Promise<IndexValue | undefined> {
+  async updateIndexValue(
+    id: string,
+    updates: Partial<IndexValue>
+  ): Promise<IndexValue | undefined> {
     const [value] = await db
       .update(indexValues)
       .set(updates)
@@ -1061,7 +1378,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Economic Indices INSEE
-  async upsertEconomicIndex(index: InsertEconomicIndex): Promise<SelectEconomicIndex> {
+  async upsertEconomicIndex(
+    index: InsertEconomicIndex
+  ): Promise<SelectEconomicIndex> {
     // Vérifier si l'indice existe déjà pour cette série et cette date
     const existing = await db
       .select()
@@ -1087,12 +1406,18 @@ export class DatabaseStorage implements IStorage {
       return updated;
     } else {
       // Création d'un nouvel indice
-      const [created] = await db.insert(economicIndices).values(index).returning();
+      const [created] = await db
+        .insert(economicIndices)
+        .values(index)
+        .returning();
       return created;
     }
   }
 
-  async getLatestEconomicIndex(code: string, targetDate: Date): Promise<SelectEconomicIndex | null> {
+  async getLatestEconomicIndex(
+    code: string,
+    targetDate: Date
+  ): Promise<SelectEconomicIndex | null> {
     // Récupérer l'indice le plus récent avant ou égal à la date cible
     const indices = await db
       .select()
@@ -1114,7 +1439,11 @@ export class DatabaseStorage implements IStorage {
    * @param filters - Filtres optionnels : code, startDate, endDate
    * @returns Liste des indices économiques correspondants
    */
-  async getEconomicIndices(filters?: { code?: string; startDate?: Date; endDate?: Date }): Promise<SelectEconomicIndex[]> {
+  async getEconomicIndices(filters?: {
+    code?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<SelectEconomicIndex[]> {
     const conditions = [];
     if (filters?.code) {
       conditions.push(eq(economicIndices.code, filters.code));
@@ -1142,20 +1471,34 @@ export class DatabaseStorage implements IStorage {
 
   // Workflow Instances
   async getWorkflowInstances(): Promise<WorkflowInstance[]> {
-    return await db.select().from(workflowInstances).orderBy(desc(workflowInstances.createdAt));
+    return await db
+      .select()
+      .from(workflowInstances)
+      .orderBy(desc(workflowInstances.createdAt));
   }
 
   async getWorkflowInstance(id: string): Promise<WorkflowInstance | undefined> {
-    const [instance] = await db.select().from(workflowInstances).where(eq(workflowInstances.id, id));
+    const [instance] = await db
+      .select()
+      .from(workflowInstances)
+      .where(eq(workflowInstances.id, id));
     return instance || undefined;
   }
 
-  async createWorkflowInstance(insertInstance: InsertWorkflowInstance): Promise<WorkflowInstance> {
-    const [instance] = await db.insert(workflowInstances).values(insertInstance).returning();
+  async createWorkflowInstance(
+    insertInstance: InsertWorkflowInstance
+  ): Promise<WorkflowInstance> {
+    const [instance] = await db
+      .insert(workflowInstances)
+      .values(insertInstance)
+      .returning();
     return instance;
   }
 
-  async updateWorkflowInstance(id: string, updates: Partial<WorkflowInstance>): Promise<WorkflowInstance | undefined> {
+  async updateWorkflowInstance(
+    id: string,
+    updates: Partial<WorkflowInstance>
+  ): Promise<WorkflowInstance | undefined> {
     const [instance] = await db
       .update(workflowInstances)
       .set(updates)
@@ -1166,25 +1509,46 @@ export class DatabaseStorage implements IStorage {
 
   // Validation Assignments methods
   async getValidationAssignments(): Promise<SelectValidationAssignment[]> {
-    return await db.select().from(validationAssignments).orderBy(validationAssignments.parkCode);
+    return await db
+      .select()
+      .from(validationAssignments)
+      .orderBy(validationAssignments.parkCode);
   }
 
-  async getValidationAssignment(id: string): Promise<SelectValidationAssignment | undefined> {
-    const [assignment] = await db.select().from(validationAssignments).where(eq(validationAssignments.id, id));
+  async getValidationAssignment(
+    id: string
+  ): Promise<SelectValidationAssignment | undefined> {
+    const [assignment] = await db
+      .select()
+      .from(validationAssignments)
+      .where(eq(validationAssignments.id, id));
     return assignment || undefined;
   }
 
-  async getValidationAssignmentByParkCode(parkCode: string): Promise<SelectValidationAssignment | undefined> {
-    const [assignment] = await db.select().from(validationAssignments).where(eq(validationAssignments.parkCode, parkCode));
+  async getValidationAssignmentByParkCode(
+    parkCode: string
+  ): Promise<SelectValidationAssignment | undefined> {
+    const [assignment] = await db
+      .select()
+      .from(validationAssignments)
+      .where(eq(validationAssignments.parkCode, parkCode));
     return assignment || undefined;
   }
 
-  async createValidationAssignment(insertAssignment: InsertValidationAssignment): Promise<SelectValidationAssignment> {
-    const [assignment] = await db.insert(validationAssignments).values(insertAssignment).returning();
+  async createValidationAssignment(
+    insertAssignment: InsertValidationAssignment
+  ): Promise<SelectValidationAssignment> {
+    const [assignment] = await db
+      .insert(validationAssignments)
+      .values(insertAssignment)
+      .returning();
     return assignment;
   }
 
-  async updateValidationAssignment(id: string, updates: Partial<InsertValidationAssignment>): Promise<SelectValidationAssignment | undefined> {
+  async updateValidationAssignment(
+    id: string,
+    updates: Partial<InsertValidationAssignment>
+  ): Promise<SelectValidationAssignment | undefined> {
     const [assignment] = await db
       .update(validationAssignments)
       .set({
@@ -1199,14 +1563,16 @@ export class DatabaseStorage implements IStorage {
   async deleteValidationAssignment(id: string): Promise<boolean> {
     const assignment = await this.getValidationAssignment(id);
     if (assignment) {
-      await db.delete(validationAssignments).where(eq(validationAssignments.id, id));
+      await db
+        .delete(validationAssignments)
+        .where(eq(validationAssignments.id, id));
       return true;
     }
     return false;
   }
 
   // ========== GESTION DES FRÉQUENCES D'INDEXATION ==========
-  
+
   /**
    * Récupère toutes les fréquences d'indexation configurées dans le système
    * @returns {Promise<SelectIndexationFrequency[]>} Liste des fréquences triées par code contrat
@@ -1214,7 +1580,10 @@ export class DatabaseStorage implements IStorage {
    * incluant la fréquence (mensuelle, trimestrielle, annuelle) et le périmètre d'application
    */
   async getIndexationFrequencies(): Promise<SelectIndexationFrequency[]> {
-    return await db.select().from(indexationFrequencies).orderBy(indexationFrequencies.contractCode);
+    return await db
+      .select()
+      .from(indexationFrequencies)
+      .orderBy(indexationFrequencies.contractCode);
   }
 
   /**
@@ -1223,8 +1592,13 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<SelectIndexationFrequency | undefined>} La fréquence trouvée ou undefined
    * @description Utilisé pour obtenir les détails d'une configuration de fréquence particulière
    */
-  async getIndexationFrequency(id: string): Promise<SelectIndexationFrequency | undefined> {
-    const [frequency] = await db.select().from(indexationFrequencies).where(eq(indexationFrequencies.id, id));
+  async getIndexationFrequency(
+    id: string
+  ): Promise<SelectIndexationFrequency | undefined> {
+    const [frequency] = await db
+      .select()
+      .from(indexationFrequencies)
+      .where(eq(indexationFrequencies.id, id));
     return frequency || undefined;
   }
 
@@ -1234,8 +1608,13 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<SelectIndexationFrequency | undefined>} La configuration de fréquence associée au contrat
    * @description Permet de trouver rapidement la configuration d'indexation d'un contrat spécifique
    */
-  async getIndexationFrequencyByContractCode(contractCode: string): Promise<SelectIndexationFrequency | undefined> {
-    const [frequency] = await db.select().from(indexationFrequencies).where(eq(indexationFrequencies.contractCode, contractCode));
+  async getIndexationFrequencyByContractCode(
+    contractCode: string
+  ): Promise<SelectIndexationFrequency | undefined> {
+    const [frequency] = await db
+      .select()
+      .from(indexationFrequencies)
+      .where(eq(indexationFrequencies.contractCode, contractCode));
     return frequency || undefined;
   }
 
@@ -1245,8 +1624,13 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<SelectIndexationFrequency>} La fréquence créée avec son ID généré
    * @description Ajoute une nouvelle configuration pour gérer l'indexation automatique d'un contrat
    */
-  async createIndexationFrequency(insertFrequency: InsertIndexationFrequency): Promise<SelectIndexationFrequency> {
-    const [frequency] = await db.insert(indexationFrequencies).values(insertFrequency).returning();
+  async createIndexationFrequency(
+    insertFrequency: InsertIndexationFrequency
+  ): Promise<SelectIndexationFrequency> {
+    const [frequency] = await db
+      .insert(indexationFrequencies)
+      .values(insertFrequency)
+      .returning();
     return frequency;
   }
 
@@ -1257,7 +1641,10 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<SelectIndexationFrequency | undefined>} La fréquence mise à jour ou undefined si non trouvée
    * @description Permet de modifier la fréquence ou le périmètre d'indexation d'un contrat
    */
-  async updateIndexationFrequency(id: string, updates: Partial<InsertIndexationFrequency>): Promise<SelectIndexationFrequency | undefined> {
+  async updateIndexationFrequency(
+    id: string,
+    updates: Partial<InsertIndexationFrequency>
+  ): Promise<SelectIndexationFrequency | undefined> {
     const [frequency] = await db
       .update(indexationFrequencies)
       .set({
@@ -1278,7 +1665,9 @@ export class DatabaseStorage implements IStorage {
   async deleteIndexationFrequency(id: string): Promise<boolean> {
     const frequency = await this.getIndexationFrequency(id);
     if (frequency) {
-      await db.delete(indexationFrequencies).where(eq(indexationFrequencies.id, id));
+      await db
+        .delete(indexationFrequencies)
+        .where(eq(indexationFrequencies.id, id));
       return true;
     }
     return false;
@@ -1301,7 +1690,12 @@ export class DatabaseStorage implements IStorage {
     const deadlinesPromise = this.getDeadlines();
     const importLogsPromise = this.getImportLogs();
 
-    const [validationRequestsData, contractsData, deadlinesData, importLogsData] = await Promise.all([
+    const [
+      validationRequestsData,
+      contractsData,
+      deadlinesData,
+      importLogsData,
+    ] = await Promise.all([
       validationRequestsPromise,
       contractsPromise,
       deadlinesPromise,
@@ -1309,16 +1703,29 @@ export class DatabaseStorage implements IStorage {
     ]);
 
     return {
-      contractsToValidate: validationRequestsData.filter(r => r.type === "contract" && r.status === "pending").length,
-      indexationsToValidate: validationRequestsData.filter(r => r.type === "indexation" && r.status === "pending").length,
-      dueDatesJ30: deadlinesData.filter(d => d.daysRemaining <= 30 && d.daysRemaining > 7).length,
-      dueDatesJ7: deadlinesData.filter(d => d.daysRemaining <= 7 && d.daysRemaining > 1).length,
-      dueDatesJ1: deadlinesData.filter(d => d.daysRemaining <= 1).length,
-      delayedWorkflows: validationRequestsData.filter(r => r.age > 1).length,
-      pendingTerminations: validationRequestsData.filter(r => r.type === "termination" && r.status === "pending").length,
-      amendmentsToValidate: validationRequestsData.filter(r => r.type === "amendment" && r.status === "pending").length,
-      missingDocuments: contractsData.filter(c => !c.hasRequiredDocuments).length,
-      importErrors: importLogsData.filter(l => l.status === "error").length,
+      contractsToValidate: validationRequestsData.filter(
+        (r) => r.type === "contract" && r.status === "pending"
+      ).length,
+      indexationsToValidate: validationRequestsData.filter(
+        (r) => r.type === "indexation" && r.status === "pending"
+      ).length,
+      dueDatesJ30: deadlinesData.filter(
+        (d) => d.daysRemaining <= 30 && d.daysRemaining > 7
+      ).length,
+      dueDatesJ7: deadlinesData.filter(
+        (d) => d.daysRemaining <= 7 && d.daysRemaining > 1
+      ).length,
+      dueDatesJ1: deadlinesData.filter((d) => d.daysRemaining <= 1).length,
+      delayedWorkflows: validationRequestsData.filter((r) => r.age > 1).length,
+      pendingTerminations: validationRequestsData.filter(
+        (r) => r.type === "termination" && r.status === "pending"
+      ).length,
+      amendmentsToValidate: validationRequestsData.filter(
+        (r) => r.type === "amendment" && r.status === "pending"
+      ).length,
+      missingDocuments: contractsData.filter((c) => !c.hasRequiredDocuments)
+        .length,
+      importErrors: importLogsData.filter((l) => l.status === "error").length,
     };
   }
 
@@ -1328,28 +1735,31 @@ export class DatabaseStorage implements IStorage {
    * @param {string} eventType - Type d'événement à filtrer (optionnel)
    * @returns {Promise<Array>} Liste des événements de sécurité
    */
-  async getSecurityEvents(limit: number = 100, eventType?: string): Promise<any[]> {
+  async getSecurityEvents(
+    limit: number = 100,
+    eventType?: string
+  ): Promise<any[]> {
     try {
       let query = db
         .select()
         .from(securityEvents)
         .orderBy(desc(securityEvents.createdAt))
         .limit(limit);
-      
+
       if (eventType) {
         query = query.where(eq(securityEvents.eventType, eventType));
       }
-      
+
       const events = await query;
       return events || [];
     } catch (error) {
-      console.error('Error fetching security events:', error);
+      console.error("Error fetching security events:", error);
       return [];
     }
   }
 
   // ========== GESTION DES SNIPPETS DE CODE ==========
-  
+
   async getCodeSnippets(userId?: string): Promise<CodeSnippet[]> {
     if (userId) {
       // Get snippets created by user or shared with them or public
@@ -1370,23 +1780,30 @@ export class DatabaseStorage implements IStorage {
         .where(eq(codeSnippets.isPublic, true))
         .orderBy(desc(codeSnippets.createdAt));
     }
-  
   }
 
   async getCodeSnippet(id: string): Promise<CodeSnippet | undefined> {
-    const [snippet] = await db.select().from(codeSnippets).where(eq(codeSnippets.id, id));
+    const [snippet] = await db
+      .select()
+      .from(codeSnippets)
+      .where(eq(codeSnippets.id, id));
     return snippet;
   }
 
-  async getCodeSnippetsByContext(context: string, contextId?: string): Promise<CodeSnippet[]> {
+  async getCodeSnippetsByContext(
+    context: string,
+    contextId?: string
+  ): Promise<CodeSnippet[]> {
     if (contextId) {
       return await db
         .select()
         .from(codeSnippets)
-        .where(and(
-          eq(codeSnippets.context, context),
-          eq(codeSnippets.contextId, contextId)
-        ))
+        .where(
+          and(
+            eq(codeSnippets.context, context),
+            eq(codeSnippets.contextId, contextId)
+          )
+        )
         .orderBy(desc(codeSnippets.createdAt));
     } else {
       return await db
@@ -1398,11 +1815,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCodeSnippet(snippet: InsertCodeSnippet): Promise<CodeSnippet> {
-    const [newSnippet] = await db.insert(codeSnippets).values(snippet).returning();
+    const [newSnippet] = await db
+      .insert(codeSnippets)
+      .values(snippet)
+      .returning();
     return newSnippet;
   }
 
-  async updateCodeSnippet(id: string, snippet: Partial<CodeSnippet>): Promise<CodeSnippet | undefined> {
+  async updateCodeSnippet(
+    id: string,
+    snippet: Partial<CodeSnippet>
+  ): Promise<CodeSnippet | undefined> {
     const [updated] = await db
       .update(codeSnippets)
       .set({ ...snippet, updatedAt: new Date() })

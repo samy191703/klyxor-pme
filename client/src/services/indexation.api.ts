@@ -1,10 +1,15 @@
+import { CalculateDto } from "@/_dtos/calculate-indexation.dto";
+
 export async function fetchIndexationFormulas() {
   const res = await fetch("/api/indexation-formulas");
   if (!res.ok) throw new Error("Unable to load indexation formulas");
   return res.json();
 }
 
-export async function postIndexationPreview(dto: any, endpoint?: string) {
+export async function postIndexationPreview(
+  dto: CalculateDto,
+  endpoint?: string
+) {
   const url = "https://index.klyxor.com/api/v1/calculate-from-assets";
   /*     endpoint ||
     (process.env.INDEXATION_ENGINE_URL

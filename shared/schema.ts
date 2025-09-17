@@ -392,6 +392,11 @@ export const auditLogs = pgTable("audit_logs", {
     .notNull()
     .default(sql`now()`),
   user: text("user").notNull(),
+
+  entityType: text("entity_type"),
+  entityId: text("entity_id"),
+  details: text("details"),
+
   action: text("action").notNull(),
   fields: text("fields"),
   before: text("before"),
@@ -400,6 +405,7 @@ export const auditLogs = pgTable("audit_logs", {
   contractNumber: text("contract_number"),
   description: text("description"),
   ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
   createdAt: timestamp("created_at")
     .notNull()
     .default(sql`now()`),

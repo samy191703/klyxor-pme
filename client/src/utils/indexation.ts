@@ -1,5 +1,6 @@
 // client/src/utils/indexation.ts
 import { CalculateIndexationDto } from "@/_dtos/calculate-indexation.dto";
+import { Policy } from "@/_enums/indexation-policy.enum";
 import { selectBasicAmountAndndices } from "@/utils/select-basis";
 
 /**
@@ -73,6 +74,7 @@ export function buildCalculateFromAssetsPayload(
   wd: any,
   formulas: any[]
 ): CalculateIndexationDto {
+  console.log("buildCalculateFromAssetsPayload", { wd, formulas });
   // 1) Trouver la formule sélectionnée
   const selected = formulas.find((f) => f.id === wd.indexationFormula);
   if (!selected) throw new Error("Formule d'indexation introuvable.");
@@ -107,21 +109,28 @@ export function buildCalculateFromAssetsPayload(
 
   // 4) Policy / Mode
   const policy: CalculateIndexationDto["policy"] =
-    (wd.indexationPolicy as any) || "AT_INDEXATION_DATE";
+    (wd.indexationPolicy as any) || Policy.AT_PUBLICATION_DATE;
   const mode: CalculateIndexationDto["mode"] =
     (wd.indexationMode as any) || (formulaType === "CPI_PN1" ? "PN1" : "P0");
+
+  // 👉 Choose which date to send to the API
+  const chosenIndexationDate =
+    policy === Policy.LAST_INDICE_VALUE
+      ? wd.lastIndiceDate || wd.indexationDate // prefer custom take date if given
+      : wd.indexationDate;
 
   // 5) Préparer le DTO moteur (forme d'origine)
   const dto: CalculateIndexationDto = {
     contractCode: wd.number || wd.title || undefined,
-    indexationDate: wd.indexationDate, // "YYYY-MM-DD"
+    indexationDate: chosenIndexationDate,
     policy,
     mode,
     formulaType,
     base: {},
     capPercent: toNum(wd.capPercent) ?? null,
     floorPercent: toNum(wd.floorPercent) ?? null,
-    calculationRule: "DerniereValeurIndexation",
+    // if your backend supports it (as we added earlier):
+    requireRevised: (wd.requireRevised as "R" | "P") ?? "R",
   };
 
   // 6) Remplir base selon le type requis

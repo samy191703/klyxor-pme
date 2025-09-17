@@ -6,9 +6,10 @@ import { Info, Upload, X, FileText } from "lucide-react";
 type Props = {
   data: any;
   setData: (upd: any) => void;
+  contractId?: string | number;
 };
 
-export default function Step4Attachment({ data, setData }: Props) {
+export default function Step4Attachment({ data, setData, contractId }: Props) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">

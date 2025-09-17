@@ -18,9 +18,10 @@ import {
 type Props = {
   data: any;
   setData: (upd: any) => void;
+  contractId?: string | number;
 };
 
-export default function Step1General({ data, setData }: Props) {
+export default function Step1General({ data, setData, contractId }: Props) {
   const selectedType = contractTypeDefinitions.find(
     (t) => t.value === data.type
   );

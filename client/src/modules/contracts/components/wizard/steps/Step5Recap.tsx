@@ -10,6 +10,7 @@ type Props = {
   calcLoading?: boolean;
   calcError?: string | null;
   calcResult?: any;
+  contractId?: string | number;
 };
 
 export default function Step5Recap({
@@ -17,6 +18,7 @@ export default function Step5Recap({
   calcLoading,
   calcError,
   calcResult,
+  contractId,
 }: Props) {
   const currency = data?.currency || "EUR";
   const fmtMoney = (n: number) =>

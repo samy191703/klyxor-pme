@@ -17,6 +17,7 @@ import type { CalculationResult } from "@/_dtos/calculate-results.dto";
 import VarNumberEditor, {
   VariableNumberInput,
 } from "../components/VarNumberEditor";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 type Props = {
   data: any;
@@ -26,6 +27,7 @@ type Props = {
   calcLoading?: boolean;
   calcResult?: CalculationResult | null;
   calcError?: string | null;
+  contractId?: string | number;
 };
 
 export default function Step3Indexation({
@@ -36,10 +38,10 @@ export default function Step3Indexation({
   calcLoading,
   calcResult,
   calcError,
+  contractId,
 }: Props) {
   const [isEditing, setIsEditing] = useState(true);
 
-  // When a calc result arrives (and no error), hide editor and show results
   useEffect(() => {
     if (calcResult && !calcError && !calcLoading) {
       setIsEditing(false);
@@ -87,13 +89,17 @@ export default function Step3Indexation({
       },
     });
 
+  const effectiveCalcDate =
+    data.indexationPolicy === "LAST_INDICE_VALUE"
+      ? data.lastIndiceDate || data.indexationDate
+      : data.indexationDate;
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">
         Étape 3 — Paramètres d'indexation
       </h2>
 
-      {/* Formula always visible so user knows context */}
       <div className="grid grid-cols-2 gap-4 items-end">
         <div>
           <Label>Formule d'indexation</Label>
@@ -101,7 +107,7 @@ export default function Step3Indexation({
             value={data.indexationFormula || ""}
             onValueChange={(value) => {
               ensure({ indexationFormula: value });
-              setIsEditing(true); // if they change formula, jump back to editor
+              setIsEditing(true);
             }}
           >
             <SelectTrigger>
@@ -116,11 +122,8 @@ export default function Step3Indexation({
               ))}
             </SelectContent>
           </Select>
-          {/* <p className="text-xs text-gray-500 mt-1">
-            Les paramètres (P0/PN1, ICHT0/FMOA0, cap/floor…) sont saisis
-            ci-dessous.
-          </p> */}
         </div>
+
         <div className="flex gap-2 justify-end">
           <Button
             type="button"
@@ -150,27 +153,10 @@ export default function Step3Indexation({
         </Alert>
       ) : (
         <>
-          {/* <Alert>
-            <AlertDescription className="text-sm flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              Formule sélectionnée :{" "}
-              <strong>
-                {String(selected?.name || data.indexationFormula)}
-              </strong>
-              {typeGuess ? (
-                <>
-                  {" "}
-                  — type déduit : <code className="text-xs">{typeGuess}</code>
-                </>
-              ) : null}
-            </AlertDescription>
-          </Alert> */}
-
-          {/* ====== EDITOR (hidden after successful calc) ====== */}
           {isEditing && (
             <>
               <div className="grid grid-cols-2 gap-4">
-                {/* Base amount P0 (Fixed/Variable) */}
+                {/* Base amount P0 */}
                 <VarNumberEditor
                   label="Montant de base P0 *"
                   value={data.baseAmountInput}
@@ -189,12 +175,9 @@ export default function Step3Indexation({
                     value={data.indexationDate || ""}
                     onChange={(e) => ensure({ indexationDate: e.target.value })}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Date anniversaire utilisée pour le calcul.
-                  </p>
                 </div>
 
-                {/* Frequency (UI only) */}
+                {/* Frequency */}
                 <div>
                   <Label>Fréquence d'indexation</Label>
                   <Select
@@ -215,35 +198,7 @@ export default function Step3Indexation({
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Policy & Mode */}
-                <div>
-                  <Label>Policy de calcul *</Label>
-                  <Select
-                    value={data.indexationPolicy || "AT_INDEXATION_DATE"}
-                    onValueChange={(value) =>
-                      ensure({ indexationPolicy: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AT_INDEXATION_DATE">
-                        AT_INDEXATION_DATE
-                      </SelectItem>
-                      <SelectItem value="AT_N_MINUS_1">AT_N_MINUS_1</SelectItem>
-                      <SelectItem value="AT_REVISED_PUBLICATION">
-                        AT_REVISED_PUBLICATION
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Règle de choix des indices (date exacte, N-1, publication
-                    révisée).
-                  </p>
-                </div>
-
+                {/* Mode */}
                 <div>
                   <Label>Mode *</Label>
                   <Select
@@ -261,9 +216,77 @@ export default function Step3Indexation({
                       <SelectItem value="PN1">PN1</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-gray-500 mt-1">
+                  {/* <p className="text-xs text-gray-500 mt-1">
                     Dépend du type de formule (ex: CPI_PN1 ⇒ mode PN1).
-                  </p>
+                  </p> */}
+                </div>
+
+                {/* Policy (NEW ENUM) */}
+                <div>
+                  <Label>Policy de calcul *</Label>
+                  <Select
+                    value={data.indexationPolicy || "AT_PUBLICATION_DATE"}
+                    onValueChange={(value) =>
+                      ensure({ indexationPolicy: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AT_PUBLICATION_DATE">
+                        Date d'indexation
+                      </SelectItem>
+                      <SelectItem value="LAST_INDICE_VALUE">
+                        Date de prise d'indice personnalisée
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {/*   <p className="text-xs text-gray-500 mt-1">
+                    Règle de choix des indices (publication ≤ date d’indexation,
+                    ou dernière publication disponible).
+                  </p> */}
+                </div>
+
+                {/* Custom take date only for LAST_INDICE_VALUE */}
+                {data.indexationPolicy === "LAST_INDICE_VALUE" && (
+                  <div className="">
+                    <Label>Date de prise d'indice personnalisée *</Label>
+                    <Input
+                      type="date"
+                      value={data.lastIndiceDate || ""}
+                      onChange={(e) =>
+                        ensure({ lastIndiceDate: e.target.value })
+                      }
+                    />
+                    {/*  <p className="text-xs text-gray-500 mt-1">
+                      Cette date sera envoyée comme <code>indexationDate</code>{" "}
+                      au calcul pour ce mode.
+                    </p> */}
+                  </div>
+                )}
+
+                {/* Revision filter (NEW RADIO GROUP) */}
+                <div className="col-span-2 flex justify-start gap-6 items-center my-4">
+                  <Label>Révision</Label>
+                  <RadioGroup
+                    className="grid grid-cols-2 gap-3"
+                    value={data.requireRevised ?? "R"}
+                    onValueChange={(val) => ensure({ requireRevised: val })}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem id="rev-R" value="R" />
+                      <Label htmlFor="rev-R" className="cursor-pointer ">
+                        Valeurs révisées uniquement
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem id="rev-P" value="P" />
+                      <Label htmlFor="rev-P" className="cursor-pointer">
+                        Autoriser les valeurs provisoires
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
 
                 {/* Type-specific base indices */}
@@ -313,29 +336,31 @@ export default function Step3Indexation({
                 )}
 
                 {/* Cap/Floor */}
-                <div>
-                  <Label>Cap (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="10"
-                    value={data.capPercent ?? ""}
-                    onChange={(e) => ensure({ capPercent: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Floor (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="-5"
-                    value={data.floorPercent ?? ""}
-                    onChange={(e) => ensure({ floorPercent: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Cap (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="10"
+                      value={data.capPercent ?? ""}
+                      onChange={(e) => ensure({ capPercent: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Floor (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="-5"
+                      value={data.floorPercent ?? ""}
+                      onChange={(e) => ensure({ floorPercent: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Actions (calculate) */}
+              {/* Actions */}
               <div className="pt-2 flex items-center gap-3">
                 <Button
                   variant="outline"
@@ -359,13 +384,13 @@ export default function Step3Indexation({
               )}
               <p className="text-xs text-gray-500">
                 Le calcul utilisera la valeur{" "}
-                <b>effective au {data.indexationDate || "—"}</b> pour P0 et les
+                <b>effective au {effectiveCalcDate || "—"}</b> pour P0 et les
                 indices.
               </p>
             </>
           )}
 
-          {/* ====== RESULTS (only after calc, editor hidden) ====== */}
+          {/* ===== RESULTS ===== */}
           {!isEditing && (calcResult || calcLoading || calcError) && (
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-start">
@@ -475,7 +500,6 @@ export default function Step3Indexation({
                     )}
                   </div>
 
-                  {/* JSON brut */}
                   <details className="text-xs">
                     <summary className="cursor-pointer text-gray-500">
                       Afficher le JSON

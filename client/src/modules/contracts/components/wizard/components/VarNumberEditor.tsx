@@ -126,42 +126,44 @@ export default function VarNumberEditor({
   // --- UI ---
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <div className="flex justify-start gap-6 items-center">
+        <Label>{label}</Label>
 
-      {/* Mode radio group */}
-      <RadioGroup
-        className="flex items-center gap-6"
-        value={mode}
-        onValueChange={(m) =>
-          onChange(
-            m === "FIXED"
-              ? { mode: "FIXED", fixed: (value as any)?.fixed ?? null }
-              : {
-                  mode: "VARIABLE",
-                  items: items.length
-                    ? items
-                    : [{ startingFrom: "", value: 0 }],
-                }
-          )
-        }
-      >
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem id={`${idBase}-fixed`} value="FIXED" />
-          <Label htmlFor={`${idBase}-fixed`} className="cursor-pointer">
-            Fixe
-          </Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem id={`${idBase}-variable`} value="VARIABLE" />
-          <Label htmlFor={`${idBase}-variable`} className="cursor-pointer">
-            Variable (par date)
-          </Label>
-        </div>
-      </RadioGroup>
+        {/* Mode radio group */}
+        <RadioGroup
+          className="flex items-center gap-6"
+          value={mode}
+          onValueChange={(m) =>
+            onChange(
+              m === "FIXED"
+                ? { mode: "FIXED", fixed: (value as any)?.fixed ?? null }
+                : {
+                    mode: "VARIABLE",
+                    items: items.length
+                      ? items
+                      : [{ startingFrom: "", value: 0 }],
+                  }
+            )
+          }
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem id={`${idBase}-fixed`} value="FIXED" />
+            <Label htmlFor={`${idBase}-fixed`} className="cursor-pointer">
+              Fixe
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem id={`${idBase}-variable`} value="VARIABLE" />
+            <Label htmlFor={`${idBase}-variable`} className="cursor-pointer">
+              Variable (par date)
+            </Label>
+          </div>
+        </RadioGroup>
+      </div>
 
       {/* Fixed value */}
       {mode === "FIXED" && (
-        <div className="flex gap-2 items-center">
+        <div className="">
           <Input
             type="number"
             step="0.01"
@@ -227,7 +229,7 @@ export default function VarNumberEditor({
             </div>
           ))}
 
-          <div className="flex justify-between">
+          <div className="flex flex-col">
             <Button
               type="button"
               variant="secondary"

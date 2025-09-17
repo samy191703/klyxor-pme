@@ -14,9 +14,17 @@ import {
   PAYMENT_TYPES,
 } from "@/modules/contracts/domain/constants";
 
-type Props = { data: any; setData: (upd: any) => void };
+type Props = {
+  data: any;
+  setData: (upd: any) => void;
+  contractId?: string | number;
+};
 
-export default function Step2PeriodAmounts({ data, setData }: Props) {
+export default function Step2PeriodAmounts({
+  data,
+  setData,
+  contractId,
+}: Props) {
   // total = fixe + variable (affichage)
   const total = useMemo(() => {
     const fixed =
