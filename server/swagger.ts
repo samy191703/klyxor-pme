@@ -86,7 +86,7 @@ export function setupSwagger(app: Express, options: SwaggerSetupOptions = {}) {
   // 2) Custom CSS to tidy the top bar (optional) and hide default Authorize if you want
   const customCss = `
   .topbar { background-color: rgba(175, 170, 102, 1) !important; }
-  .wrapper {display : none !important}
+  .topbar-wrapper a {display : none !important}
     .topbar-wrapper .auth-status { margin-left: 12px; font-size: 13px; opacity: .9; }
     .topbar .btn.kx-auth { margin-left: 8px; }
     .auth-wrapper {display:none !important;}
