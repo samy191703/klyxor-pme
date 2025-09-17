@@ -9,6 +9,12 @@
  * @since 2025-01-02
  */
 
+import {
+  BUSINESS_UNIT_VALUES,
+  CONTRACT_TYPE_VALUES,
+  ContractTypes,
+  TECHNOLOGY_VALUES,
+} from "@shared/enums/contracts";
 import { z } from "zod";
 
 /**
@@ -43,32 +49,13 @@ export const contractValidationSchema = z
         "Le titre contient des caractères non autorisés"
       ),
 
-    type: z.enum(
-      [
-        "electricity",
-        "gas",
-        "renewable_ppa",
-        "maintenance",
-        "OMSA",
-        "LTSA",
-        "OMGC",
-      ],
-      {
-        errorMap: () => ({ message: "Type de contrat invalide" }),
-      }
-    ),
+    type: z.enum(CONTRACT_TYPE_VALUES, {
+      errorMap: () => ({ message: "Type de contrat invalide" }),
+    }),
 
-    businessUnit: z.enum(
-      [
-        "ENGIE Solutions France",
-        "ENGIE Green",
-        "ENGIE Flex",
-        "ENGIE Global Energy Management",
-      ],
-      {
-        errorMap: () => ({ message: "Business Unit invalide" }),
-      }
-    ),
+    businessUnit: z.enum(BUSINESS_UNIT_VALUES, {
+      errorMap: () => ({ message: "Business Unit invalide" }),
+    }),
 
     clientName: z
       .string()
@@ -119,7 +106,7 @@ export const contractValidationSchema = z
       .optional(),
 
     // Champs conditionnels pour certains types
-    technology: z.enum(["eolien", "PV"]).optional(),
+    technology: z.enum(TECHNOLOGY_VALUES).optional(),
     maintenanceProvider: z.string().optional(),
     maxAnnualProduction: z.number().min(0).optional(),
     numberOfTurbines: z.number().min(0).optional(),

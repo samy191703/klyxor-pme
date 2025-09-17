@@ -82,7 +82,7 @@ export function registerContractRoutes(app: Express): void {
    * @openapi
    * /api/contracts:
    *   post:
-   *     summary: Create a new contract
+   *     summary: Create a new contract (Step 1 – general info, saved as draft)
    *     tags: [Contracts]
    *     security:
    *       - cookieAuth: []
@@ -91,10 +91,24 @@ export function registerContractRoutes(app: Express): void {
    *       content:
    *         application/json:
    *           schema:
-   *             $ref: '#/components/schemas/InsertContract'
+   *             # Only Step 1 fields are required here
+   *             type: object
+   *             required: [number, title, clientName, type, businessUnit]
+   *             properties:
+   *               number: { type: string }
+   *               title: { type: string }
+   *               clientName: { type: string }
+   *               type: { type: string, enum: ["electricity","gas","renewable_ppa","maintenance","OMSA","LTSA","OMGC"] }
+   *               businessUnit:
+   *                 type: string
+   *                 enum: ["ENGIE Solutions France","ENGIE Green","ENGIE Flex","ENGIE Global Energy Management"]
+   *               currency: { type: string, enum: ["EUR","USD"], default: "EUR" }
+   *               language: { type: string, enum: ["FR","EN"], default: "FR" }
+   *               technology: { type: string }
+   *               maintainer: { type: string }
    *     responses:
    *       200:
-   *         description: Contract created
+   *         description: Contract draft created (Step 1)
    *       400:
    *         description: Validation error
    *       500:
@@ -109,10 +123,12 @@ export function registerContractRoutes(app: Express): void {
           "../services/contractNumberGenerator"
         );
         const { validateContract } = await import(
-          "../validators/contractValidator"
-        );
+          "../validators/contractStepperValidator"
+        ); // <-- uses step-aware validator
+        // import { contractStep1Schema } not needed directly; validateContract picks schema by step
 
-        const validation: any = validateContract(req.body);
+        // ✅ Validate only Step 1 fields
+        const validation: any = validateContract(req.body, "step1");
         if (!validation.success) {
           return res.status(400).json({
             error: "Données invalides",
@@ -121,6 +137,7 @@ export function registerContractRoutes(app: Express): void {
           });
         }
 
+        // Generate number if missing
         const resolvedNumber =
           validation.data.number ||
           (await ContractNumberGenerator.generateContractNumber(
@@ -129,74 +146,404 @@ export function registerContractRoutes(app: Express): void {
           )) ||
           `CT-${Date.now()}`;
 
+        // ⚠️ DB has NOT NULL on amount & start_date.
+        // Provide safe placeholders; they’ll be updated at Step 2.
+        const safeAmount = 0;
+        const safeStartDate = new Date();
+
         const insertContract: InsertContract = {
           number: String(resolvedNumber),
           title: String(validation.data.title),
           type: String(validation.data.type),
           businessUnit: String(validation.data.businessUnit),
-          amount: validation.data.amount ?? 0,
+
+          // Step 2 placeholders
+          amount: safeAmount,
           currency: String(validation.data.currency ?? "EUR"),
-          startDate: validation.data.startDate
-            ? new Date(validation.data.startDate)
-            : new Date(),
-          endDate: validation.data.endDate
-            ? new Date(validation.data.endDate)
-            : null,
+          startDate: safeStartDate,
+          endDate: null,
+
+          // Core status/meta
           status: "draft",
           createdBy: (req as any).user?.id
             ? String((req as any).user.id)
             : "system",
-          indexationFrequency: validation.data.indexationFrequency ?? null,
-          nextIndexationDate: req.body.nextIndexationDate
-            ? new Date(req.body.nextIndexationDate)
-            : null,
-          indexationFormula: validation.data.indexationFormula ?? null,
-          indexationFormulaId: validation.data.indexationFormulaId ?? null,
-          indexationBaseAmount:
-            validation.data.indexationBaseAmount != null
-              ? validation.data.indexationBaseAmount
-              : null,
-          indexationCurrentAmount:
-            validation.data.indexationCurrentAmount != null
-              ? validation.data.indexationCurrentAmount
-              : null,
-          indexationIndices: validation.data.indexationIndices ?? null,
-          indexationCap:
-            validation.data.indexationCap != null
-              ? validation.data.indexationCap
-              : null,
-          indexationThreshold:
-            validation.data.indexationThreshold != null
-              ? validation.data.indexationThreshold
-              : null,
-          lastIndexationDate: validation.data.lastIndexationDate
-            ? new Date(validation.data.lastIndexationDate)
-            : null,
-          indexTakingDate: validation.data.indexTakingDate
-            ? new Date(validation.data.indexTakingDate)
-            : null,
-          indexTakingDateRule: validation.data.indexTakingDateRule ?? null,
-          calculationMode: validation.data.calculationMode ?? null,
-          parkCode: validation.data.parkCode ?? null,
-          tariffTiers: validation.data.tariffTiers ?? null,
-          lastTierChangeDate: validation.data.lastTierChangeDate
-            ? new Date(validation.data.lastTierChangeDate)
-            : null,
-          lastTierChangeYear:
-            validation.data.lastTierChangeYear != null
-              ? Number(validation.data.lastTierChangeYear)
-              : null,
-          hasRequiredDocuments:
-            validation.data.hasRequiredDocuments != null
-              ? Boolean(validation.data.hasRequiredDocuments)
-              : false,
+
+          // Step 1 extras
+          language: validation.data.language ?? "FR",
+          clientName: validation.data.clientName,
+          technology: validation.data.technology ?? null,
+
+          // Step 3 (all null by default; will be set in step3)
+          indexationFrequency: null,
+          indexationDate: null,
+          nextIndexationDate: null,
+          indexationFormula: null,
+          indexationFormulaId: null,
+          indexationBaseAmount: null,
+          indexationCurrentAmount: null, // keep if you use it later
+          indexationCap: null,
+          indexationThreshold: null,
+          //lastIndexationDate: null,
+          indexTakingDate: null,
+          indexTakingDateRule: null,
+          calculationMode: null,
+          requireRevised: null,
+
+          // New JSON columns for step3
+          indexationBaseAmountSeries: null,
+          indexationBaseIndicesSeries: null,
+          indexationBaseIndicesValues: null,
+          lastIndexationPreview: null,
+
+          // Others
+          parkCode: null,
+          tariffTiers: null,
+          lastTierChangeDate: null,
+          lastTierChangeYear: null,
+          hasRequiredDocuments: false,
           validatedBy: null,
         };
 
         const contract = await storage.createContract(insertContract);
-        res.json(contract);
+        return res.json(contract);
+      } catch (error: any) {
+        // Duplicate number (unique index)
+        const isDup =
+          error?.code === "23505" &&
+          String(error?.detail || "").includes("(number)");
+        if (isDup) {
+          return res.status(409).json({
+            error: "Duplicate",
+            field: "number",
+            message: `Ce numéro de contrat est déjà utilisé.`,
+            detail: error?.detail,
+          });
+        }
+        console.error(error);
+        return res.status(500).json({ error: "Failed to create contract" });
+      }
+    }
+  );
+
+  /**
+   * @openapi
+   * /api/contracts/{id}/step2:
+   *   patch:
+   *     summary: Update contract (Step 2 – period & amounts)
+   *     tags: [Contracts]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema: { type: string }
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [startDate, endDate, fixedAmount, billingPeriod, paymentType]
+   *             properties:
+   *               startDate: { type: string, example: "2025-01-01" }
+   *               endDate: { type: string, example: "2027-12-31" }
+   *               fixedAmount: { type: number, example: 1000.0 }
+   *               variableAmount: { type: number, example: 250.0 }
+   *               billingPeriod:
+   *                 type: string
+   *                 enum: ["monthly","quarterly","semi-annual","annual"]
+   *               billingFrequency:
+   *                 type: string
+   *                 enum: ["monthly","quarterly","semi-annual","annual"]
+   *               paymentType:
+   *                 type: string
+   *                 enum: ["virement","prelevement","cheque"]
+   *               currency: { type: string, enum: ["EUR","USD"] }
+   *               maxAnnualProduction: { type: number, example: 120000 }
+   *               numberOfTurbines: { type: number, example: 10 }
+   *               pricePerMWh: { type: number, example: 52.9 }
+   *     responses:
+   *       200: { description: Contract updated (Step 2) }
+   *       400: { description: Validation error }
+   *       404: { description: Contract not found }
+   *       500: { description: Server error }
+   */
+  app.patch(
+    "/api/contracts/:id/step2",
+    requirePermission("contracts", "update"),
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+
+        const { validateContract } = await import(
+          "../validators/contractStepperValidator"
+        );
+
+        const existing = await storage.getContract(id);
+        if (!existing) {
+          return res.status(404).json({ error: "Contrat introuvable" });
+        }
+
+        // 1) Validation pure Step 2 (sans 'type' dans le DTO)
+        const validation: any = validateContract(req.body, "step2");
+        if (!validation.success) {
+          return res.status(400).json({
+            error: "Données invalides",
+            message: validation.message,
+            errors: validation.errors,
+          });
+        }
+        const d = validation.data;
+
+        // 2) Règles ÉNERGIE en fonction du type réel du contrat (DB)
+        const isEnergy =
+          existing.type === "electricity" || existing.type === "renewable_ppa";
+
+        const energyErrors: Array<{ field: string; message: string }> = [];
+        if (isEnergy) {
+          if (d.maxAnnualProduction == null) {
+            energyErrors.push({
+              field: "maxAnnualProduction",
+              message:
+                "La production annuelle max est requise pour les contrats Énergie",
+            });
+          }
+          if (d.pricePerMWh == null) {
+            energyErrors.push({
+              field: "pricePerMWh",
+              message: "Le prix par MWh est requis pour les contrats Énergie",
+            });
+          }
+        }
+        if (energyErrors.length) {
+          return res.status(400).json({
+            error: "Données invalides",
+            message: energyErrors.map((e) => e.message).join(", "),
+            errors: energyErrors,
+          });
+        }
+
+        // 3) Coercitions (support "12,34")
+        const toNum = (v: any) =>
+          Number.isFinite(v)
+            ? Number(v)
+            : parseFloat(String(v ?? "").replace(",", "."));
+
+        const fixedAmount = Math.max(0, toNum(d.fixedAmount) || 0);
+        const variableAmount = Math.max(0, toNum(d.variableAmount) || 0);
+        const amount = fixedAmount + variableAmount;
+
+        // 4) Dates (stockage Date si ton ORM/DB le demande)
+        const startDate = new Date(d.startDate);
+        const endDate = d.endDate ? new Date(d.endDate) : null;
+
+        // 5) Patch final (aucune normalisation de périodicité — on reçoit déjà le canonique)
+        const patch: any = {
+          startDate,
+          endDate,
+          fixedAmount,
+          variableAmount,
+          amount,
+          billingPeriod: d.billingPeriod, // "monthly" | "quarterly" | "semi-annual" | "annual"
+          billingFrequency: d.billingFrequency ?? d.billingPeriod,
+          paymentType: d.paymentType,
+          currency: d.currency ?? existing.currency ?? "EUR",
+          status: existing.status ?? "draft",
+        };
+
+        if (isEnergy) {
+          patch.maxAnnualProduction =
+            d.maxAnnualProduction != null ? toNum(d.maxAnnualProduction) : null;
+          patch.numberOfTurbines =
+            d.numberOfTurbines != null ? toNum(d.numberOfTurbines) : null;
+          patch.pricePerMWh =
+            d.pricePerMWh != null ? toNum(d.pricePerMWh) : null;
+        }
+
+        const updated = await storage.updateContract(id, patch);
+        return res.status(200).json(updated);
+      } catch (error: any) {
+        console.error("PATCH /api/contracts/:id/step2 error:", error);
+        return res
+          .status(500)
+          .json({ error: "Failed to update contract (step 2)" });
+      }
+    }
+  );
+
+  /**
+   * @openapi
+   * /api/contracts/{id}/step3:
+   *   patch:
+   *     summary: Update contract (Step 3 – indexation settings)
+   *     tags: [Contracts]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema: { type: string }
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/ContractStep3'  # your zod schema mirror (contractStep3Schema)
+   *     responses:
+   *       200: { description: Contract updated (Step 3) }
+   *       400: { description: Validation error }
+   *       404: { description: Contract not found }
+   *       500: { description: Server error }
+   */
+  app.patch(
+    "/api/contracts/:id/step3",
+    requirePermission("contracts", "update"),
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { validateContract } = await import(
+          "../validators/contractStepperValidator"
+        );
+
+        const existing = await storage.getContract(id);
+        if (!existing)
+          return res.status(404).json({ error: "Contrat introuvable" });
+
+        const validation: any = validateContract(req.body, "step3");
+        if (!validation.success) {
+          return res.status(400).json({
+            error: "Données invalides",
+            message: validation.message,
+            errors: validation.errors,
+          });
+        }
+        const d = validation.data as any;
+
+        const toNum = (v: any) =>
+          Number.isFinite(v)
+            ? Number(v)
+            : parseFloat(String(v ?? "").replace(",", "."));
+        const toISO = (s?: string | null) => {
+          if (!s) return null;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+          const date = new Date(s);
+          if (isNaN(date.getTime())) return null;
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, "0");
+          const dd = String(date.getDate()).padStart(2, "0");
+          return `${y}-${m}-${dd}`;
+        };
+
+        const resolveVariableAtDate = (
+          input:
+            | { mode: "FIXED"; fixed?: number | null }
+            | {
+                mode: "VARIABLE";
+                items?: Array<{ startingFrom: string; value: number }>;
+              }
+            | undefined,
+          effectiveISO: string | null
+        ): number | null => {
+          if (!input) return null;
+          if (input.mode === "FIXED")
+            return input.fixed == null ? null : toNum(input.fixed);
+          if (
+            !effectiveISO ||
+            !Array.isArray(input.items) ||
+            !input.items.length
+          )
+            return null;
+          const items = [...input.items]
+            .map((it) => ({ ...it, startingFrom: toISO(it.startingFrom) }))
+            .filter((it) => !!it.startingFrom)
+            .sort((a, b) =>
+              String(a.startingFrom).localeCompare(String(b.startingFrom))
+            );
+          let eff: number | null = null;
+          for (const it of items) {
+            if (String(it.startingFrom) <= effectiveISO) eff = toNum(it.value);
+            else break;
+          }
+          return eff;
+        };
+
+        const indexationISO = toISO(d.indexationDate);
+        const lastIndiceISO = toISO(d.lastIndiceDate);
+        const effectiveISO =
+          d.indexationPolicy === "LAST_INDICE_VALUE"
+            ? lastIndiceISO || indexationISO
+            : indexationISO;
+
+        const effectiveP0 = resolveVariableAtDate(
+          d.baseAmountInput,
+          effectiveISO
+        );
+
+        const series: Record<string, any> = d.baseIndices || {};
+        const effectiveIndices: Record<string, number> = {};
+        for (const key of Object.keys(series)) {
+          const v = resolveVariableAtDate(series[key], effectiveISO);
+          if (v != null) effectiveIndices[key] = v;
+        }
+        if (d.PN1 != null) effectiveIndices.PN1 = toNum(d.PN1);
+
+        const patch: any = {
+          indexationFormulaId: d.indexationFormula,
+          indexationFrequency: d.indexationFrequency,
+          calculationMode: d.indexationMode === "PN1" ? "Pn-1" : "P0",
+          indexTakingDateRule: d.indexationPolicy,
+          indexationDate: indexationISO ? new Date(indexationISO) : null,
+          nextIndexationDate: indexationISO ? new Date(indexationISO) : null, // keep for dashboards
+          indexTakingDate:
+            d.indexationPolicy === "LAST_INDICE_VALUE" && lastIndiceISO
+              ? new Date(lastIndiceISO)
+              : null,
+          currency: d.currency ?? existing.currency ?? "EUR",
+
+          requireRevised: d.requireRevised ?? "R",
+
+          indexationCap: d.capPercent == null ? null : toNum(d.capPercent),
+          indexationThreshold:
+            d.floorPercent == null ? null : toNum(d.floorPercent),
+
+          indexationBaseAmount: effectiveP0 ?? null,
+          indexationBaseAmountSeries: d.baseAmountInput ?? null,
+
+          indexationBaseIndicesSeries: Object.keys(series).length
+            ? series
+            : null,
+          indexationBaseIndicesValues: Object.keys(effectiveIndices).length
+            ? effectiveIndices
+            : null,
+
+          lastIndexationPreview: d.lastIndexationPreview ?? null,
+
+          updatedAt: new Date(),
+          status: existing.status ?? "draft",
+        };
+
+        // If preview is FINAL & has price, set current amount now
+        const preview = d.lastIndexationPreview;
+        if (
+          preview &&
+          typeof preview.status === "string" &&
+          preview.status.toUpperCase() === "FINAL"
+        ) {
+          if (preview.price != null) {
+            patch.indexationCurrentAmount = toNum(preview.price);
+          }
+        }
+
+        const updated = await storage.updateContract(id, patch);
+        return res.status(200).json(updated);
       } catch (error) {
-        res.status(500).json({ error: "Failed to create contract" });
+        console.error("PATCH /api/contracts/:id/step3 error:", error);
+        return res
+          .status(500)
+          .json({ error: "Failed to update contract (step 3)" });
       }
     }
   );
@@ -663,7 +1010,7 @@ export function registerContractRoutes(app: Express): void {
         });
 
         const updatedContract = await storage.updateContract(contractId, {
-          amount: newAmount.toString(),
+          amount: newAmount,
           updatedAt: new Date(),
         });
 

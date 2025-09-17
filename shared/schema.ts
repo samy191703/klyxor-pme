@@ -16,6 +16,12 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import {
+  contractTypeEnum,
+  languageEnum,
+  Languages,
+  technologyEnum,
+} from "./enums/contracts";
 
 /**
  * Table des utilisateurs avec système RBAC
@@ -38,59 +44,89 @@ export const users = pgTable("users", {
  * Table principale des contrats énergétiques ENGIE
  * Types: électricité, gaz, PPA renouvelables, maintenance infrastructure
  */
+
 export const contracts = pgTable("contracts", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
+
   number: text("number").notNull().unique(),
   title: text("title").notNull(),
   status: text("status").notNull().default("draft"), // draft, pending_validation, active, terminated, closed, archived
   type: text("type").notNull(),
+
+  // ⬇️ NEW fields
+  clientName: text("client_name").notNull().default("Client inconnu"),
+  language: text("language").notNull().default(Languages.FR),
+  technology: text("technology"), // nullable
   businessUnit: text("business_unit").notNull(),
-  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+
+  // ✅ Typed as number in TS (still nullable at DB level unless .notNull())
+  amount: decimal("amount", { precision: 15, scale: 2 }).$type<number>(),
+
   currency: text("currency").notNull().default("EUR"),
-  startDate: timestamp("start_date").notNull(),
+  startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
-  indexationFrequency: text("indexation_frequency"), // quarterly, annual, monthly, semi-annual
-  nextIndexationDate: timestamp("next_indexation_date"),
-  indexationFormula: text("indexation_formula"), // 2.A, 2.B, 3, custom
+
+  /** Step 3 core (already present, keep using) */
+  indexationFrequency: text("indexation_frequency"), // monthly|quarterly|semi-annual|annual
+  indexationDate: timestamp("indexation_date"), // date d' indexation
+  nextIndexationDate: timestamp("next_indexation_date"), // date de la prochaine indexation
+  indexationFormula: text("indexation_formula"),
   indexationFormulaId: varchar("indexation_formula_id"),
-  indexationBaseAmount: decimal("indexation_base_amount", {
-    precision: 15,
+  indexationCap: decimal("indexation_cap", {
+    precision: 5,
     scale: 2,
-  }),
-  indexationCurrentAmount: decimal("indexation_current_amount", {
-    precision: 15,
-    scale: 2,
-  }),
-  indexationIndices: jsonb("indexation_indices"), // 📈 Indices de base {ICHT0: 120.5, FM0A0: 140.2, IPC0: 105.3}
-  indexationCap: decimal("indexation_cap", { precision: 5, scale: 2 }), // 🔒 Cap/plafond en % - Limite la hausse max (ex: 10% max)
+  }).$type<number>(),
   indexationThreshold: decimal("indexation_threshold", {
     precision: 5,
     scale: 2,
-  }), // ⚠️ Seuil en % - Bloque si variation < seuil (ex: 2% min)
-  lastIndexationDate: timestamp("last_indexation_date"),
-  // 🎯 Nouveaux champs V3 pour indexation avancée ENGIE
-  // Découplage des dates (conf. document ENGIE p.12)
-  indexTakingDate: timestamp("index_taking_date"), // Date de prise d'indice (peut différer de la date d'application)
-  indexTakingDateRule: text("index_taking_date_rule"), // Règle automatique: "N-2" = indices 2 mois avant, "first_day_month" = 1er du mois
+  }).$type<number>(),
+  calculationMode: text("calculation_mode"), // "P0" | "Pn-1"
+  indexTakingDateRule: text("index_taking_date_rule"), // "AT_PUBLICATION_DATE" | "LAST_INDICE_VALUE"
+  indexTakingDate: timestamp("index_taking_date"),
 
-  // Mode de calcul du montant de base
-  calculationMode: text("calculation_mode"), // "P0" = toujours base initiale, "Pn-1" = dernière valeur indexée
-  parkCode: text("park_code"), // Code parc ENGIE pour identification unique (ex: "AUX89", "FIG83")
+  /** NEW: user choice about revised/provisional */
+  requireRevised: text("require_revised"), // "R" | "P"
 
-  // 📊 Gestion des paliers tarifaires (année 6 et 11 selon contrats ENGIE)
-  tariffTiers: jsonb("tariff_tiers"), // Structure: {year6: {baseAmount: 150000, baseIndices: {ICHT: 125}}, year11: {...}}
-  lastTierChangeDate: timestamp("last_tier_change_date"), // Date du dernier changement de palier
-  lastTierChangeYear: integer("last_tier_change_year"), // Année du dernier palier activé (6 ou 11)
+  /** Base amount (P0) */
+  indexationBaseAmount: decimal("indexation_base_amount", {
+    precision: 15,
+    scale: 2,
+  }).$type<number>(), // effective value
+  /** Current amount (P0) */
+
+  indexationCurrentAmount: decimal("indexation_current_amount", {
+    precision: 15,
+    scale: 2,
+  }).$type<number>(), // effective value
+  indexationBaseAmountSeries: jsonb("indexation_base_amount_series"), // {mode:"FIXED"| "VARIABLE", fixed?:number, items?:[{startingFrom,value}]}
+
+  /** Base indices (ICHT0, FMOA0, …) */
+  // Store the **series** per index here:
+  indexationBaseIndicesSeries: jsonb("indexation_base_indices_series"), // { ICHT0:{mode,...}, FMOA0:{mode,...}, PN1?:number }
+  // Store the **effective resolved values** here (numbers only):
+  indexationBaseIndicesValues: jsonb("indexation_base_indices_values"), // { ICHT0:128.72, FMOA0:102.37, PN1:52919.2 }
+
+  /** Optional: cache last preview to reopen UI fast */
+  lastIndexationPreview: jsonb("last_indexation_preview"),
+  parkCode: text("park_code"),
+
+  // 📊 Tariff tiers
+  tariffTiers: jsonb("tariff_tiers"),
+  lastTierChangeDate: timestamp("last_tier_change_date"),
+  lastTierChangeYear: integer("last_tier_change_year"),
+
   createdBy: varchar("created_by").notNull(),
   validatedBy: varchar("validated_by"),
+
   createdAt: timestamp("created_at")
     .notNull()
     .default(sql`now()`),
   updatedAt: timestamp("updated_at")
     .notNull()
     .default(sql`now()`),
+
   hasRequiredDocuments: boolean("has_required_documents")
     .notNull()
     .default(false),

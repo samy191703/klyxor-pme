@@ -23,6 +23,17 @@ export const CONTRACT_TYPE_VALUES = Object.values(ContractTypes) as [
 ];
 export const contractTypeEnum = pgEnum("contract_type", CONTRACT_TYPE_VALUES);
 
+/** Langues disponibles */
+export enum Languages {
+  FR = "FR",
+  EN = "EN",
+}
+export const LANGUAGE_VALUES = Object.values(Languages) as [
+  Languages,
+  ...Languages[]
+];
+export const languageEnum = pgEnum("language", LANGUAGE_VALUES);
+
 /** Business Units ENGIE */
 export enum BusinessUnits {
   SOLUTIONS_FRANCE = "ENGIE Solutions France",
@@ -51,31 +62,61 @@ export const TECHNOLOGY_VALUES = Object.values(Technologies) as [
 ];
 export const technologyEnum = pgEnum("technology", TECHNOLOGY_VALUES);
 
-/** Périodes de facturation */
+// ===============================
+// Billing periods
+// ===============================
+
 export enum BillingPeriods {
   MONTHLY = "monthly",
   QUARTERLY = "quarterly",
-  SEMI_ANNUAL = "semi-annual",
+  SEMIANNUAL = "semi-annual",
   ANNUAL = "annual",
 }
-export const BILLING_PERIODS = [
-  { value: BillingPeriods.MONTHLY, label: "Mensuelle" },
-  { value: BillingPeriods.QUARTERLY, label: "Trimestrielle" },
-  { value: BillingPeriods.SEMI_ANNUAL, label: "Semestrielle" },
-  { value: BillingPeriods.ANNUAL, label: "Annuelle" },
-];
 
-/** Modes de paiement */
+export const BILLING_PERIOD_VALUES = [
+  BillingPeriods.MONTHLY,
+  BillingPeriods.QUARTERLY,
+  BillingPeriods.SEMIANNUAL,
+  BillingPeriods.ANNUAL,
+] as const;
+
+export const BILLING_PERIOD_LABELS: Record<BillingPeriods, string> = {
+  [BillingPeriods.MONTHLY]: "Mensuelle",
+  [BillingPeriods.QUARTERLY]: "Trimestrielle",
+  [BillingPeriods.SEMIANNUAL]: "Semestrielle",
+  [BillingPeriods.ANNUAL]: "Annuelle",
+};
+
+// ===============================
+// Payment types
+// ===============================
+
 export enum PaymentTypes {
   VIREMENT = "virement",
   PRELEVEMENT = "prelevement",
   CHEQUE = "cheque",
 }
-export const PAYMENT_TYPE_VALUES = Object.values(PaymentTypes) as [
-  PaymentTypes,
-  ...PaymentTypes[]
+
+export const PAYMENT_TYPE_VALUES = [
+  PaymentTypes.VIREMENT,
+  PaymentTypes.PRELEVEMENT,
+  PaymentTypes.CHEQUE,
+] as const;
+
+export const PAYMENT_TYPE_LABELS: Record<PaymentTypes, string> = {
+  [PaymentTypes.VIREMENT]: "Virement",
+  [PaymentTypes.PRELEVEMENT]: "Prélèvement",
+  [PaymentTypes.CHEQUE]: "Chèque",
+};
+
+export const BILLING_PERIODS = [
+  { value: BillingPeriods.MONTHLY, label: "Mensuelle" },
+  { value: BillingPeriods.QUARTERLY, label: "Trimestrielle" },
+  { value: BillingPeriods.SEMIANNUAL, label: "Semestrielle" },
+  { value: BillingPeriods.ANNUAL, label: "Annuelle" },
 ];
-export const paymentTypeEnum = pgEnum("payment_type", PAYMENT_TYPE_VALUES);
+
+//export const paymentTypeEnum = pgEnum("payment_type", PAYMENT_TYPE_VALUES);
 
 /**
  * ================================

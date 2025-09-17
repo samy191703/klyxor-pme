@@ -15,7 +15,10 @@ import { postIndexationPreview } from "@/services/indexation.api";
 // ===== keep your services file "as-is" and import from it =====
 import {
   // TODO: adapt names if different in your services
-  createContractDraft, // (payload) => Promise<{ id: string|number, ... }>
+  createContractDraft,
+  patchContractStep2,
+  patchContractStep3,
+  PatchStep3Payload, // (payload) => Promise<{ id: string|number, ... }>
   updateContract, // (id, patch) => Promise<any>
   // createContract,   // will be used at final submit; you already pass onSubmit()
 } from "@/services/contracts.api";
@@ -98,12 +101,36 @@ export default function ContractWizard({
     const e: StepErrors = {};
     const fixed = Number(d.fixedAmount || 0) || 0;
     const variable = Number(d.variableAmount || 0) || 0;
+
+    if (!d.startDate) e.startDate = "Date de début requise";
+    if (!d.endDate) e.endDate = "Date de fin requise";
+    if (
+      d.startDate &&
+      d.endDate &&
+      new Date(d.endDate) <= new Date(d.startDate)
+    ) {
+      e.endDate = "La date de fin doit être postérieure à la date de début";
+    }
+
     if (fixed <= 0 && variable <= 0) {
       e.amount = "Au moins un montant (fixe ou variable) doit être > 0";
     }
-    if (!d.billingFrequency)
-      e.billingFrequency = "Périodicité de facturation requise";
+
+    // Accept either billingPeriod or billingFrequency from UI, normalize later
+    if (!d.billingPeriod && !d.billingFrequency) {
+      e.billingPeriod = "Périodicité de facturation requise";
+    }
     if (!d.paymentType) e.paymentType = "Type de paiement requis";
+
+    // Optional pre-check for energy contracts (UI-level; server revalidates by type in DB)
+    const isEnergy = d?.type === "electricity" || d?.type === "renewable_ppa";
+    if (isEnergy) {
+      if (d.maxAnnualProduction == null || d.maxAnnualProduction === "")
+        e.maxAnnualProduction = "Production annuelle max requise (Énergie)";
+      if (d.pricePerMWh == null || d.pricePerMWh === "")
+        e.pricePerMWh = "Prix par MWh requis (Énergie)";
+    }
+
     return e;
   }
 
@@ -112,18 +139,25 @@ export default function ContractWizard({
     if (d.indexationFormula && d.indexationFormula !== "none") {
       if (!d.indexationDate)
         e.indexationDate = "Date de première indexation requise";
-      // CPI_PN1 requires PN1
+
       if (d.indexationMode === "PN1" && (!d.PN1 || Number(d.PN1) <= 0)) {
         e.PN1 = "PN1 (montant période N-1) requis pour CPI PN1";
       }
-      // Custom last indice policy requires lastIndiceDate
       if (d.indexationPolicy === "LAST_INDICE_VALUE" && !d.lastIndiceDate) {
         e.lastIndiceDate = "Date de prise d'indice personnalisée requise";
       }
-      // base P0
-      if (!d?.baseAmountInput?.value || Number(d.baseAmountInput.value) <= 0) {
-        e.P0 = "Montant de base P0 requis et > 0";
-      }
+
+      // P0 series must be provided
+      const P0: any = d.baseAmountInput;
+      const hasP0 =
+        P0 &&
+        ((P0.mode === "FIXED" && Number(P0.fixed ?? 0) > 0) ||
+          (P0.mode === "VARIABLE" &&
+            Array.isArray(P0.items) &&
+            P0.items.length > 0 &&
+            P0.items.some((it: any) => Number(it.value) > 0)));
+
+      if (!hasP0) e.P0 = "Montant de base P0 requis et > 0";
     }
     return e;
   }
@@ -151,16 +185,42 @@ export default function ContractWizard({
   }
 
   function buildPatchForStep2(d: any) {
-    const fixed = Number(d.fixedAmount || 0) || 0;
-    const variable = Number(d.variableAmount || 0) || 0;
-    return {
-      // depending on your DTO, you may have separate fields; here we also provide a total
-      fixedAmount: fixed || undefined,
-      variableAmount: variable || undefined,
-      amount: fixed + variable,
-      billingPeriodicity: d.billingFrequency,
-      paymentType: d.paymentType || undefined,
+    const toNum = (v: any) =>
+      Number.isFinite(v)
+        ? Number(v)
+        : parseFloat(String(v ?? "").replace(",", "."));
+
+    const fixed = Math.max(0, toNum(d.fixedAmount) || 0);
+    const variable = Math.max(0, toNum(d.variableAmount) || 0);
+
+    const billingPeriod = d.billingPeriod || d.billingFrequency; // normalize
+    const billingFrequency = d.billingFrequency || d.billingPeriod; // keep both for compatibility
+
+    const isEnergy = d?.type === "electricity" || d?.type === "renewable_ppa";
+
+    const payload: any = {
+      startDate: d.startDate, // "YYYY-MM-DD"
+      endDate: d.endDate, // "YYYY-MM-DD"
+      fixedAmount: fixed || 0,
+      variableAmount: variable || 0,
+      billingPeriod, // "monthly" | "quarterly" | ...
+      billingFrequency, // allow backend to mirror if needed
+      paymentType: d.paymentType,
+      currency: d.currency || "EUR",
     };
+
+    if (isEnergy) {
+      payload.maxAnnualProduction =
+        d.maxAnnualProduction != null
+          ? toNum(d.maxAnnualProduction)
+          : undefined;
+      payload.numberOfTurbines =
+        d.numberOfTurbines != null ? toNum(d.numberOfTurbines) : undefined;
+      payload.pricePerMWh =
+        d.pricePerMWh != null ? toNum(d.pricePerMWh) : undefined;
+    }
+
+    return payload;
   }
 
   function buildIndexationBlock(d: any) {
@@ -196,11 +256,46 @@ export default function ContractWizard({
     };
   }
 
-  function buildPatchForStep3(d: any) {
-    const indexation = buildIndexationBlock(d);
+  // Build the exact payload expected by /api/contracts/:id/step3
+  function buildPatchForStep3(d: any): PatchStep3Payload {
+    const policy = d.indexationPolicy || "AT_PUBLICATION_DATE";
+
     return {
-      indexation,
-      lastIndexationPreview: calcResult || undefined, // optional: store preview server-side
+      indexationFormula: d.indexationFormula, // formula id
+      indexationFrequency: d.indexationFrequency || "annual",
+      indexationMode: d.indexationMode || "P0",
+      indexationPolicy: policy,
+      indexationDate:
+        policy === "LAST_INDICE_VALUE"
+          ? d.lastIndiceDate || d.indexationDate // server also receives lastIndiceDate below
+          : d.indexationDate,
+      lastIndiceDate: d.lastIndiceDate || undefined,
+      requireRevised: d.requireRevised ?? "R",
+
+      // series as entered in the UI
+      baseAmountInput: d.baseAmountInput,
+      baseIndices: d.baseIndices, // e.g. { ICHT0: {...}, FMOA0: {...} }
+
+      // PN1 if mode=PN1
+      PN1: d.indexationMode === "PN1" ? Number(d.PN1) : undefined,
+
+      // caps/floors
+      capPercent:
+        d.capPercent !== undefined && d.capPercent !== ""
+          ? Number(d.capPercent)
+          : null,
+      floorPercent:
+        d.floorPercent !== undefined && d.floorPercent !== ""
+          ? Number(d.floorPercent)
+          : null,
+
+      currency: d.currency || "EUR",
+
+      // optional helper values if you compute them client-side
+      baseIndiceValues: d.baseIndiceValues,
+
+      // cache last preview (if any)
+      lastIndexationPreview: d.lastIndexationPreview || undefined,
     };
   }
 
@@ -244,7 +339,16 @@ export default function ContractWizard({
       setData((prev: any) => ({ ...prev, contractId: created?.id }));
       return true;
     } catch (e: any) {
-      setFormError(e?.message || "Échec création du brouillon.");
+      // NEW: map uniqueness to field-level error
+      if (e?.status === 409 && e?.field === "number") {
+        setErrors((prev) => ({
+          ...prev,
+          number: e.message || "Numéro déjà utilisé",
+        }));
+        setFormError(null);
+      } else {
+        setFormError(e?.message || "Échec création du brouillon.");
+      }
       return false;
     } finally {
       setSaving(false);
@@ -287,6 +391,7 @@ export default function ContractWizard({
     setErrors(currentErrors);
     if (Object.keys(currentErrors).length) return;
 
+    // inside handleSaveDraftClick, after computing currentErrors...
     const patch =
       step === 1
         ? buildPatchForStep1(data)
@@ -294,8 +399,49 @@ export default function ContractWizard({
         ? buildPatchForStep2(data)
         : step === 3
         ? buildPatchForStep3(data)
-        : {}; // step 4 is optional here; Step4Attachment uploads directly
-    await doUpdateDraft(patch);
+        : {};
+
+    if (step === 2) {
+      // ensure draft exists first
+      if (!data.contractId) {
+        const ok = await doCreateDraft();
+        if (!ok) return;
+      }
+      try {
+        setSaving(true);
+        await patchContractStep2(data.contractId, patch);
+      } catch (e: any) {
+        setFormError(e?.message || "Échec mise à jour étape 2.");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+    if (step === 3) {
+      // ensure draft exists first
+      if (!data.contractId) {
+        const ok = await doCreateDraft();
+        if (!ok) return;
+      }
+      try {
+        setSaving(true);
+        await patchContractStep3(data.contractId, patch as PatchStep3Payload);
+        // keep calc result in local state too (so the “results” view stays in sync)
+        setCalcResult(
+          (patch as PatchStep3Payload).lastIndexationPreview ?? calcResult
+        );
+      } catch (e: any) {
+        setFormError(e?.message || "Échec mise à jour étape 3.");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    // default path (steps 1,3,4)
+    // Default (steps 1 & 4)
+    const ok = await doUpdateDraft(patch);
+    if (ok) onCancel(); // ⬅️ close wizard on success
   };
 
   const handleNext = async () => {
@@ -323,8 +469,24 @@ export default function ContractWizard({
       setErrors(e2);
       if (Object.keys(e2).length) return;
 
-      const ok = await doUpdateDraft(buildPatchForStep2(data));
-      if (!ok) return;
+      // ensure draft exists
+      if (!data.contractId) {
+        const ok = await doCreateDraft();
+        if (!ok) return;
+      }
+
+      try {
+        setSaving(true);
+        const payload = buildPatchForStep2(data);
+        await patchContractStep2(data.contractId, payload);
+      } catch (e: any) {
+        setFormError(
+          e?.message || "Échec de mise à jour du contrat (étape 2)."
+        );
+        return;
+      } finally {
+        setSaving(false);
+      }
 
       setStep(3);
       return;
@@ -335,8 +497,28 @@ export default function ContractWizard({
       setErrors(e3);
       if (Object.keys(e3).length) return;
 
-      const ok = await doUpdateDraft(buildPatchForStep3(data));
-      if (!ok) return;
+      // ensure draft exists
+      if (!data.contractId) {
+        const ok = await doCreateDraft();
+        if (!ok) return;
+      }
+
+      try {
+        setSaving(true);
+        const payload = buildPatchForStep3({
+          ...data,
+          // include latest preview if you want it persisted on “Suivant”
+          lastIndexationPreview: calcResult || undefined,
+        });
+        await patchContractStep3(data.contractId, payload);
+      } catch (e: any) {
+        setFormError(
+          e?.message || "Échec de mise à jour du contrat (étape 3)."
+        );
+        return;
+      } finally {
+        setSaving(false);
+      }
 
       setStep(4);
       return;

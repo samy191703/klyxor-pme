@@ -20,24 +20,18 @@ type Props = {
   contractId?: string | number;
 };
 
-export default function Step2PeriodAmounts({
-  data,
-  setData,
-  contractId,
-}: Props) {
-  // total = fixe + variable (affichage)
-  const total = useMemo(() => {
-    const fixed =
-      parseFloat((data.fixedAmount ?? "").toString().replace(",", ".")) || 0;
-    const variable =
-      parseFloat((data.variableAmount ?? "").toString().replace(",", ".")) || 0;
-    return fixed + variable;
-  }, [data.fixedAmount, data.variableAmount]);
+const toNum = (v: any) =>
+  Number.isFinite(v)
+    ? Number(v)
+    : parseFloat(String(v ?? "").replace(",", "."));
 
-  // Contraintes de dates (min pour la fin)
+export default function Step2PeriodAmounts({ data, setData }: Props) {
+  const fixed = toNum(data.fixedAmount) || 0;
+  const variable = toNum(data.variableAmount) || 0;
+
+  const total = useMemo(() => fixed + variable, [fixed, variable]);
+
   const minEnd = data.startDate || undefined;
-
-  // Certains types demandent des champs énergie (voir mapping backend)
   const isEnergy =
     data?.type === "electricity" || data?.type === "renewable_ppa";
 
@@ -61,6 +55,7 @@ export default function Step2PeriodAmounts({
           <Input
             type="date"
             min={minEnd}
+            disabled={!data.startDate}
             value={data.endDate || ""}
             onChange={(e) => setData({ ...data, endDate: e.target.value })}
           />
@@ -75,9 +70,15 @@ export default function Step2PeriodAmounts({
           <Input
             type="number"
             step="0.01"
+            min={0}
             placeholder="0.00"
             value={data.fixedAmount ?? ""}
-            onChange={(e) => setData({ ...data, fixedAmount: e.target.value })}
+            onChange={(e) =>
+              setData({
+                ...data,
+                fixedAmount: e.target.value.replace(",", "."),
+              })
+            }
           />
         </div>
 
@@ -86,10 +87,14 @@ export default function Step2PeriodAmounts({
           <Input
             type="number"
             step="0.01"
+            min={0}
             placeholder="0.00"
             value={data.variableAmount ?? ""}
             onChange={(e) =>
-              setData({ ...data, variableAmount: e.target.value })
+              setData({
+                ...data,
+                variableAmount: e.target.value.replace(",", "."),
+              })
             }
           />
           <p className="text-xs text-gray-500 mt-1">Optionnel, 0 accepté</p>
@@ -103,8 +108,8 @@ export default function Step2PeriodAmounts({
             onValueChange={(value) =>
               setData({
                 ...data,
-                billingPeriod: value, // utilisé par le mapper backend
-                billingFrequency: value, // compat si d'autres écrans lisent ce champ
+                billingPeriod: value,
+                billingFrequency: value, // compat
               })
             }
           >
@@ -140,7 +145,7 @@ export default function Step2PeriodAmounts({
           </Select>
         </div>
 
-        {/* CHAMPS MÉTIER ÉNERGIE (si Électricité / PPA) */}
+        {/* CHAMPS ÉNERGIE */}
         {isEnergy && (
           <>
             <div className="w-full">
@@ -148,10 +153,14 @@ export default function Step2PeriodAmounts({
               <Input
                 type="number"
                 step="0.01"
+                min={0}
                 placeholder="ex: 120000"
                 value={data.maxAnnualProduction ?? ""}
                 onChange={(e) =>
-                  setData({ ...data, maxAnnualProduction: e.target.value })
+                  setData({
+                    ...data,
+                    maxAnnualProduction: e.target.value.replace(",", "."),
+                  })
                 }
               />
             </div>
@@ -160,6 +169,7 @@ export default function Step2PeriodAmounts({
               <Label>Nombre d’éoliennes</Label>
               <Input
                 type="number"
+                min={0}
                 placeholder="ex: 10"
                 value={data.numberOfTurbines ?? ""}
                 onChange={(e) =>
@@ -173,10 +183,14 @@ export default function Step2PeriodAmounts({
               <Input
                 type="number"
                 step="0.01"
+                min={0}
                 placeholder="ex: 52.90"
                 value={data.pricePerMWh ?? ""}
                 onChange={(e) =>
-                  setData({ ...data, pricePerMWh: e.target.value })
+                  setData({
+                    ...data,
+                    pricePerMWh: e.target.value.replace(",", "."),
+                  })
                 }
               />
               <p className="text-xs text-gray-500 mt-1">

@@ -1,5 +1,7 @@
 // src/services/contracts.api.ts
 
+import { CalculationResult } from "@/_dtos/calculate-results.dto";
+import { IndexationMode, Policy } from "@/_enums/indexation-policy.enum";
 import {
   ID,
   ContractPatch,
@@ -7,6 +9,7 @@ import {
   IndexationConfig,
   ManualModificationPayload,
 } from "@/_models/contract.model";
+import { BillingPeriods, PaymentTypes } from "@shared/enums/contracts";
 import { Contract } from "@shared/schema";
 
 // ---- Internal helpers ----
@@ -46,10 +49,29 @@ export function getContract(id: ID): Promise<Contract> {
 
 // POST /api/contracts
 // Server sets status: 'draft' on create (brouillon)
-export function createContractDraft(
-  payload: ContractPatch | ContractCore
-): Promise<Contract> {
-  return http<Contract>("/api/contracts", jsonInit("POST", payload));
+// services/contracts.api.ts
+export async function createContractDraft(payload: any) {
+  const res = await fetch(`/api/contracts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      const err: any = new Error(
+        body?.message || "Numéro de contrat déjà utilisé"
+      );
+      err.status = 409;
+      err.field = body?.field || "number";
+      err.detail = body?.detail;
+      throw err;
+    }
+    const txt =
+      (await res.text().catch(() => "")) || body?.error || "Erreur serveur";
+    throw new Error(`${res.status}: ${txt}`);
+  }
+  return res.json();
 }
 
 // PUT /api/contracts/:id (full update)
@@ -72,6 +94,74 @@ export function updateContract(
     `/api/contracts/${encodeURIComponent(String(id))}`,
     jsonInit("PATCH", patch)
   );
+}
+
+export async function patchContractStep2(
+  id: string | number,
+  payload: {
+    startDate: string;
+    endDate: string;
+    fixedAmount?: number;
+    variableAmount?: number;
+    billingPeriod: BillingPeriods;
+    billingFrequency?: BillingPeriods;
+    paymentType: PaymentTypes;
+    currency?: "EUR" | "USD";
+    maxAnnualProduction?: number;
+    numberOfTurbines?: number;
+    pricePerMWh?: number;
+  }
+) {
+  const res = await fetch(`/api/contracts/${id}/step2`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(
+      `Échec mise à jour (étape 2) ${res.status}: ${txt || "voir logs serveur"}`
+    );
+  }
+  return res.json().catch(() => ({}));
+}
+
+export type VariableNumberInput =
+  | { mode: "FIXED"; fixed?: number | null }
+  | { mode: "VARIABLE"; items: Array<{ startingFrom: string; value: number }> };
+
+export type PatchStep3Payload = {
+  indexationFormula: string;
+  indexationFrequency: BillingPeriods;
+  indexationMode: IndexationMode;
+  indexationPolicy: Policy;
+  indexationDate: string; // "YYYY-MM-DD"
+  lastIndiceDate?: string; // "YYYY-MM-DD"
+  requireRevised: "R" | "P";
+  baseAmountInput: VariableNumberInput;
+  baseIndices?: Record<string, VariableNumberInput>;
+  PN1?: number;
+  capPercent?: number | null;
+  floorPercent?: number | null;
+  currency?: "EUR" | "USD";
+  baseIndiceValues?: Record<string, number>;
+  lastIndexationPreview?: CalculationResult;
+};
+
+export async function patchContractStep3(
+  id: string | number,
+  payload: PatchStep3Payload
+) {
+  const res = await fetch(`/api/contracts/${id}/step3`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw Object.assign(new Error(err?.message || "Failed step 3 patch"), err);
+  }
+  return res.json();
 }
 
 // DELETE /api/contracts/:id
