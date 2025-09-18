@@ -267,7 +267,7 @@ app.use((req, res, next) => {
     version: "1.0.0",
     // apiPrefix intentionally empty to match documented paths like "/api/contracts"
     apiPrefix: "",
-    apis: ["server/routes/**/*.ts", "server/models/**/*.ts"],
+    //apis: ["server/routes/**/*.ts", "server/models/**/*.ts"],
   });
 
   log(`SWAGGER server setup complete`);
