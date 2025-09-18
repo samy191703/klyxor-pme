@@ -62,7 +62,13 @@ export const contracts = pgTable("contracts", {
   businessUnit: text("business_unit").notNull(),
 
   // ✅ Typed as number in TS (still nullable at DB level unless .notNull())
+
+  //dates et paiements
+
   amount: decimal("amount", { precision: 15, scale: 2 }).$type<number>(),
+  billingPeriod: text("billing_period"), // one of BillingPeriod
+  billingFrequency: text("billing_frequency"), // one of BillingFrequency
+  paymentType: text("payment_type"),
 
   currency: text("currency").notNull().default("EUR"),
   startDate: timestamp("start_date"),

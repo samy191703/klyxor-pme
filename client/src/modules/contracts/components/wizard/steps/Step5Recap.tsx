@@ -142,18 +142,19 @@ export default function Step5Recap({
   require(!!data.startDate, "Date début");
   require(!!data.endDate, "Date fin");
 
+  console.log("Step5Recap", { data, typeGuess });
   // Step 3 (indexation)
   if (indexationOn) {
     require(!!data.indexationDate, "Date de première indexation");
     if (typeGuess === "SIMPLE_ICHT") {
       require(data.indexationBaseAmount ??
         data.fixedAmount, "Montant de base (P0)");
-      require(!!data.ICHT0, "ICHT0");
+      require(!!data.baseIndices.ICHT0, "ICHT0");
     } else if (typeGuess === "MIXED_ICHT_FMOA") {
       require(data.indexationBaseAmount ??
         data.fixedAmount, "Montant de base (P0)");
-      require(!!data.ICHT0, "ICHT0");
-      require(!!data.FMOA0, "FMOA0");
+      require(!!data.baseIndices.ICHT0, "ICHT0");
+      require(!!data.baseIndices.FMOA0, "FMOA0");
     } else if (typeGuess === "CPI_PN1" || data.indexationMode === "PN1") {
       require(!!data.PN1, "PN1 (montant période N-1)");
     }
@@ -170,11 +171,11 @@ export default function Step5Recap({
 
       {/* Checklist */}
       {missing.length > 0 && (
-        <Alert>
+        <Alert variant="destructive">
           <Info className="h-4 w-4" />
           <AlertDescription>
             <div className="font-medium mb-1">
-              Champs à compléter avant soumission :
+              Champs à compléter avant validation :
             </div>
             <ul className="list-disc list-inside text-sm">
               {missing.map((m) => (
@@ -372,8 +373,8 @@ export default function Step5Recap({
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          <strong>Statut initial après création :</strong> «&nbsp;À
-          valider&nbsp;»
+          <strong>Statut initial après création :</strong> «&nbsp;En attente de
+          validation&nbsp;»
         </AlertDescription>
       </Alert>
     </div>

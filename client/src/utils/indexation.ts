@@ -76,11 +76,11 @@ export function buildCalculateFromAssetsPayload(
 ): CalculateIndexationDto {
   console.log("buildCalculateFromAssetsPayload", { wd, formulas });
   // 1) Trouver la formule sélectionnée
-  const selected = formulas.find((f) => f.id === wd.indexationFormula);
+  const selected = formulas.find((f) => f.id === wd.indexationFormulaId);
   if (!selected) throw new Error("Formule d'indexation introuvable.");
 
-  const formulaType = inferFormulaType(selected);
-
+  //const formulaType = inferFormulaType(selected);
+  const formulaType = wd.indexationFormula;
   // 2) Résoudre P0 + indices de base via la fonction utilitaire (variable OU fixe)
   //    - On passe :
   //      * indexationDate (YYYY-MM-DD ou DD/MM/YYYY)

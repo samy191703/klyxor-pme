@@ -53,10 +53,10 @@ export default function Step3Indexation({
   const hasFormula =
     data.indexationFormula && data.indexationFormula !== "none";
   const selected = hasFormula
-    ? indexationFormulas.find((f) => f.id === data.indexationFormula)
+    ? indexationFormulas.find((f) => f.id === data.indexationFormulaId)
     : null;
-  const typeGuess = selected ? inferFormulaType(selected) : null;
-
+  // const typeGuess = selected ? inferFormulaType(selected) : null;
+  const typeGuess = selected ? selected.type : null;
   const fmtMoney = (n?: number) =>
     typeof n === "number"
       ? new Intl.NumberFormat("fr-FR", {
@@ -104,25 +104,26 @@ export default function Step3Indexation({
         <div>
           <Label>Formule d'indexation</Label>
           <Select
-            value={data.indexationFormula || ""}
+            value={data.indexationFormulaId || ""}
             onValueChange={(value) => {
               if (value === "none") {
                 setData((d: any) => ({
                   ...d,
                   indexationEnabled: false,
                   indexationFormulaId: null,
-                  indexationFormula: null, // no type when disabled
+                  indexationFormula: null,
                 }));
                 setIsEditing(true);
                 return;
               }
 
               const selected = indexationFormulas.find((f) => f.id === value);
+
+              console.log("Selected formula", { value, selected });
               setData((d: any) => ({
                 ...d,
                 indexationEnabled: true,
                 indexationFormulaId: value,
-                // store the *type* string (e.g., "SIMPLE_ICHT", "CPI_PN1", etc.)
                 indexationFormula: selected?.type ?? null,
               }));
               setIsEditing(true);

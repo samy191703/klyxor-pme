@@ -347,7 +347,7 @@ export function registerContractRoutes(app: Express): void {
           variableAmount,
           amount,
           billingPeriod: d.billingPeriod, // "monthly" | "quarterly" | "semi-annual" | "annual"
-          billingFrequency: d.billingFrequency ?? d.billingPeriod,
+          //billingFrequency: d.billingFrequency ?? d.billingPeriod,
           paymentType: d.paymentType,
           currency: d.currency ?? existing.currency ?? "EUR",
           status: existing.status ?? "draft",
