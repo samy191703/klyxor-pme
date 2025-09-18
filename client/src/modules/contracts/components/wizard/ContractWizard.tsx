@@ -628,6 +628,7 @@ export default function ContractWizard({
               calcLoading={calcLoading}
               calcError={calcError}
               calcResult={calcResult}
+              contractId={data.contractId}
             />
           )}
 

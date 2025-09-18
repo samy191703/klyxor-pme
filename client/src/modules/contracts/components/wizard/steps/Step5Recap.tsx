@@ -63,7 +63,7 @@ export default function Step5Recap({
 
     const endpoint =
       attachmentsEndpoint?.(contractId) ??
-      `/api/contracts/${contractId}/documents`;
+      `/api/contracts/${contractId}/uploads`;
 
     let cancelled = false;
     (async () => {
