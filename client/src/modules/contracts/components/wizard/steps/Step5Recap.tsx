@@ -1,9 +1,20 @@
 // components/wizard/steps/Step5Recap.tsx
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 import { BILLING_PERIODS } from "@/modules/contracts/domain/constants";
 import { inferFormulaType } from "@/utils/indexation";
+
+type Attachment = {
+  id?: string;
+  name: string;
+  type?: string;
+  category?: string;
+  size?: number;
+  url?: string;
+  mimeType?: string;
+  uploadedAt?: string;
+};
 
 type Props = {
   data: any;
@@ -11,7 +22,21 @@ type Props = {
   calcError?: string | null;
   calcResult?: any;
   contractId?: string | number;
+  /** Optional: pass attachments directly; if omitted and contractId provided, the component will fetch them */
+  attachments?: Attachment[];
+  /** Optional: override the attachments GET endpoint */
+  attachmentsEndpoint?: (contractId: string | number) => string;
 };
+
+function formatBytes(n?: number) {
+  if (n == null) return "—";
+  if (n === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(n) / Math.log(k));
+  const val = parseFloat((n / Math.pow(k, i)).toFixed(2));
+  return `${val} ${sizes[i]}`;
+}
 
 export default function Step5Recap({
   data,
@@ -19,7 +44,52 @@ export default function Step5Recap({
   calcError,
   calcResult,
   contractId,
+  attachments: attachmentsProp,
+  attachmentsEndpoint,
 }: Props) {
+  const [attachments, setAttachments] = useState<Attachment[] | null>(
+    attachmentsProp ?? null
+  );
+  const [attErr, setAttErr] = useState<string | null>(null);
+  const [attLoading, setAttLoading] = useState<boolean>(false);
+
+  // Fetch attachments if not provided
+  useEffect(() => {
+    if (attachmentsProp) {
+      setAttachments(attachmentsProp);
+      return;
+    }
+    if (!contractId) return;
+
+    const endpoint =
+      attachmentsEndpoint?.(contractId) ??
+      `/api/contracts/${contractId}/documents`;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setAttLoading(true);
+        setAttErr(null);
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        // Accept either { items: [...] } or raw array
+        const items: Attachment[] = Array.isArray(json)
+          ? json
+          : json.items ?? [];
+        if (!cancelled) setAttachments(items);
+      } catch (e: any) {
+        if (!cancelled)
+          setAttErr(e?.message || "Échec du chargement des pièces jointes");
+      } finally {
+        if (!cancelled) setAttLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [attachmentsProp, contractId, attachmentsEndpoint]);
+
   const currency = data?.currency || "EUR";
   const fmtMoney = (n: number) =>
     new Intl.NumberFormat("fr-FR", { style: "currency", currency }).format(
@@ -39,24 +109,31 @@ export default function Step5Recap({
       (p) => p.value === (data.billingPeriod || data.billingFrequency)
     )?.label || "—";
 
-  // Indexation
-  const hasFormula =
-    data?.indexationFormula && data.indexationFormula !== "none";
-  const typeGuess =
-    hasFormula && data?.__formulas
-      ? inferFormulaType(
-          (data.__formulas as any[]).find(
-            (f) => f.id === data.indexationFormula
-          )
-        )
-      : null;
+  // ✅ Indexation ON/OFF based on new fields
+  const indexationOn =
+    Boolean(data?.indexationEnabled) &&
+    !!data?.indexationFormulaId &&
+    data?.indexationFormulaId !== "none";
 
-  // Checklist de validation
+  // Type guessing based on your local catalog (__formulas) OR directly from data.indexationFormula (type string)
+  const typeGuess =
+    (indexationOn &&
+      data?.__formulas &&
+      inferFormulaType(
+        (data.__formulas as any[])?.find(
+          (f) => f.id === data.indexationFormulaId
+        )
+      )) ||
+    data?.indexationFormula ||
+    null;
+
+  // Checklist de validation (steps 1–3)
   const missing: string[] = [];
   const require = (ok: any, label: string) => {
     if (!ok && !missing.includes(label)) missing.push(label);
   };
 
+  // Step 1 (général)
   require(!!data.number, "N° contrat");
   require(!!data.title, "Titre/SPV");
   require(!!data.clientName, "Nom du client");
@@ -65,9 +142,9 @@ export default function Step5Recap({
   require(!!data.startDate, "Date début");
   require(!!data.endDate, "Date fin");
 
-  if (hasFormula) {
+  // Step 3 (indexation)
+  if (indexationOn) {
     require(!!data.indexationDate, "Date de première indexation");
-    // Champs conditionnels selon le type de formule
     if (typeGuess === "SIMPLE_ICHT") {
       require(data.indexationBaseAmount ??
         data.fixedAmount, "Montant de base (P0)");
@@ -77,8 +154,11 @@ export default function Step5Recap({
         data.fixedAmount, "Montant de base (P0)");
       require(!!data.ICHT0, "ICHT0");
       require(!!data.FMOA0, "FMOA0");
-    } else if (typeGuess === "CPI_PN1") {
+    } else if (typeGuess === "CPI_PN1" || data.indexationMode === "PN1") {
       require(!!data.PN1, "PN1 (montant période N-1)");
+    }
+    if (data.indexationPolicy === "LAST_INDICE_VALUE") {
+      require(!!data.lastIndiceDate, "Date de prise d'indice");
     }
   }
 
@@ -105,7 +185,7 @@ export default function Step5Recap({
         </Alert>
       )}
 
-      {/* Bloc : Informations générales */}
+      {/* Bloc : Informations générales (Step 1) */}
       <div className="bg-gray-50 p-4 rounded-lg space-y-3">
         <h3 className="font-medium">Informations générales</h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -116,10 +196,12 @@ export default function Step5Recap({
           <div>BU : {data.businessUnit || "—"}</div>
           <div>Devise : {currency}</div>
           <div>Langue : {data.language || "FR"}</div>
+          {data.technology && <div>Technologie : {data.technology}</div>}
+          {data.parkCode && <div>Parc : {data.parkCode}</div>}
         </div>
       </div>
 
-      {/* Bloc : Période & montants */}
+      {/* Bloc : Période & montants (Step 2) */}
       <div className="bg-gray-50 p-4 rounded-lg space-y-3">
         <h3 className="font-medium">Période &amp; montants</h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -136,7 +218,6 @@ export default function Step5Recap({
           </div>
         </div>
 
-        {/* Champs Energie si présents */}
         {(data.type === "electricity" || data.type === "renewable_ppa") && (
           <div className="grid grid-cols-2 gap-2 text-sm mt-2">
             <div>
@@ -151,16 +232,16 @@ export default function Step5Recap({
         )}
       </div>
 
-      {/* Bloc : Indexation */}
+      {/* Bloc : Indexation (Step 3) */}
       <div className="bg-gray-50 p-4 rounded-lg space-y-3">
         <h3 className="font-medium">Indexation</h3>
-        {hasFormula ? (
+        {indexationOn ? (
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>Formule : {String(data.indexationFormula)}</div>
-            <div>Type (déduit) : {typeGuess || "—"}</div>
+            <div>Formule ID : {String(data.indexationFormulaId)}</div>
+            <div>Type : {String(typeGuess || "—")}</div>
             <div>Date 1ère indexation : {fmtDate(data.indexationDate)}</div>
             <div>Fréquence : {data.indexationFrequency || "annual"}</div>
-            <div>Policy : {data.indexationPolicy || "AT_INDEXATION_DATE"}</div>
+            <div>Policy : {data.indexationPolicy || "AT_PUBLICATION_DATE"}</div>
             <div>
               Mode :{" "}
               {data.indexationMode || (typeGuess === "CPI_PN1" ? "PN1" : "P0")}
@@ -195,13 +276,21 @@ export default function Step5Recap({
                 <div>Poids FMOA : {(data.weights?.FMOA ?? "—").toString()}</div>
               </>
             )}
-            {typeGuess === "CPI_PN1" && (
+            {(typeGuess === "CPI_PN1" || data.indexationMode === "PN1") && (
               <div>PN1 : {fmtMoney(Number(data.PN1 ?? 0))}</div>
             )}
 
             {/* Cap / Floor */}
             <div>Cap (%) : {data.capPercent ?? "—"}</div>
             <div>Floor (%) : {data.floorPercent ?? "—"}</div>
+
+            {/* Revised/Provisional */}
+            {data.requireRevised && (
+              <div>Publication: {data.requireRevised}</div>
+            )}
+            {data.lastIndiceDate && (
+              <div>Date de prise d’indice: {fmtDate(data.lastIndiceDate)}</div>
+            )}
           </div>
         ) : (
           <div className="text-sm text-gray-600">
@@ -210,22 +299,57 @@ export default function Step5Recap({
         )}
       </div>
 
-      {/* Bloc : Pièce jointe */}
+      {/* Bloc : Pièces jointes (toutes) */}
       <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-        <h3 className="font-medium">Pièce jointe</h3>
-        <div className="text-sm">
-          {data?.attachment?.name ? (
-            <>
-              Fichier :{" "}
-              <span className="font-medium">{data.attachment.name}</span>
-            </>
-          ) : (
-            "Aucune (optionnelle)"
-          )}
-        </div>
+        <h3 className="font-medium">Pièces jointes</h3>
+
+        {attLoading && <div className="text-sm text-gray-600">Chargement…</div>}
+        {attErr && <div className="text-sm text-red-600">{attErr}</div>}
+
+        {attachments && attachments.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b">
+                  <th className="py-2 pr-2">Nom</th>
+                  <th className="py-2 pr-2">Type</th>
+                  <th className="py-2 pr-2">Catégorie</th>
+                  <th className="py-2 pr-2">Taille</th>
+                  <th className="py-2 pr-2">Lien</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attachments.map((a) => (
+                  <tr key={a.id ?? a.name} className="border-b last:border-0">
+                    <td className="py-2 pr-2">{a.name}</td>
+                    <td className="py-2 pr-2">{a.type ?? "—"}</td>
+                    <td className="py-2 pr-2">{a.category ?? "—"}</td>
+                    <td className="py-2 pr-2">{formatBytes(a.size)}</td>
+                    <td className="py-2 pr-2">
+                      {a.url ? (
+                        <a
+                          className="text-blue-600 hover:underline"
+                          href={a.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Télécharger
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : !attLoading ? (
+          <div className="text-sm text-gray-600">Aucune pièce jointe</div>
+        ) : null}
       </div>
 
-      {/* Prévisualisation d'indexation (si calculée) */}
+      {/* Prévisualisation d'indexation */}
       {(calcLoading || calcError || calcResult) && (
         <div className="bg-gray-50 p-4 rounded-lg space-y-2">
           <h3 className="font-medium">Prévisualisation d'indexation</h3>

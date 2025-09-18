@@ -131,7 +131,9 @@ export type VariableNumberInput =
   | { mode: "VARIABLE"; items: Array<{ startingFrom: string; value: number }> };
 
 export type PatchStep3Payload = {
-  indexationFormula: string;
+  indexationEnabled: boolean;
+  indexationFormulaId?: string;
+  indexationFormula?: string;
   indexationFrequency: BillingPeriods;
   indexationMode: IndexationMode;
   indexationPolicy: Policy;

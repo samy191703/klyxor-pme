@@ -261,7 +261,10 @@ export default function ContractWizard({
     const policy = d.indexationPolicy || "AT_PUBLICATION_DATE";
 
     return {
-      indexationFormula: d.indexationFormula, // formula id
+      indexationEnabled:
+        !!d.indexationFormula && d.indexationFormula !== "none",
+      indexationFormulaId: d.indexationFormulaId || null, // formula id
+      indexationFormula: d.indexationFormula || "none",
       indexationFrequency: d.indexationFrequency || "annual",
       indexationMode: d.indexationMode || "P0",
       indexationPolicy: policy,

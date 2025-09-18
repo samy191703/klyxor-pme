@@ -69,6 +69,7 @@ export const contracts = pgTable("contracts", {
   endDate: timestamp("end_date"),
 
   /** Step 3 core (already present, keep using) */
+  indexationEnabled: boolean("indexation_enabled").notNull().default(false),
   indexationFrequency: text("indexation_frequency"), // monthly|quarterly|semi-annual|annual
   indexationDate: timestamp("indexation_date"), // date d' indexation
   nextIndexationDate: timestamp("next_indexation_date"), // date de la prochaine indexation

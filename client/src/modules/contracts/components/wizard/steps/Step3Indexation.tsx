@@ -106,7 +106,25 @@ export default function Step3Indexation({
           <Select
             value={data.indexationFormula || ""}
             onValueChange={(value) => {
-              ensure({ indexationFormula: value });
+              if (value === "none") {
+                setData((d: any) => ({
+                  ...d,
+                  indexationEnabled: false,
+                  indexationFormulaId: null,
+                  indexationFormula: null, // no type when disabled
+                }));
+                setIsEditing(true);
+                return;
+              }
+
+              const selected = indexationFormulas.find((f) => f.id === value);
+              setData((d: any) => ({
+                ...d,
+                indexationEnabled: true,
+                indexationFormulaId: value,
+                // store the *type* string (e.g., "SIMPLE_ICHT", "CPI_PN1", etc.)
+                indexationFormula: selected?.type ?? null,
+              }));
               setIsEditing(true);
             }}
           >

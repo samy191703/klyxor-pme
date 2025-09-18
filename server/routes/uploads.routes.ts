@@ -9,6 +9,7 @@ import path from "path";
 import fs from "fs";
 import fsp from "fs/promises";
 import mime from "mime-types";
+import { log } from "server/vite";
 
 // ---------- Local storage (definitive) ----------
 const UPLOAD_DIR = path.join(process.cwd(), "server", "uploads");
@@ -17,14 +18,36 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-    filename: (_req, file, cb) => {
+    filename: (req, file, cb) => {
+      try {
+        const { id: contractId } = req.params;
+        const type = String(req.body?.type ?? "contract");
+        const category = String(req.body?.category ?? "administrative");
+
+        // counter or random 3-digit
+        const rand = Math.floor(Math.random() * 1000)
+          .toString()
+          .padStart(3, "0");
+
+        // preserve file extension
+        const ext = path.extname(file.originalname) || "";
+
+        const customFileName = `${type}_${category}_${contractId}_${rand}${ext}`;
+
+        cb(null, customFileName);
+      } catch (err: any) {
+        log("Filename Erreur: " + err?.message, "uploads");
+        cb(err as any, file.originalname);
+      }
+    },
+    /* filename: (_req, file, cb) => {
       const ext = path.extname(file.originalname);
       const base = path
         .basename(file.originalname, ext)
         .replace(/[^\w\-]+/g, "_")
         .slice(0, 80);
       cb(null, `${base}__${Date.now()}${ext}`);
-    },
+    }, */
   }),
   limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
 });

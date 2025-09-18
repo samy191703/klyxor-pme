@@ -189,23 +189,39 @@ const CalculationResultSchema = z.object({
     .optional(),
 });
 
+// Small helper to accept "" as undefined
+const emptyToUndef = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((v) => (v === "" ? undefined : v), schema);
+
 export const contractStep3Schema = z
   .object({
-    indexationFormula: z.string().min(1), // formula id
+    // NEW switch
+    indexationEnabled: z.boolean().default(false),
+
+    // NEW: real formula id chosen in the select
+    indexationFormulaId: emptyToUndef(z.string().min(1)).optional().nullable(),
+
+    // Store the formula *type* string (optional but nice to have)
+    indexationFormula: emptyToUndef(z.string().min(1)).optional().nullable(),
+
+    // Core step 3 fields (kept with defaults, but validated only if enabled)
     indexationFrequency: FREQ_ENUM.default("annual"),
-    indexationMode: MODE_ENUM.default("P0"),
+    indexationMode: MODE_ENUM.default("P0"), // "P0" | "PN1"
     indexationPolicy: POLICY_ENUM.default("AT_PUBLICATION_DATE"),
 
-    indexationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    lastIndiceDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
+    indexationDate: emptyToUndef(
+      z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    ).optional(),
+    lastIndiceDate: emptyToUndef(
+      z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    ).optional(),
 
-    requireRevised: REVISED_ENUM, // "R" | "P"
+    requireRevised: REVISED_ENUM.optional(), // "R" | "P"
 
-    baseAmountInput: VariableNumberInput, // P0 series
+    // Base amount (series)
+    baseAmountInput: VariableNumberInput.optional(), // validated if enabled
 
+    // Base indices
     baseIndices: z
       .object({
         ICHT0: VariableNumberInput.optional(),
@@ -214,7 +230,8 @@ export const contractStep3Schema = z
       .partial()
       .optional(),
 
-    PN1: numCoerce.optional(), // required if mode = PN1
+    // PN1 (only if mode = PN1)
+    PN1: emptyToUndef(numCoerce).optional(),
 
     capPercent: z
       .preprocess((v) => (v === "" || v == null ? null : v), numCoerce)
@@ -227,26 +244,82 @@ export const contractStep3Schema = z
 
     currency: CURRENCY_ENUM.default("EUR"),
 
-    // optional: client can pass effective values; server will recompute anyway
+    // Optional cache from preview
     baseIndiceValues: z.record(z.string(), numCoerce).optional(),
-
-    // NEW: pass latest calculation result to persist as cache
     lastIndexationPreview: CalculationResultSchema.optional(),
   })
   .superRefine((d, ctx) => {
-    if (d.indexationMode === "PN1" && (!d.PN1 || d.PN1 <= 0)) {
+    // If indexation is disabled, nothing else is required.
+    if (!d.indexationEnabled) return;
+
+    // When enabled, enforce the minimal set:
+    if (!d.indexationFormulaId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["PN1"],
-        message: "PN1 requis pour le mode PN1",
+        path: ["indexationFormulaId"],
+        message: "Sélectionnez une formule d'indexation",
       });
     }
+
+    if (!d.indexationFrequency) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["indexationFrequency"],
+        message: "Fréquence d'indexation requise",
+      });
+    }
+
+    if (!d.indexationMode) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["indexationMode"],
+        message: "Mode d'indexation requis",
+      });
+    }
+
+    if (!d.indexationPolicy) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["indexationPolicy"],
+        message: "Règle de prise d'indice requise",
+      });
+    }
+
+    if (!d.indexationDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["indexationDate"],
+        message: "Date d’indexation requise",
+      });
+    }
+
+    // If policy = LAST_INDICE_VALUE, lastIndiceDate is required
     if (d.indexationPolicy === "LAST_INDICE_VALUE" && !d.lastIndiceDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["lastIndiceDate"],
         message: "Date de prise d'indice requise",
       });
+    }
+
+    // If mode = PN1, PN1 numeric value is required and > 0
+    if (d.indexationMode === "PN1" && (!d.PN1 || Number(d.PN1) <= 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["PN1"],
+        message: "PN1 requis pour le mode PN1",
+      });
+    }
+
+    // Ensure base reference is provided: either a P0 series or PN1 (the latter already checked above)
+    if (d.indexationMode !== "PN1") {
+      if (!d.baseAmountInput) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["baseAmountInput"],
+          message: "Base P0 requise (montant fixe ou série)",
+        });
+      }
     }
   });
 
