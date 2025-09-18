@@ -1,4 +1,5 @@
 // server/swagger.ts
+import fs from "node:fs";
 import path from "node:path";
 import type { Express, Request, Response } from "express";
 import swaggerJsdoc from "swagger-jsdoc";
@@ -13,8 +14,25 @@ type SwaggerSetupOptions = {
   version?: string;
 };
 
+/** Find the real project root (where package.json lives), not relying on cwd */
+function findProjectRoot(startDir = __dirname): string {
+  let dir = startDir;
+  while (true) {
+    const pkg = path.join(dir, "package.json");
+    if (fs.existsSync(pkg)) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  // fallback: cwd
+  return process.cwd();
+}
+
+const PROJECT_ROOT = findProjectRoot();
+
+/** Absolutize a glob relative to the project root */
 function absGlob(rel: string): string {
-  return path.resolve(process.cwd(), rel);
+  return path.resolve(PROJECT_ROOT, rel);
 }
 
 function inferServerUrl(req: Request, apiPrefix: string) {
@@ -69,12 +87,26 @@ export function setupSwagger(app: Express, options: SwaggerSetupOptions = {}) {
   const route = options.route ?? "/api/docs";
   const jsonRoute = options.jsonRoute ?? "/api/docs.json";
   const apiPrefix = options.apiPrefix ?? "";
-  const apis = options.apis ?? [
-    absGlob("server/routes/**/*.ts"),
-    absGlob("server/models/**/*.ts"),
-  ];
+
+  // ✅ Always cover TS and JS; ALWAYS absolutize (even if caller passed 'apis')
+  const apiGlobs =
+    options.apis && options.apis.length
+      ? options.apis
+      : [
+          // Source files (dev or prod if TS is shipped)
+          "server/routes/**/*.ts",
+          "server/models/**/*.ts",
+          // Transpiled JS (common in prod)
+          "dist/server/routes/**/*.js",
+          "dist/server/models/**/*.js",
+        ];
+  const apis = apiGlobs.map(absGlob);
+
   const title = options.title ?? "EngieIndexation API";
   const version = options.version ?? "1.0.0";
+
+  // Helpful debug to confirm what’s scanned in prod logs
+  console.log("[Swagger] Using API globs:", apis);
 
   // 1) JSON endpoint – must NOT be protected/redirected
   app.get(jsonRoute, (req: Request, res: Response) => {
@@ -87,11 +119,10 @@ export function setupSwagger(app: Express, options: SwaggerSetupOptions = {}) {
   const customCss = `
   .topbar { background-color: rgba(175, 170, 102, 1) !important; }
   .topbar-wrapper a {display : none !important}
-    .topbar-wrapper .auth-status { margin-left: 12px; font-size: 13px; opacity: .9; }
-    .topbar .btn.kx-auth { margin-left: 8px; }
-    .auth-wrapper {display:none !important;}
-    /* Uncomment to hide the default Authorize padlock
-    .swagger-ui .topbar .authorize { display: none !important; }*/
+  .topbar-wrapper .auth-status { margin-left: 12px; font-size: 13px; opacity: .9; }
+  .topbar .btn.kx-auth { margin-left: 8px; }
+  .auth-wrapper {display:none !important;}
+  /* .swagger-ui .topbar .authorize { display: none !important; } */
   `;
 
   // 3) Custom JS: login modal + session check + logout + requestInterceptor(credentials='include')
@@ -224,81 +255,79 @@ export function setupSwagger(app: Express, options: SwaggerSetupOptions = {}) {
     u.focus();
   }
 
- function renderTopbar() {
-  var topbar = document.querySelector('.topbar');
-  if (!topbar) return;
+  function renderTopbar() {
+    var topbar = document.querySelector('.topbar');
+    if (!topbar) return;
 
-  // Remove existing
-  var old = topbar.querySelector('.kx-auth-wrap');
-  if (old) old.remove();
+    // Remove existing
+    var old = topbar.querySelector('.kx-auth-wrap');
+    if (old) old.remove();
 
-  var wrap = el('div', {
-    class: 'kx-auth-wrap',
-    style:
-      "display:flex;" +
-      "align-items:center;" +
-      "margin-left:12px;" +
-      "gap:12px;" +
-      "font-family:sans-serif;"
-  });
+    var wrap = el('div', {
+      class: 'kx-auth-wrap',
+      style:
+        "display:flex;" +
+        "align-items:center;" +
+        "margin-left:12px;" +
+        "gap:12px;" +
+        "font-family:sans-serif;"
+    });
 
-  var status = el('div', {
-    class: 'auth-status',
-    style:
-      "color:#FFFFFF;" +               // blanc
-      "font-size:14px;" +
-      "padding:4px 8px;" +
-      "background-color:#0F2A43;" +    // bleu nuit
-      "border-radius:6px;"
-  }, [
-    currentUser
-      ? ("Signed in as " + (currentUser.username || currentUser.email || "user"))
-      : "Not signed in"
-  ]);
+    var status = el('div', {
+      class: 'auth-status',
+      style:
+        "color:#FFFFFF;" +               // blanc
+        "font-size:14px;" +
+        "padding:4px 8px;" +
+        "background-color:#0F2A43;" +    // bleu nuit
+        "border-radius:6px;"
+    }, [
+      currentUser
+        ? ("Signed in as " + (currentUser.username || currentUser.email || "user"))
+        : "Not signed in"
+    ]);
 
-  var loginBtn = el('button', {
-    type: 'button',
-    class: 'btn kx-auth',
-    style:
-      "background-color:#C9A646;" +    // or
-      "color:#0F2A43;" +               // bleu nuit
-      "font-weight:bold;" +
-      "border:none;" +
-      "padding:6px 14px;" +
-      "border-radius:6px;" +
-      "cursor:pointer;" +
-      "transition:all 0.2s ease-in-out;"
-  }, ["Login"]);
-  loginBtn.onmouseenter = () => loginBtn.style.opacity = "0.85";
-  loginBtn.onmouseleave = () => loginBtn.style.opacity = "1";
-  loginBtn.onclick = showLoginModal;
+    var loginBtn = el('button', {
+      type: 'button',
+      class: 'btn kx-auth',
+      style:
+        "background-color:#C9A646;" +    // or
+        "color:#0F2A43;" +               // bleu nuit
+        "font-weight:bold;" +
+        "border:none;" +
+        "padding:6px 14px;" +
+        "border-radius:6px;" +
+        "cursor:pointer;" +
+        "transition:all 0.2s ease-in-out;"
+    }, ["Login"]);
+    loginBtn.onmouseenter = () => loginBtn.style.opacity = "0.85";
+    loginBtn.onmouseleave = () => loginBtn.style.opacity = "1";
+    loginBtn.onclick = showLoginModal;
 
-  var logoutBtn = el('button', {
-    type: 'button',
-    class: 'btn kx-auth',
-    style:
-      "background-color:#0F2A43;" +    // bleu nuit
-      "color:#FFFFFF;" +               // blanc
-      "font-weight:bold;" +
-      "border:none;" +
-      "padding:6px 14px;" +
-      "border-radius:6px;" +
-      "cursor:pointer;" +
-      "transition:all 0.2s ease-in-out;"
-  }, ["Logout"]);
-  logoutBtn.onmouseenter = () => logoutBtn.style.opacity = "0.85";
-  logoutBtn.onmouseleave = () => logoutBtn.style.opacity = "1";
-  logoutBtn.onclick = async function () {
-    await doLogout();
-    alert("Logged out");
-  };
+    var logoutBtn = el('button', {
+      type: 'button',
+      class: 'btn kx-auth',
+      style:
+        "background-color:#0F2A43;" +    // bleu nuit
+        "color:#FFFFFF;" +               // blanc
+        "font-weight:bold;" +
+        "border:none;" +
+        "padding:6px 14px;" +
+        "border-radius:6px;" +
+        "cursor:pointer;" +
+        "transition:all 0.2s ease-in-out;"
+    }, ["Logout"]);
+    logoutBtn.onmouseenter = () => logoutBtn.style.opacity = "0.85";
+    logoutBtn.onmouseleave = () => logoutBtn.style.opacity = "1";
+    logoutBtn.onclick = async function () {
+      await doLogout();
+      alert("Logged out");
+    };
 
-  wrap.appendChild(status);
-  wrap.appendChild(currentUser ? logoutBtn : loginBtn);
-  topbar.appendChild(wrap);
-}
-
-
+    wrap.appendChild(status);
+    wrap.appendChild(currentUser ? logoutBtn : loginBtn);
+    topbar.appendChild(wrap);
+  }
 
   function patchTryItOutCredentials() {
     try {
