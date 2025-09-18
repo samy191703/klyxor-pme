@@ -10,6 +10,7 @@ import {
   ManualModificationPayload,
 } from "@/_models/contract.model";
 import { BillingPeriods, PaymentTypes } from "@shared/enums/contracts";
+import { ContractStatus } from "@shared/enums/contracts-status.enum";
 import { Contract } from "@shared/schema";
 
 // ---- Internal helpers ----
@@ -229,4 +230,24 @@ export function createAdminContract(payload: any): Promise<any> {
 // GET /api/admin/contracts/list  (separate listing route present in routes.ts)
 export function listAdminContractsList(): Promise<any[]> {
   return http<any[]>("/api/admin/contracts/list");
+}
+
+// ---- NEW: Status management ----
+
+export function setContractStatus(
+  id: ID,
+  status: ContractStatus,
+  reason?: string
+): Promise<Contract> {
+  return http<Contract>(
+    `/api/contracts/${encodeURIComponent(String(id))}/status`,
+    jsonInit("PATCH", { status, reason })
+  );
+}
+
+export function submitContractForValidation(
+  id: ID,
+  reason?: string
+): Promise<Contract> {
+  return setContractStatus(id, ContractStatus.PENDING_VALIDATION, reason);
 }

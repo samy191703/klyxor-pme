@@ -70,6 +70,10 @@ export const contracts = pgTable("contracts", {
   billingFrequency: text("billing_frequency"), // one of BillingFrequency
   paymentType: text("payment_type"),
 
+  maxAnnualProduction: text("max_annual_production"),
+  numberOfTurbines: text("number_of_turbines"),
+  pricePerMWh: text("price_per_mwh"),
+
   currency: text("currency").notNull().default("EUR"),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
@@ -435,6 +439,7 @@ export const auditLogs = pgTable("audit_logs", {
     .notNull()
     .default(sql`now()`),
   user: text("user").notNull(),
+  username: text("username"),
 
   entityType: text("entity_type"),
   entityId: text("entity_id"),

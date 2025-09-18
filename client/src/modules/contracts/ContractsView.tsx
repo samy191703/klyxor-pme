@@ -94,9 +94,9 @@ export default function ContractsView() {
   function closeWizard() {
     setShowWizard(false);
   }
-  function submitWizard(payload: any) {
+  function submitWizard() {
     // submit to backend; createContract() already wires react-query invalidation + toast
-    createContract(payload);
+    //createContract(payload);
     setShowWizard(false);
   }
 

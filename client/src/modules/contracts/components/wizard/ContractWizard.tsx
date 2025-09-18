@@ -18,7 +18,8 @@ import {
   createContractDraft,
   patchContractStep2,
   patchContractStep3,
-  PatchStep3Payload, // (payload) => Promise<{ id: string|number, ... }>
+  PatchStep3Payload,
+  submitContractForValidation, // (payload) => Promise<{ id: string|number, ... }>
   updateContract, // (id, patch) => Promise<any>
   // createContract,   // will be used at final submit; you already pass onSubmit()
 } from "@/services/contracts.api";
@@ -532,9 +533,31 @@ export default function ContractWizard({
       setStep(5);
       return;
     }
-
+    if (step === 5) {
+      if (!data.contractId) {
+        setFormError(
+          "Aucun brouillon. Merci de créer le brouillon avant la soumission."
+        );
+        return;
+      }
+      try {
+        setSaving(true);
+        await submitContractForValidation(
+          String(data.contractId),
+          "contract-creation"
+        );
+        onCancel(); // close wizard on success (or show a toast here if you prefer)
+      } catch (e: any) {
+        setFormError(
+          e?.message || "Échec de soumission du contrat pour validation."
+        );
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     // Step 5 → Final submit via parent handler
-    const finalPayload = {
+    /*  const finalPayload = {
       ...buildPatchForStep1(data),
       ...buildPatchForStep2(data),
       ...(data.indexationFormula && data.indexationFormula !== "none"
@@ -543,7 +566,7 @@ export default function ContractWizard({
       contractId: data.contractId,
       status: "ACTIVE", // or keep DRAFT and let validation flow activate later
     };
-    onSubmit(finalPayload);
+    onSubmit(finalPayload); */
   };
 
   const handlePrev = () => {

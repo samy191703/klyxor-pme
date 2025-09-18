@@ -5,6 +5,8 @@ import { storage } from "server/storage";
 import { requirePermission } from "server/middlewares/authMiddleware";
 import { isAuthenticated } from "server/auth";
 import { InsertContract } from "@shared/schema";
+import { makeSetStatusSchema } from "server/validators/contract-status.validator";
+import { ContractStatus } from "@shared/enums/contracts-status.enum";
 
 /**
  * @function registerContractRoutes
@@ -1070,6 +1072,143 @@ export function registerContractRoutes(app: Express): void {
       } catch (err) {
         console.error("GET /api/contracts/:contractId/uploads error:", err);
         res.status(500).json({ error: "Failed to fetch contract uploads" });
+      }
+    }
+  );
+
+  // --- Contract status update with rules ---
+
+  /**
+   * @openapi
+   * /api/contracts/{id}/status:
+   *   patch:
+   *     summary: Mettre à jour le statut d’un contrat
+   *     description: >
+   *       Met à jour le statut d’un contrat en respectant les transitions autorisées :
+   *
+   *       - draft → pending_validation
+   *       - pending_validation → active | draft
+   *       - active → terminated | closed
+   *       - terminated → archived
+   *       - closed → archived
+   *       - archived → (aucune transition)
+   *
+   *       ⚠️ Préconditions : pour passer à `pending_validation`, le contrat doit avoir
+   *       une date de début, une date de fin, et un montant total > 0.
+   *     tags: [Contracts]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Identifiant du contrat
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [status]
+   *             properties:
+   *               status:
+   *                 type: string
+   *                 enum: [draft, pending_validation, active, terminated, closed, archived]
+   *                 description: Nouveau statut du contrat
+   *               reason:
+   *                 type: string
+   *                 maxLength: 500
+   *                 description: Raison facultative, enregistrée dans le journal d’activité
+   *     responses:
+   *       200:
+   *         description: Statut mis à jour avec succès
+   *       400:
+   *         description: Transition invalide ou préconditions non respectées
+   *       404:
+   *         description: Contrat introuvable
+   *       500:
+   *         description: Erreur serveur
+   */
+  app.patch(
+    "/api/contracts/:id/status",
+    isAuthenticated,
+    requirePermission("contracts", "update"),
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const existing = await storage.getContract(id);
+        if (!existing) {
+          return res.status(404).json({ error: "Contrat introuvable" });
+        }
+
+        // Validate payload + transition
+        const schema = makeSetStatusSchema(
+          (existing.status as ContractStatus) ?? ContractStatus.DRAFT
+        );
+        const parsed = schema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            error: "Données invalides",
+            errors: parsed.error.errors.map((e) => ({
+              field: e.path.join("."),
+              message: e.message,
+            })),
+          });
+        }
+
+        const { status, reason } = parsed.data;
+
+        // Pre-checks for submission
+        if (status === ContractStatus.PENDING_VALIDATION) {
+          const basicErrors: string[] = [];
+          if (!existing.startDate) basicErrors.push("Date de début manquante");
+          if (!existing.endDate) basicErrors.push("Date de fin manquante");
+          const total = Number(existing.amount ?? 0);
+
+          if (!total || total <= 0)
+            basicErrors.push("Montant total nul ou invalide");
+          if (basicErrors.length) {
+            return res.status(400).json({
+              error: "Préconditions non respectées",
+              message: basicErrors.join("; "),
+            });
+          }
+        }
+
+        const updated = await storage.updateContract(id, {
+          status,
+          updatedAt: new Date(),
+        });
+
+        // Audit log (non bloquant)
+        try {
+          await storage.createAuditLog?.({
+            user: (req as any).user?.id || "system",
+            username: (req as any).user?.name || "system",
+            action: "status_change",
+            traceId: `contract-${id}`,
+            entityType: "contract",
+            entityId: id,
+            details: JSON.stringify({
+              from: existing.status,
+              to: status,
+              reason: reason || null,
+            }),
+            ipAddress: req.ip || "",
+            userAgent: req.headers["user-agent"] || "",
+          });
+        } catch (e) {
+          console.warn("Failed to write audit log", e);
+        }
+
+        return res.json(updated);
+      } catch (err) {
+        console.error("PATCH /api/contracts/:id/status error:", err);
+        return res
+          .status(500)
+          .json({ error: "Échec de la mise à jour du statut du contrat" });
       }
     }
   );
