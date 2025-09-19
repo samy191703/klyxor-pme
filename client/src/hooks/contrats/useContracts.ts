@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
 export function useContracts(filters: any) {
-  const { data: contracts = [], isLoading } = useQuery<any[]>({
+  const {
+    data: contracts = [],
+    isLoading,
+    refetch,
+  } = useQuery<any[]>({
     queryKey: ["/api/contracts"],
   });
 
@@ -27,5 +31,5 @@ export function useContracts(filters: any) {
     return matchesSearch && matchesStatus && matchesType && matchesBU;
   });
 
-  return { contracts, kpis, filtered, isLoading };
+  return { contracts, kpis, filtered, isLoading, refetch };
 }

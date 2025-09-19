@@ -16,7 +16,9 @@ import { useContracts } from "../../hooks/contrats/useContracts";
 import { useContractActions } from "../../hooks/contrats/useContractActions";
 import { usePermissions } from "@/hooks/usePermissions";
 
-import ContractWizard from "./components/wizard/ContractWizard";
+import ContractWizard, {
+  type WizardMode,
+} from "./components/wizard/ContractWizard";
 import ValidationDialog from "./components/dialogs/ValidationDialog";
 import AmendmentDialog from "./components/dialogs/AmendmentDialog";
 import TerminationDialog from "./components/dialogs/TerminationDialog";
@@ -24,6 +26,8 @@ import ExportDialog from "./components/dialogs/ExportDialog";
 
 import { fetchIndexationFormulas } from "../../services/indexation.api";
 import ContractDetailsSheet from "./components/modals/ContractDetailsSheet";
+import { submitContractForValidation } from "@/services/contracts.api";
+import { toast } from "@/hooks/use-toast";
 
 export default function ContractsView() {
   const { canCreateContract, canExportData } = usePermissions();
@@ -38,7 +42,18 @@ export default function ContractsView() {
     itemsPerPage: 25,
   });
 
+  // ---------- Wizard state ----------
   const [showWizard, setShowWizard] = useState(false);
+  const [wizardMode, setWizardMode] = useState<WizardMode>("create");
+  const [wizardContractId, setWizardContractId] = useState<string | undefined>(
+    undefined
+  );
+  const [wizardInitialStep, setWizardInitialStep] = useState<1 | 2 | 3 | 4 | 5>(
+    1
+  );
+  const [wizardShowNextStep, setWizardShowNextStep] = useState(true);
+
+  // Details sheet
   const [showDetails, setShowDetails] = useState(false);
   const [selected, setSelected] = useState<any>(null);
 
@@ -70,7 +85,8 @@ export default function ContractsView() {
   });
 
   // Data
-  const { contracts, kpis, isLoading, filtered } = useContracts(filters);
+  const { contracts, kpis, isLoading, filtered, refetch } =
+    useContracts(filters);
   const { createContract, onValidate } = useContractActions();
 
   // Load indexation formulas for the wizard
@@ -87,19 +103,34 @@ export default function ContractsView() {
     };
   }, []);
 
-  // Handlers
-  function openWizard() {
+  // ---------- Handlers ----------
+  type OpenWizardOpts = {
+    mode: WizardMode;
+    contractId?: string;
+    initialStep?: 1 | 2 | 3 | 4 | 5;
+    showNextStep?: boolean;
+  };
+
+  function openWizard(opts?: OpenWizardOpts) {
+    setWizardMode(opts?.mode ?? "create");
+    setWizardContractId(opts?.contractId);
+    setWizardInitialStep(opts?.initialStep ?? 1);
+    setWizardShowNextStep(opts?.showNextStep ?? true);
     setShowWizard(true);
   }
+
   function closeWizard() {
     setShowWizard(false);
-  }
-  function submitWizard() {
-    // submit to backend; createContract() already wires react-query invalidation + toast
-    //createContract(payload);
-    setShowWizard(false);
+    refetch();
   }
 
+  function submitWizard() {
+    // If you keep a final onSubmit path, wire it here
+    setShowWizard(false);
+    refetch();
+  }
+
+  // Table actions
   function openDetails(c: any) {
     setSelected(c);
     setShowDetails(true);
@@ -113,7 +144,6 @@ export default function ContractsView() {
     setShowValidation(true);
   }
   function submitValidation() {
-    // You can extend this to pass `rejectionReason` and `validationComment` if your backend supports it
     if (!selected || !validationDecision) return;
     onValidate(selected, validationDecision);
     setShowValidation(false);
@@ -131,8 +161,7 @@ export default function ContractsView() {
     setShowAmendment(true);
   }
   function submitAmendment() {
-    // TODO: call your backend to create an amendment linked to selected.id
-    // await fetch("/api/amendments", { method:"POST", body: JSON.stringify({ ...amendmentData, contractId: selected?.id }) })
+    // TODO: backend call
     setShowAmendment(false);
   }
 
@@ -147,16 +176,45 @@ export default function ContractsView() {
     setShowTermination(true);
   }
   function submitTermination(contractId: string) {
-    // TODO: call your backend to create a termination request
-    // await fetch("/api/validation-requests", { method:"POST", body: JSON.stringify({ ...terminationData, contractId }) })
+    // TODO: backend call
     setShowTermination(false);
   }
 
   function handleExport(opts: { format: string; range: string }) {
-    // TODO: call your export endpoint with current filters + opts
-    // await fetch("/api/contracts/export", { method:"POST", body: JSON.stringify({ filters, ...opts }) })
-    // You can also trigger a download here.
+    // TODO: backend export call
   }
+
+  // Edit shortcuts for the table kebab menu
+  const handleEditGeneral = (c: any) =>
+    openWizard({
+      mode: "edit",
+      contractId: c.id,
+      initialStep: 1,
+      showNextStep: false,
+    });
+
+  const handleEditPeriods = (c: any) =>
+    openWizard({
+      mode: "edit",
+      contractId: c.id,
+      initialStep: 2,
+      showNextStep: false,
+    });
+
+  const handleEditIndexation = (c: any) =>
+    openWizard({
+      mode: "edit",
+      contractId: c.id,
+      initialStep: 3,
+      showNextStep: false,
+    });
+
+  const handleOpenGed = (c: any) => {
+    setSelected(c);
+    setShowDetails(true);
+    // TIP: if your ContractDetailsSheet supports an initial tab, pass it:
+    // setDetailsInitialTab("uploads")
+  };
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -189,7 +247,7 @@ export default function ContractsView() {
 
                       {canCreateContract() && (
                         <Button
-                          onClick={openWizard}
+                          onClick={() => openWizard({ mode: "create" })}
                           className="col-span-2 md:col-span-1"
                         >
                           <Plus className="w-4 h-4 mr-2" />
@@ -235,6 +293,26 @@ export default function ContractsView() {
                     setFilters((prev) => ({ ...prev, itemsPerPage: n }))
                   }
                   isLoading={isLoading}
+                  // NEW: edit shortcuts for the kebab menu
+                  onEditGeneral={handleEditGeneral}
+                  onEditPeriods={handleEditPeriods}
+                  onEditIndexation={handleEditIndexation}
+                  onOpenGed={handleOpenGed}
+                  onSubmitForValidation={async (c) => {
+                    try {
+                      await submitContractForValidation(
+                        String(c.id),
+                        "contract-creation"
+                      );
+                      toast({ title: "Contrat soumis pour validation." });
+                      refetch(); // refresh list to show 'pending_validation'
+                    } catch (e: any) {
+                      toast({
+                        title: e?.message ?? "Échec de soumission.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
                 />
               </TabsContent>
 
@@ -254,6 +332,11 @@ export default function ContractsView() {
               indexationFormulas={formulas}
               onCancel={closeWizard}
               onSubmit={submitWizard}
+              // NEW: wire the edit/create behavior
+              mode={wizardMode}
+              contractId={wizardContractId}
+              initialStep={wizardInitialStep}
+              showNextStep={wizardShowNextStep}
             />
           )}
         </div>
@@ -264,6 +347,7 @@ export default function ContractsView() {
         open={showDetails}
         onOpenChange={setShowDetails}
         contract={selected}
+        // If your sheet supports it, you can add: initialTab="uploads"
       />
 
       {/* Validation */}

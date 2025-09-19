@@ -97,6 +97,45 @@ export function updateContract(
   );
 }
 
+export async function patchContractStep1(
+  id: string | number,
+  payload: {
+    number: string;
+    title: string;
+    clientName: string;
+    type: string;
+    businessUnit: string;
+    currency?: "EUR" | "USD";
+    language?: "FR" | "EN";
+    technology?: string | null;
+    maintainer?: string | null;
+  }
+) {
+  const res = await fetch(`/api/contracts/${id}/step1`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    // duplicate number handling symmetry with POST
+    if (res.status === 409) {
+      const body = await res.json().catch(() => ({}));
+      const err: any = new Error(
+        body?.message || "Numéro de contrat déjà utilisé"
+      );
+      err.status = 409;
+      err.field = body?.field || "number";
+      err.detail = body?.detail;
+      throw err;
+    }
+    const txt = await res.text().catch(() => "");
+    throw new Error(
+      `Échec mise à jour (étape 1) ${res.status}: ${txt || "voir logs serveur"}`
+    );
+  }
+  return res.json();
+}
+
 export async function patchContractStep2(
   id: string | number,
   payload: {

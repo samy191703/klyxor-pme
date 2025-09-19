@@ -29,6 +29,8 @@ import { ObjectPermission } from "../objectAcl";
 import { registerContractRoutes } from "./contracts.routes";
 import { registerAuthRoutes } from "./auth.routes";
 import { registerUploadRoutes } from "./uploads.routes";
+import { User } from "@shared/schema";
+import { registerValidationRoutes } from "./validation.routes";
 
 /**
  * Fonction principale d'enregistrement des routes
@@ -99,6 +101,7 @@ export async function registerRoutes(
    */
   registerContractRoutes(app);
   registerUploadRoutes(app);
+  registerValidationRoutes(app);
 
   app.get("/api/kpis", isAuthenticated, async (req, res) => {
     try {
@@ -640,7 +643,7 @@ export async function registerRoutes(
 
         const updatedIndexation = await storage.updateIndexation(id, {
           status,
-          appliedDate:
+          indexationDate:
             status === "validated" ? appliedDate || new Date() : undefined,
         });
 
@@ -654,11 +657,11 @@ export async function registerRoutes(
             updatedIndexation.contractId
           );
           if (contract) {
-            await storage.updateContract(updatedIndexation.contractId, {
+            /*  await storage.updateContract(updatedIndexation.contractId, {
               amount: updatedIndexation.newValue,
               indexationCurrentAmount: updatedIndexation.newValue,
               lastIndexationDate: new Date(),
-            });
+            }); */
           }
         }
 
@@ -1213,10 +1216,10 @@ export async function registerRoutes(
         }
 
         // Appliquer l'indexation au contrat
-        await storage.updateContract(proposal.contractId, {
+        /* await storage.updateContract(proposal.contractId, {
           indexationCurrentAmount: proposal.finalAmount,
           lastIndexationDate: proposal.indexationDate,
-        });
+        }); */
 
         // Mettre à jour la proposition
         await storage.updateIndexationProposal(id, {

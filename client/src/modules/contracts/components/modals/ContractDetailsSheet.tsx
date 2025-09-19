@@ -8,8 +8,20 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
-import { BILLING_PERIODS } from "@/modules/contracts/domain/constants";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  TECHNOLOGY_LABELS,
+  PAYMENT_TYPE_LABELS,
+  BILLING_PERIOD_LABELS,
+  BUSINESS_UNIT_LABELS,
+  CONTRACT_TYPE_LABELS,
+  BILLING_PERIODS,
+} from "@shared/enums/contracts";
+import { ContractStatusLabels } from "@shared/enums/contracts-status.enum";
+
+// ⬇️ Pills
+import { StatusPill } from "@/components/pills/contract-status-pill";
+import { FormulaTypePill } from "@/components/pills/indexation-formula-type-pill";
 
 /** ─────────────────────────── Types ─────────────────────────── **/
 type Attachment = {
@@ -63,19 +75,29 @@ function formatBytes(n?: number) {
   const val = parseFloat((n / Math.pow(k, i)).toFixed(2));
   return `${val} ${sizes[i]}`;
 }
+/** Mappe une valeur via une table de labels, sinon fallback vers la valeur (ou "—") */
+function mapLabel<T extends string | number | undefined | null>(
+  map: Record<string, string>,
+  value: T,
+  fallback = "—"
+) {
+  if (value === null || value === undefined || value === "") return fallback;
+  const key = String(value);
+  return map[key] ?? String(value);
+}
 
 /** ─────────────────────────── UI bits ─────────────────────────── **/
-const VALUE_CLASS =
-  "text-[var(--klyxor-blue,#0059d6)] font-semibold tracking-tight";
-const LABEL_CLASS = "text-[13px] sm:text-sm text-muted-foreground";
+// Use KLYXOR colors from :root
+const VALUE_CLASS = "text-[var(--primary)] font-medium tracking-tight";
+const LABEL_CLASS = "text-[13px] sm:text-sm text-[var(--muted-foreground)]";
 const CELL_CLASS =
-  "min-h-[44px] rounded-md border bg-background/60 px-3 py-2 flex items-center";
+  "h-[52px] rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 flex items-center shadow-sm";
 
 const Mono: React.FC<React.PropsWithChildren> = ({ children }) => (
   <span className="font-mono text-xs break-words">{children}</span>
 );
 
-/** A responsive field (label + value) that expands to fill free space */
+/** Field (Material-ish: labeled, elevated cell) */
 function Field({
   label,
   children,
@@ -87,8 +109,8 @@ function Field({
 }) {
   return (
     <div className={`space-y-1 ${className}`}>
-      <div className={`${LABEL_CLASS}`}>{label}</div>
-      <div className={`${CELL_CLASS}`}>
+      <div className={LABEL_CLASS}>{label}</div>
+      <div className={CELL_CLASS}>
         <div className={`text-[15px] sm:text-base ${VALUE_CLASS}`}>
           {children}
         </div>
@@ -97,20 +119,10 @@ function Field({
   );
 }
 
-/** Grid that auto-fills columns to efficiently use remaining space */
-function BigGrid({
-  children,
-  min = 280,
-}: React.PropsWithChildren<{ min?: number }>) {
+/** 2-col grid helper */
+function Grid2({ children }: React.PropsWithChildren<{}>) {
   return (
-    <div
-      className="grid gap-3 sm:gap-4"
-      style={{
-        gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`,
-      }}
-    >
-      {children}
-    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
   );
 }
 
@@ -168,10 +180,22 @@ export default function ContractDetailsSheet({
   if (!contract) return null;
 
   const currency = contract.currency || "EUR";
+
+  // Labels lisibles
+  const statusLabel = mapLabel(ContractStatusLabels, contract.status);
+  const typeLabel = mapLabel(CONTRACT_TYPE_LABELS, contract.type);
+  const buLabel = mapLabel(BUSINESS_UNIT_LABELS, contract.businessUnit);
+  const techLabel = mapLabel(TECHNOLOGY_LABELS, contract.technology);
+  const paymentTypeLabel = mapLabel(PAYMENT_TYPE_LABELS, contract.paymentType);
+
   const billingLabel =
     BILLING_PERIODS.find(
       (p) => p.value === (contract.billingPeriod || contract.billingFrequency)
-    )?.label || orDash(contract.billingPeriod || contract.billingFrequency);
+    )?.label ||
+    mapLabel(
+      BILLING_PERIOD_LABELS as unknown as Record<string, string>,
+      contract.billingPeriod || contract.billingFrequency
+    );
 
   const indexationOn =
     Boolean(contract?.indexationEnabled) &&
@@ -180,30 +204,54 @@ export default function ContractDetailsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {/* p-0 so the sticky bar spans full width, content gets its own padding */}
-      <SheetContent className="w-full sm:max-w-[92vw] md:max-w-[900px] lg:max-w-[1080px] p-0 overflow-y-auto">
-        {/* Sticky header + tabs */}
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+      <SheetContent className="w-full sm:max-w-[92vw] md:max-w-[960px] lg:max-w-[1120px] p-0 overflow-y-auto">
+        {/* Sticky AppBar-like header */}
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b">
           <div className="px-6 pt-5 pb-4">
             <SheetHeader>
-              <SheetTitle className="text-left text-lg sm:text-xl">
+              <SheetTitle className="text-left text-lg sm:text-xl flex flex-wrap items-center gap-3">
                 <span className="mr-2">{orDash(contract.number)}</span>
-                <span className="text-foreground/80">—</span>{" "}
+                <span className="text-foreground/60">—</span>
                 <span className={`ml-2 ${VALUE_CLASS}`}>
                   {orDash(contract.title)}
                 </span>
-              </SheetTitle>
-              <div className="mt-2 text-sm text-muted-foreground">
-                Statut :{" "}
-                <span className={`ml-1 ${VALUE_CLASS}`}>
-                  {orDash(contract.status)}
+
+                {/* Status pill in header */}
+                <span className="inline-flex items-center gap-2 ml-auto">
+                  <StatusPill status={contract.status} />
                 </span>
+              </SheetTitle>
+
+              {/* Meta row under title */}
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                <div className="text-[var(--muted-foreground)]">
+                  Type : <span className={VALUE_CLASS}>{typeLabel}</span>
+                </div>
+                <div className="text-[var(--muted-foreground)]">
+                  BU : <span className={VALUE_CLASS}>{buLabel}</span>
+                </div>
+                {contract.technology && (
+                  <div className="text-[var(--muted-foreground)]">
+                    Tech : <span className={VALUE_CLASS}>{techLabel}</span>
+                  </div>
+                )}
+                {indexationOn && (
+                  <div className="text-[var(--muted-foreground)]">
+                    Formule :{" "}
+                    <span className="align-middle">
+                      <FormulaTypePill
+                        type={contract.indexationFormula ?? "NONE"}
+                      />
+                    </span>
+                  </div>
+                )}
               </div>
             </SheetHeader>
           </div>
 
+          {/* Tabs as top navigation bar */}
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="w-full justify-start overflow-x-auto rounded-none border-t border-b bg-background px-2">
+            <TabsList className="w-full justify-start overflow-x-auto rounded-none border-t border-b bg-background/80 px-2">
               <TabsTrigger value="general">Général</TabsTrigger>
               <TabsTrigger value="period">Période & Montants</TabsTrigger>
               <TabsTrigger value="indexation">Indexation</TabsTrigger>
@@ -218,36 +266,35 @@ export default function ContractDetailsSheet({
         {/* Scrollable content */}
         <div className="px-6 py-5 space-y-5">
           <Tabs value={tab} onValueChange={setTab}>
-            {/* ───────── Tab: Général ───────── */}
+            {/* ───────── Général ───────── */}
             <TabsContent value="general" className="m-0">
-              <Card>
+              <Card className="border rounded-xl shadow-sm">
                 <CardHeader className="pb-2">
-                  <h3 className="text-sm font-semibold">
+                  <h3 className="text-sm font-semibold tracking-wide text-foreground/80">
                     Informations générales
                   </h3>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <BigGrid min={300}>
+                  <Grid2>
                     <Field label="N° contrat">{orDash(contract.number)}</Field>
                     <Field label="Titre">{orDash(contract.title)}</Field>
                     <Field label="Client">{orDash(contract.clientName)}</Field>
-                    <Field label="Type">{orDash(contract.type)}</Field>
-                    <Field label="BU / Entité">
-                      {orDash(contract.businessUnit)}
-                    </Field>
+                    <Field label="Type">{typeLabel}</Field>
+                    <Field label="BU / Entité">{buLabel}</Field>
                     <Field label="Devise">{orDash(currency)}</Field>
                     <Field label="Langue">
-                      {orDash(contract.language || "FR")}
+                      {mapLabel(
+                        { FR: "Français", EN: "Anglais" },
+                        contract.language || "FR"
+                      )}
                     </Field>
                     {contract.technology && (
-                      <Field label="Technologie">{contract.technology}</Field>
+                      <Field label="Technologie">{techLabel}</Field>
                     )}
                     {contract.parkCode && (
                       <Field label="Parc">{contract.parkCode}</Field>
                     )}
-                    <Field label="Documents requis">
-                      {yn(contract.hasRequiredDocuments)}
-                    </Field>
+                    {/* ⛔ Removed hasRequiredDocuments */}
                     <Field label="Créé par">
                       <Mono>{orDash(contract.createdBy)}</Mono>
                     </Field>
@@ -258,29 +305,40 @@ export default function ContractDetailsSheet({
                     <Field label="Dernière MAJ">
                       {fmtDate(contract.updatedAt)}
                     </Field>
-                  </BigGrid>
+                  </Grid2>
                 </CardContent>
               </Card>
 
-              <Alert className="mt-4">
+              <Alert
+                className="mt-4 border-l-4"
+                // use brand warning tones
+                style={{
+                  borderColor: "var(--secondary)",
+                  backgroundColor: "hsl(44 50% 75% / 0.15)",
+                }}
+              >
                 <Info className="h-4 w-4" />
                 <AlertDescription className="text-[15px]">
                   <strong>Statut :</strong>{" "}
-                  <span className={VALUE_CLASS}>{orDash(contract.status)}</span>{" "}
-                  — après soumission, le contrat passe à «&nbsp;En attente de
-                  validation&nbsp;».
+                  <span className="inline-flex align-middle ml-1">
+                    <StatusPill status={contract.status} />
+                  </span>{" "}
+                  — après soumission, le contrat passe à « En attente de
+                  validation ».
                 </AlertDescription>
               </Alert>
             </TabsContent>
 
-            {/* ───────── Tab: Période & Montants ───────── */}
+            {/* ───────── Période & Montants ───────── */}
             <TabsContent value="period" className="m-0">
-              <Card>
+              <Card className="border rounded-xl shadow-sm">
                 <CardHeader className="pb-2">
-                  <h3 className="text-sm font-semibold">Période & montants</h3>
+                  <h3 className="text-sm font-semibold tracking-wide text-foreground/80">
+                    Période & montants
+                  </h3>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <BigGrid min={300}>
+                  <Grid2>
                     <Field label="Date début">
                       {fmtDate(contract.startDate)}
                     </Field>
@@ -288,21 +346,20 @@ export default function ContractDetailsSheet({
                     <Field label="Périodicité de facturation">
                       {billingLabel}
                     </Field>
-                    <Field label="Type de paiement">
-                      {orDash(contract.paymentType)}
-                    </Field>
+                    <Field label="Type de paiement">{paymentTypeLabel}</Field>
                     <Field label="Montant (contrat)">
                       {fmtMoney(contract.amount, currency)}
                     </Field>
-                  </BigGrid>
+                  </Grid2>
 
                   {(contract.type === "electricity" ||
                     contract.type === "renewable_ppa") && (
-                    <div className="pt-2">
-                      <h4 className="mb-2 text-sm font-medium text-muted-foreground">
+                    <>
+                      <div className="border-t my-2" />
+                      <h4 className="mb-2 text-sm font-medium text-[var(--muted-foreground)]">
                         Spécifiques énergie
                       </h4>
-                      <BigGrid min={300}>
+                      <Grid2>
                         <Field label="Prod. annuelle max (MWh)">
                           {orDash(contract.maxAnnualProduction)}
                         </Field>
@@ -312,23 +369,32 @@ export default function ContractDetailsSheet({
                         <Field label="Prix / MWh">
                           {fmtMoney(contract.pricePerMWh, currency)}
                         </Field>
-                      </BigGrid>
-                    </div>
+                      </Grid2>
+                    </>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* ───────── Tab: Indexation ───────── */}
+            {/* ───────── Indexation ───────── */}
             <TabsContent value="indexation" className="m-0">
-              <Card>
+              <Card className="border rounded-xl shadow-sm">
                 <CardHeader className="pb-2">
-                  <h3 className="text-sm font-semibold">Indexation</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold tracking-wide text-foreground/80">
+                      Indexation
+                    </h3>
+                    {indexationOn ? (
+                      <FormulaTypePill
+                        type={contract.indexationFormula ?? "NONE"}
+                      />
+                    ) : null}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {indexationOn ? (
                     <>
-                      <BigGrid min={300}>
+                      <Grid2>
                         <Field label="Activée">
                           {yn(contract.indexationEnabled)}
                         </Field>
@@ -336,10 +402,18 @@ export default function ContractDetailsSheet({
                           <Mono>{orDash(contract.indexationFormulaId)}</Mono>
                         </Field>
                         <Field label="Formule">
-                          {orDash(contract.indexationFormula)}
+                          <FormulaTypePill
+                            type={contract.indexationFormula ?? "NONE"}
+                          />
                         </Field>
                         <Field label="Fréquence">
-                          {orDash(contract.indexationFrequency || "annual")}
+                          {mapLabel(
+                            BILLING_PERIOD_LABELS as unknown as Record<
+                              string,
+                              string
+                            >,
+                            contract.indexationFrequency || "annual"
+                          )}
                         </Field>
                         <Field label="Date 1ère indexation">
                           {fmtDate(contract.indexationDate)}
@@ -386,11 +460,11 @@ export default function ContractDetailsSheet({
                         <Field label="Montant courant">
                           {fmtMoney(contract.indexationCurrentAmount, currency)}
                         </Field>
-                      </BigGrid>
+                      </Grid2>
 
-                      {/* JSON blocks as expandable, full width */}
-                      <details className="rounded-md border bg-muted/30 px-3 py-2">
-                        <summary className="cursor-pointer text-sm text-muted-foreground">
+                      {/* JSON blocks (full width) */}
+                      <details className="rounded-lg border bg-muted/30 px-3 py-2">
+                        <summary className="cursor-pointer text-sm text-[var(--muted-foreground)]">
                           Séries d’indices (base)
                         </summary>
                         <pre className="mt-2 text-[12px] p-3 bg-background rounded overflow-x-auto">
@@ -402,8 +476,8 @@ export default function ContractDetailsSheet({
                         </pre>
                       </details>
 
-                      <details className="rounded-md border bg-muted/30 px-3 py-2">
-                        <summary className="cursor-pointer text-sm text-muted-foreground">
+                      <details className="rounded-lg border bg-muted/30 px-3 py-2">
+                        <summary className="cursor-pointer text-sm text-[var(--muted-foreground)]">
                           Valeurs d’indices (base)
                         </summary>
                         <pre className="mt-2 text-[12px] p-3 bg-background rounded overflow-x-auto">
@@ -415,8 +489,8 @@ export default function ContractDetailsSheet({
                         </pre>
                       </details>
 
-                      <details className="rounded-md border bg-muted/30 px-3 py-2">
-                        <summary className="cursor-pointer text-sm text-muted-foreground">
+                      <details className="rounded-lg border bg-muted/30 px-3 py-2">
+                        <summary className="cursor-pointer text-sm text-[var(--muted-foreground)]">
                           Montant de base — série
                         </summary>
                         <pre className="mt-2 text-[12px] p-3 bg-background rounded overflow-x-auto">
@@ -428,8 +502,8 @@ export default function ContractDetailsSheet({
                         </pre>
                       </details>
 
-                      <details className="rounded-md border bg-muted/30 px-3 py-2">
-                        <summary className="cursor-pointer text-sm text-muted-foreground">
+                      <details className="rounded-lg border bg-muted/30 px-3 py-2">
+                        <summary className="cursor-pointer text-sm text-[var(--muted-foreground)]">
                           Dernier aperçu de calcul
                         </summary>
                         <pre className="mt-2 text-[12px] p-3 bg-background rounded overflow-x-auto">
@@ -442,7 +516,7 @@ export default function ContractDetailsSheet({
                       </details>
                     </>
                   ) : (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-[var(--muted-foreground)]">
                       Pas d’indexation configurée.
                     </div>
                   )}
@@ -450,49 +524,70 @@ export default function ContractDetailsSheet({
               </Card>
             </TabsContent>
 
-            {/* ───────── Tab: Pièces jointes ───────── */}
+            {/* ───────── Pièces jointes ───────── */}
             <TabsContent value="attachments" className="m-0">
-              <Card>
+              <Card className="border rounded-xl shadow-sm">
                 <CardHeader className="pb-2">
-                  <h3 className="text-sm font-semibold">Pièces jointes</h3>
+                  <h3 className="text-sm font-semibold tracking-wide text-foreground/80">
+                    Pièces jointes
+                  </h3>
                 </CardHeader>
                 <CardContent className="text-sm">
                   {attLoading && (
-                    <div className="text-muted-foreground">Chargement…</div>
+                    <div className="text-[var(--muted-foreground)]">
+                      Chargement…
+                    </div>
                   )}
-                  {attErr && <div className="text-red-600">{attErr}</div>}
+                  {attErr && <div className="text-error">{attErr}</div>}
 
                   {attachments && attachments.length > 0 ? (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-[15px]">
                         <thead>
                           <tr className="text-left border-b">
-                            <th className="py-2 pr-2">Nom</th>
-                            <th className="py-2 pr-2">Type</th>
-                            <th className="py-2 pr-2">Catégorie</th>
-                            <th className="py-2 pr-2">Taille</th>
-                            <th className="py-2 pr-2">Lien</th>
-                            <th className="py-2 pr-2">Ajouté le</th>
+                            <th className="py-4 pr-3 font-semibold text-foreground/80">
+                              Nom
+                            </th>
+                            <th className="py-4 pr-3 font-semibold text-foreground/80">
+                              Type
+                            </th>
+                            <th className="py-4 pr-3 font-semibold text-foreground/80">
+                              Catégorie
+                            </th>
+                            <th className="py-4 pr-3 font-semibold text-foreground/80">
+                              Taille
+                            </th>
+                            <th className="py-4 pr-3 font-semibold text-foreground/80">
+                              Lien
+                            </th>
+                            <th className="py-4 pr-0 font-semibold text-foreground/80">
+                              Ajouté le
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {attachments.map((a) => (
                             <tr
                               key={a.id ?? a.name}
-                              className="border-b last:border-0"
+                              className="border-b last:border-0 hover:bg-[rgba(201,166,70,0.05)] transition-colors"
                             >
-                              <td className="py-2 pr-2">
-                                <span className={VALUE_CLASS}>{a.name}</span>
+                              <td className="py-4 pr-3">
+                                <span
+                                  className={`${VALUE_CLASS} font-semibold`}
+                                >
+                                  {a.name}
+                                </span>
                               </td>
-                              <td className="py-2 pr-2">{a.type ?? "—"}</td>
-                              <td className="py-2 pr-2">{a.category ?? "—"}</td>
-                              <td className="py-2 pr-2">
+                              <td className="py-4 pr-3">{a.type ?? "—"}</td>
+                              <td className="py-4 pr-3">{a.category ?? "—"}</td>
+                              <td className="py-4 pr-3">
                                 {formatBytes(a.size)}
                               </td>
-                              <td className="py-2 pr-2">
+                              <td className="py-4 pr-3">
                                 {a.url ? (
                                   <a
-                                    className="underline decoration-[var(--klyxor-blue,#0059d6)] underline-offset-2"
+                                    className="underline underline-offset-2"
+                                    style={{ color: "var(--secondary)" }} // gold
                                     href={a.url}
                                     target="_blank"
                                     rel="noreferrer"
@@ -503,7 +598,7 @@ export default function ContractDetailsSheet({
                                   "—"
                                 )}
                               </td>
-                              <td className="py-2 pr-2">
+                              <td className="py-4 pr-0">
                                 {fmtDate(a.uploadedAt)}
                               </td>
                             </tr>
@@ -512,7 +607,7 @@ export default function ContractDetailsSheet({
                       </table>
                     </div>
                   ) : !attLoading ? (
-                    <div className="text-muted-foreground">
+                    <div className="text-[var(--muted-foreground)]">
                       Aucune pièce jointe
                     </div>
                   ) : null}

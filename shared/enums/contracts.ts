@@ -21,6 +21,16 @@ export const CONTRACT_TYPE_VALUES = Object.values(ContractTypes) as [
   ContractTypes,
   ...ContractTypes[]
 ];
+
+export const CONTRACT_TYPE_LABELS: Record<ContractTypes, string> = {
+  [ContractTypes.ELECTRICITY]: "Électricité",
+  [ContractTypes.GAS]: "Gaz",
+  [ContractTypes.RENEWABLE_PPA]: "PPA (Renewable)",
+  [ContractTypes.MAINTENANCE]: "Maintenance",
+  [ContractTypes.OMSA]: "OMSA - Services de Maintenance",
+  [ContractTypes.LTSA]: "LTSA - Services Long Terme",
+  [ContractTypes.OMGC]: "OMGC - Maintenance Globale",
+};
 export const contractTypeEnum = pgEnum("contract_type", CONTRACT_TYPE_VALUES);
 
 /** Langues disponibles */
@@ -45,6 +55,12 @@ export const BUSINESS_UNIT_VALUES = Object.values(BusinessUnits) as [
   BusinessUnits,
   ...BusinessUnits[]
 ];
+export const BUSINESS_UNIT_LABELS: Record<BusinessUnits, string> = {
+  [BusinessUnits.SOLUTIONS_FRANCE]: "ENGIE Solutions France",
+  [BusinessUnits.GREEN]: "ENGIE Green",
+  [BusinessUnits.FLEX]: "ENGIE Flex",
+  [BusinessUnits.GLOBAL_ENERGY]: "ENGIE Global Energy Management",
+};
 export const businessUnitEnum = pgEnum("business_unit", BUSINESS_UNIT_VALUES);
 
 /** Technologies énergétiques */
@@ -60,7 +76,15 @@ export const TECHNOLOGY_VALUES = Object.values(Technologies) as [
   Technologies,
   ...Technologies[]
 ];
-export const technologyEnum = pgEnum("technology", TECHNOLOGY_VALUES);
+export const TECHNOLOGY_LABELS: Record<Technologies, string> = {
+  [Technologies.EOLIEN]: "Éolien",
+  [Technologies.PHOTOVOLTAIQUE]: "Photovoltaïque",
+  [Technologies.HYDRAULIQUE]: "Hydraulique",
+  [Technologies.BIOMASSE]: "Biomasse",
+  [Technologies.COGENERATION]: "Cogénération",
+  [Technologies.GEOTHERMIE]: "Géothermie",
+};
+//export const technologyEnum = pgEnum("technology", TECHNOLOGY_VALUES);
 
 // ===============================
 // Billing periods

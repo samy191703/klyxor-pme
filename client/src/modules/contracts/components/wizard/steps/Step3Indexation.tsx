@@ -11,13 +11,14 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Info } from "lucide-react";
-import { BILLING_PERIODS } from "@/modules/contracts/domain/constants";
 import { inferFormulaType } from "@/utils/indexation";
 import type { CalculationResult } from "@/_dtos/calculate-results.dto";
 import VarNumberEditor, {
   VariableNumberInput,
 } from "../components/VarNumberEditor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { WizardMode } from "../ContractWizard";
+import { BILLING_PERIODS } from "@shared/enums/contracts";
 
 type Props = {
   data: any;
@@ -28,6 +29,7 @@ type Props = {
   calcResult?: CalculationResult | null;
   calcError?: string | null;
   contractId?: string | number;
+  mode?: WizardMode;
 };
 
 export default function Step3Indexation({
@@ -39,7 +41,10 @@ export default function Step3Indexation({
   calcResult,
   calcError,
   contractId,
+  mode = "create",
 }: Props) {
+  const showStepPrefix = mode !== "edit";
+  const title = showStepPrefix ? "Étape 3 — Indexation" : "Indexation";
   const [isEditing, setIsEditing] = useState(true);
 
   useEffect(() => {
@@ -96,9 +101,7 @@ export default function Step3Indexation({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">
-        Étape 3 — Paramètres d'indexation
-      </h2>
+      <h2 className="text-xl font-semibold">{title}</h2>
 
       <div className="grid grid-cols-2 gap-4 items-end">
         <div>

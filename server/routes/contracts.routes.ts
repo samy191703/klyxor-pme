@@ -230,6 +230,112 @@ export function registerContractRoutes(app: Express): void {
 
   /**
    * @openapi
+   * /api/contracts/{id}/step1:
+   *   patch:
+   *     summary: Update contract (Step 1 – general info)
+   *     tags: [Contracts]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema: { type: string }
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [number, title, clientName, type, businessUnit]
+   *             properties:
+   *               number: { type: string }
+   *               title: { type: string }
+   *               clientName: { type: string }
+   *               type: { type: string, enum: ["electricity","gas","renewable_ppa","maintenance","OMSA","LTSA","OMGC"] }
+   *               businessUnit:
+   *                 type: string
+   *                 enum: ["ENGIE Solutions France","ENGIE Green","ENGIE Flex","ENGIE Global Energy Management"]
+   *               currency: { type: string, enum: ["EUR","USD"], default: "EUR" }
+   *               language: { type: string, enum: ["FR","EN"], default: "FR" }
+   *               technology: { type: string, nullable: true }
+   *               maintainer: { type: string, nullable: true }
+   *     responses:
+   *       200: { description: Contract updated (Step 1) }
+   *       400: { description: Validation error }
+   *       404: { description: Contract not found }
+   *       409: { description: Duplicate contract number }
+   *       500: { description: Server error }
+   */
+  app.patch(
+    "/api/contracts/:id/step1",
+    requirePermission("contracts", "update"),
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const existing = await storage.getContract(id);
+        if (!existing) {
+          return res.status(404).json({ error: "Contrat introuvable" });
+        }
+
+        const { validateContract } = await import(
+          "../validators/contractStepperValidator"
+        );
+        // Validate exactly Step 1 shape
+        const validation: any = validateContract(req.body, "step1");
+        if (!validation.success) {
+          return res.status(400).json({
+            error: "Données invalides",
+            message: validation.message,
+            errors: validation.errors,
+          });
+        }
+        const d = validation.data;
+
+        // Build patch for Step 1 fields only
+        const patch = {
+          number: String(d.number),
+          title: String(d.title),
+          clientName: String(d.clientName),
+          type: String(d.type),
+          businessUnit: String(d.businessUnit),
+          currency: (d.currency ?? existing.currency ?? "EUR") as "EUR" | "USD",
+          language: (d.language ?? existing.language ?? "FR") as "FR" | "EN",
+          technology: d.technology ?? null,
+          maintenanceProvider: d.maintainer ?? null,
+          updatedAt: new Date(),
+          status: existing.status ?? "draft",
+        };
+
+        try {
+          const updated = await storage.updateContract(id, patch);
+          return res.status(200).json(updated);
+        } catch (error: any) {
+          // Handle unique index on number
+          const isDup =
+            error?.code === "23505" &&
+            String(error?.detail || "").includes("(number)");
+          if (isDup) {
+            return res.status(409).json({
+              error: "Duplicate",
+              field: "number",
+              message: `Ce numéro de contrat est déjà utilisé.`,
+              detail: error?.detail,
+            });
+          }
+          throw error;
+        }
+      } catch (error) {
+        console.error("PATCH /api/contracts/:id/step1 error:", error);
+        return res
+          .status(500)
+          .json({ error: "Failed to update contract (step 1)" });
+      }
+    }
+  );
+
+  /**
+   * @openapi
    * /api/contracts/{id}/step2:
    *   patch:
    *     summary: Update contract (Step 2 – period & amounts)
@@ -472,6 +578,12 @@ export function registerContractRoutes(app: Express): void {
           return eff;
         };
 
+        const computedEnabled =
+          d.indexationEnabled ??
+          (d.indexationFormulaId != null
+            ? d.indexationFormulaId !== "none"
+            : d.indexationFormula && d.indexationFormula !== "none");
+
         const indexationISO = toISO(d.indexationDate);
         const lastIndiceISO = toISO(d.lastIndiceDate);
         const effectiveISO =
@@ -493,7 +605,9 @@ export function registerContractRoutes(app: Express): void {
         if (d.PN1 != null) effectiveIndices.PN1 = toNum(d.PN1);
 
         const patch: any = {
-          indexationFormulaId: d.indexationFormula,
+          indexationEnabled: !!computedEnabled,
+          indexationFormulaId: d.indexationFormulaId,
+          indexationFormula: d.indexationFormula,
           indexationFrequency: d.indexationFrequency,
           calculationMode: d.indexationMode === "PN1" ? "Pn-1" : "P0",
           indexTakingDateRule: d.indexationPolicy,

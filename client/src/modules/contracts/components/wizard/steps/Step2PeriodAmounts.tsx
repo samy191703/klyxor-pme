@@ -9,15 +9,16 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  BILLING_PERIODS,
-  PAYMENT_TYPES,
-} from "@/modules/contracts/domain/constants";
+
+import { WizardMode } from "../ContractWizard";
+import { BILLING_PERIODS, PAYMENT_TYPE_VALUES } from "@shared/enums/contracts";
 
 type Props = {
   data: any;
   setData: (upd: any) => void;
   contractId?: string | number;
+  mode?: WizardMode;
+  showNextStep?: boolean;
 };
 
 const toNum = (v: any) =>
@@ -25,7 +26,15 @@ const toNum = (v: any) =>
     ? Number(v)
     : parseFloat(String(v ?? "").replace(",", "."));
 
-export default function Step2PeriodAmounts({ data, setData }: Props) {
+export default function Step2PeriodAmounts({
+  data,
+  setData,
+  mode = "create",
+}: Props) {
+  const showStepPrefix = mode !== "edit";
+  const title = showStepPrefix
+    ? "Étape 2 — Période & montants"
+    : "Période & montants";
   const fixed = toNum(data.fixedAmount) || 0;
   const variable = toNum(data.variableAmount) || 0;
 
@@ -37,7 +46,7 @@ export default function Step2PeriodAmounts({ data, setData }: Props) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Étape 2 — Période & montants</h2>
+      <h2 className="text-xl font-semibold">{title}</h2>
 
       <div className="grid grid-cols-2 gap-4">
         {/* DATES */}
@@ -136,7 +145,7 @@ export default function Step2PeriodAmounts({ data, setData }: Props) {
               <SelectValue placeholder="Sélectionner" />
             </SelectTrigger>
             <SelectContent>
-              {Array.from(PAYMENT_TYPES).map((pt) => (
+              {Array.from(PAYMENT_TYPE_VALUES).map((pt) => (
                 <SelectItem key={pt} value={pt}>
                   {pt}
                 </SelectItem>

@@ -8,29 +8,41 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+
+import { WizardMode } from "../ContractWizard";
 import {
-  CONTRACT_TYPES,
-  BUSINESS_UNITS,
-  TECHNOLOGIES,
+  BUSINESS_UNIT_VALUES,
+  CONTRACT_TYPE_VALUES,
   contractTypeDefinitions,
-} from "@/modules/contracts/domain/constants";
+  TECHNOLOGY_VALUES,
+} from "@shared/enums/contracts";
 
 type Props = {
   data: any;
   setData: (upd: any) => void;
   contractId?: string | number;
+  /** When 'edit', the step title won’t show "Étape 1 —" prefix */
+  mode?: WizardMode;
 };
 
-export default function Step1General({ data, setData, contractId }: Props) {
+export default function Step1General({
+  data,
+  setData,
+  contractId,
+  mode = "create",
+}: Props) {
   const selectedType = contractTypeDefinitions.find(
     (t) => t.value === data.type
   );
 
+  const showStepPrefix = mode !== "edit";
+  const title = showStepPrefix
+    ? "Étape 1 — Informations générales"
+    : "Informations générales";
+
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">
-        Étape 1 — Informations générales
-      </h2>
+      <h2 className="text-xl font-semibold">{title}</h2>
 
       {/* Bloc principal */}
       <div className="grid grid-cols-2 gap-4">
@@ -74,7 +86,7 @@ export default function Step1General({ data, setData, contractId }: Props) {
               <SelectValue placeholder="Sélectionner" />
             </SelectTrigger>
             <SelectContent>
-              {CONTRACT_TYPES.map((t) => (
+              {CONTRACT_TYPE_VALUES.map((t) => (
                 <SelectItem key={t} value={t}>
                   {contractTypeDefinitions.find((ct) => ct.value === t)
                     ?.label ?? t}
@@ -94,7 +106,7 @@ export default function Step1General({ data, setData, contractId }: Props) {
               <SelectValue placeholder="Sélectionner" />
             </SelectTrigger>
             <SelectContent>
-              {BUSINESS_UNITS.map((bu) => (
+              {BUSINESS_UNIT_VALUES.map((bu) => (
                 <SelectItem key={bu} value={bu}>
                   {bu}
                 </SelectItem>
@@ -154,7 +166,7 @@ export default function Step1General({ data, setData, contractId }: Props) {
                   <SelectValue placeholder="Sélectionner" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TECHNOLOGIES.map((tech) => (
+                  {TECHNOLOGY_VALUES.map((tech) => (
                     <SelectItem key={tech} value={tech}>
                       {tech}
                     </SelectItem>

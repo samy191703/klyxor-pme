@@ -59,6 +59,7 @@ export const contracts = pgTable("contracts", {
   clientName: text("client_name").notNull().default("Client inconnu"),
   language: text("language").notNull().default(Languages.FR),
   technology: text("technology"), // nullable
+  maintainer: text("maintainer"), // nullable
   businessUnit: text("business_unit").notNull(),
 
   // ✅ Typed as number in TS (still nullable at DB level unless .notNull())

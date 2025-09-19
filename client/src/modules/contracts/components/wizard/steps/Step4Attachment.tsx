@@ -30,11 +30,13 @@ import {
 
 import { LocalFileSelection, UploadDocument } from "@shared/models/uploads";
 import { DocumentCategory, DocumentTypes } from "@shared/enums/uploads.enum";
+import { WizardMode } from "../ContractWizard";
 
 type Props = {
   data: any;
   setData: (upd: any) => void;
   contractId?: string | number;
+  mode?: WizardMode;
 };
 
 const ACCEPTED_EXTENSIONS = [
@@ -67,7 +69,14 @@ function prettyBytes(n: number) {
   return `${(n / 1024 / 1024).toFixed(1)} Mo`;
 }
 
-export default function Step4Attachment({ data, setData, contractId }: Props) {
+export default function Step4Attachment({
+  data,
+  setData,
+  contractId,
+  mode = "create",
+}: Props) {
+  const showStepPrefix = mode !== "edit";
+  const title = showStepPrefix ? "Étape 4 — Pièces jointes" : "Pièces jointes";
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [docs, setDocs] = useState<UploadDocument[]>([]);
   const [loading, setLoading] = useState(false);
@@ -183,7 +192,7 @@ export default function Step4Attachment({ data, setData, contractId }: Props) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Étape 4 — Pièces jointes</h2>
+      <h2 className="text-xl font-semibold">{title}</h2>
 
       {!canUse && (
         <Alert className="border-amber-200 bg-amber-50">

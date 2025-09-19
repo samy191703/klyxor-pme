@@ -2,8 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
-import { BILLING_PERIODS } from "@/modules/contracts/domain/constants";
 import { inferFormulaType } from "@/utils/indexation";
+import { WizardMode } from "../ContractWizard";
+import { BILLING_PERIODS } from "@shared/enums/contracts";
 
 type Attachment = {
   id?: string;
@@ -24,6 +25,7 @@ type Props = {
   contractId?: string | number;
   /** Optional: pass attachments directly; if omitted and contractId provided, the component will fetch them */
   attachments?: Attachment[];
+  mode?: WizardMode;
   /** Optional: override the attachments GET endpoint */
   attachmentsEndpoint?: (contractId: string | number) => string;
 };
@@ -46,7 +48,10 @@ export default function Step5Recap({
   contractId,
   attachments: attachmentsProp,
   attachmentsEndpoint,
+  mode = "create",
 }: Props) {
+  const showStepPrefix = mode !== "edit";
+  const title = showStepPrefix ? "Étape 5 — Récapitulatif" : "Récapitulatif";
   const [attachments, setAttachments] = useState<Attachment[] | null>(
     attachmentsProp ?? null
   );
@@ -163,6 +168,59 @@ export default function Step5Recap({
     }
   }
 
+  function renderBaseIndex(idx: any) {
+    if (!idx) return <>—</>;
+    const mode = String(idx.mode || "").toUpperCase();
+
+    if (mode === "FIXED") {
+      return <>{idx.fixed ?? "—"}</>;
+    }
+
+    if (mode === "VARIABLE" && Array.isArray(idx.items) && idx.items.length) {
+      return (
+        <ul className="list-disc list-inside">
+          {idx.items.map((it: any, i: number) => (
+            <li key={i}>
+              {fmtDate(it.startingFrom)} → <strong>{it.value}</strong>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    return <>—</>;
+  }
+
+  function renderBaseAmountInput(b: any) {
+    // fallback to your previous base amount
+    const fallback = fmtMoney(
+      Number(data.indexationBaseAmount ?? data.fixedAmount ?? 0)
+    );
+
+    if (!b) return <>{fallback}</>;
+    const mode = String(b.mode || "").toUpperCase();
+
+    if (mode === "FIXED") {
+      const v = b.fixed ?? data.indexationBaseAmount ?? data.fixedAmount ?? 0;
+      return <>{fmtMoney(Number(v))}</>;
+    }
+
+    if (mode === "VARIABLE" && Array.isArray(b.items) && b.items.length) {
+      return (
+        <ul className="list-disc list-inside">
+          {b.items.map((it: any, i: number) => (
+            <li key={i}>
+              {fmtDate(it.startingFrom)} →{" "}
+              <strong>{fmtMoney(Number(it.value || 0))}</strong>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    return <>{fallback}</>;
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">
@@ -251,25 +309,35 @@ export default function Step5Recap({
             {/* Bases */}
             {typeGuess === "SIMPLE_ICHT" && (
               <>
-                <div>
-                  Montant base (P0) :{" "}
-                  {fmtMoney(
-                    Number(data.indexationBaseAmount ?? data.fixedAmount ?? 0)
-                  )}
+                <div className="col-span-2">
+                  <div className="font-medium">Montant base (P0)</div>
+                  {renderBaseAmountInput(data.baseAmountInput)}
                 </div>
-                <div>ICHT0 : {data.baseIndices.ICHT0 ?? "—"}</div>
+
+                <div className="col-span-2">
+                  <div className="font-medium">ICHT0</div>
+                  {renderBaseIndex(data?.baseIndices?.ICHT0)}
+                </div>
               </>
             )}
+
             {typeGuess === "MIXED_ICHT_FMOA" && (
               <>
-                <div>
-                  Montant base (P0) :{" "}
-                  {fmtMoney(
-                    Number(data.indexationBaseAmount ?? data.fixedAmount ?? 0)
-                  )}
+                <div className="col-span-2">
+                  <div className="font-medium">Montant base (P0)</div>
+                  {renderBaseAmountInput(data.baseAmountInput)}
                 </div>
-                <div>ICHT0 : {data.baseIndices.ICHT0 ?? "—"}</div>
-                <div>FMOA0 : {data.baseIndices.FMOA0 ?? "—"}</div>
+
+                <div className="col-span-2">
+                  <div className="font-medium">ICHT0</div>
+                  {renderBaseIndex(data?.baseIndices?.ICHT0)}
+                </div>
+
+                <div className="col-span-2">
+                  <div className="font-medium">FMOA0</div>
+                  {renderBaseIndex(data?.baseIndices?.FMOA0)}
+                </div>
+
                 <div>
                   Poids const. : {(data.weights?.const ?? "—").toString()}
                 </div>
@@ -277,6 +345,7 @@ export default function Step5Recap({
                 <div>Poids FMOA : {(data.weights?.FMOA ?? "—").toString()}</div>
               </>
             )}
+
             {(typeGuess === "CPI_PN1" || data.indexationMode === "PN1") && (
               <div>PN1 : {fmtMoney(Number(data.PN1 ?? 0))}</div>
             )}
