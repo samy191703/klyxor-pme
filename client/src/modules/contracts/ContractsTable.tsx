@@ -84,6 +84,7 @@ export default function ContractsTable({
             <TableRow>
               <TableHead>N°</TableHead>
               <TableHead>Titre</TableHead>
+              <TableHead>Client</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>BU</TableHead>
               <TableHead>Montant</TableHead>
@@ -96,6 +97,7 @@ export default function ContractsTable({
               <TableRow key={c.id}>
                 <TableCell>{c.number}</TableCell>
                 <TableCell>{c.title}</TableCell>
+                <TableCell>{c.clientName}</TableCell>
                 <TableCell>{c.type}</TableCell>
                 <TableCell>{c.businessUnit}</TableCell>
                 <TableCell>{fmtAmount(c.amount, c.currency)}</TableCell>

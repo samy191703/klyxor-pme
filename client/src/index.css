@@ -302,12 +302,12 @@ input:focus {
 
 /* Table row hover */
 tbody tr {
-  transition: all 0.2s ease;
+ /*  transition: all 0.2s ease; */
 }
 
 tbody tr:hover {
   background-color: rgba(201, 166, 70, 0.05);
-  transform: translateX(5px);
+  /* transform: translateX(5px); */
 }
 
 /* Badge animations */

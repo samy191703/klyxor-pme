@@ -257,7 +257,7 @@ export default function Step5Recap({
                     Number(data.indexationBaseAmount ?? data.fixedAmount ?? 0)
                   )}
                 </div>
-                <div>ICHT0 : {data.ICHT0 ?? "—"}</div>
+                <div>ICHT0 : {data.baseIndices.ICHT0 ?? "—"}</div>
               </>
             )}
             {typeGuess === "MIXED_ICHT_FMOA" && (
@@ -268,8 +268,8 @@ export default function Step5Recap({
                     Number(data.indexationBaseAmount ?? data.fixedAmount ?? 0)
                   )}
                 </div>
-                <div>ICHT0 : {data.ICHT0 ?? "—"}</div>
-                <div>FMOA0 : {data.FMOA0 ?? "—"}</div>
+                <div>ICHT0 : {data.baseIndices.ICHT0 ?? "—"}</div>
+                <div>FMOA0 : {data.baseIndices.FMOA0 ?? "—"}</div>
                 <div>
                   Poids const. : {(data.weights?.const ?? "—").toString()}
                 </div>

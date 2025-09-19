@@ -17,7 +17,7 @@ export default function ContractsKpis({
             <FileText className="w-8 h-8 text-gray-500" />
           </div>
           <div className="text-3xl font-bold">{sk(kpis?.drafts || 0)}</div>
-          <p className="text-sm text-gray-600">Brouillonoooos</p>
+          <p className="text-sm text-gray-600">Brouillons</p>
         </CardContent>
       </Card>
       <Card>
@@ -26,7 +26,7 @@ export default function ContractsKpis({
             <Clock className="w-8 h-8 text-orange-500" />
           </div>
           <div className="text-3xl font-bold">{sk(kpis?.toValidate || 0)}</div>
-          <p className="text-sm text-gray-600">À validxer</p>
+          <p className="text-sm text-gray-600">À valider</p>
         </CardContent>
       </Card>
       <Card>

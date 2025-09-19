@@ -21,9 +21,9 @@ import ValidationDialog from "./components/dialogs/ValidationDialog";
 import AmendmentDialog from "./components/dialogs/AmendmentDialog";
 import TerminationDialog from "./components/dialogs/TerminationDialog";
 import ExportDialog from "./components/dialogs/ExportDialog";
-import ContractDetailsSheet from "./ContractDetailsSheet";
 
 import { fetchIndexationFormulas } from "../../services/indexation.api";
+import ContractDetailsSheet from "./components/modals/ContractDetailsSheet";
 
 export default function ContractsView() {
   const { canCreateContract, canExportData } = usePermissions();
