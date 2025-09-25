@@ -141,12 +141,11 @@ export function registerContractRoutes(app: Express): void {
 
         // Generate number if missing
         const resolvedNumber =
-          validation.data.number ||
+          /* validation.data.number || */
           (await ContractNumberGenerator.generateContractNumber(
             validation.data.type || "electricity",
             validation.data.businessUnit || "ENGIE Solutions France"
-          )) ||
-          `CT-${Date.now()}`;
+          )) || `CT-${Date.now()}`;
 
         // ⚠️ DB has NOT NULL on amount & start_date.
         // Provide safe placeholders; they’ll be updated at Step 2.
@@ -294,7 +293,7 @@ export function registerContractRoutes(app: Express): void {
 
         // Build patch for Step 1 fields only
         const patch = {
-          number: String(d.number),
+          // number: String(d.number),
           title: String(d.title),
           clientName: String(d.clientName),
           type: String(d.type),
@@ -302,7 +301,7 @@ export function registerContractRoutes(app: Express): void {
           currency: (d.currency ?? existing.currency ?? "EUR") as "EUR" | "USD",
           language: (d.language ?? existing.language ?? "FR") as "FR" | "EN",
           technology: d.technology ?? null,
-          maintenanceProvider: d.maintainer ?? null,
+          maintainer: d.maintainer ?? null,
           updatedAt: new Date(),
           status: existing.status ?? "draft",
         };

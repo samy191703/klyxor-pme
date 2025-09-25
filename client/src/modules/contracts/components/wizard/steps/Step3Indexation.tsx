@@ -23,7 +23,12 @@ import { BILLING_PERIODS } from "@shared/enums/contracts";
 type Props = {
   data: any;
   setData: (upd: any) => void;
-  indexationFormulas: Array<{ id: string; name: string; type?: string }>;
+  indexationFormulas: Array<{
+    id: string;
+    name: string;
+    type?: string;
+    expression: string;
+  }>;
   onCalculate?: () => void;
   calcLoading?: boolean;
   calcResult?: CalculationResult | null;
@@ -139,7 +144,8 @@ export default function Step3Indexation({
               <SelectItem value="none">Pas d'indexation</SelectItem>
               {indexationFormulas.map((f) => (
                 <SelectItem key={f.id} value={f.id}>
-                  {f.name} {f.type ? `- ${f.type}` : ""}
+                  {/* {f.name} */}
+                  {f.expression} {f.type ? `- ${f.type}` : ""}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -185,7 +191,6 @@ export default function Step3Indexation({
                   onChange={setBaseAmountInput}
                   effectiveDate={data.indexationDate}
                   currency={data.currency}
-                  placeholder="50000"
                   showCurrency
                 />
 
@@ -245,7 +250,7 @@ export default function Step3Indexation({
 
                 {/* Policy (NEW ENUM) */}
                 <div>
-                  <Label>Policy de calcul *</Label>
+                  <Label>Règle de calcul *</Label>
                   <Select
                     value={data.indexationPolicy || "AT_PUBLICATION_DATE"}
                     onValueChange={(value) =>
@@ -260,7 +265,7 @@ export default function Step3Indexation({
                         Date d'indexation
                       </SelectItem>
                       <SelectItem value="LAST_INDICE_VALUE">
-                        Date de prise d'indice personnalisée
+                        Date de révision d'indice personnalisée
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -273,7 +278,7 @@ export default function Step3Indexation({
                 {/* Custom take date only for LAST_INDICE_VALUE */}
                 {data.indexationPolicy === "LAST_INDICE_VALUE" && (
                   <div className="">
-                    <Label>Date de prise d'indice personnalisée *</Label>
+                    <Label>Date de révision d'indice personnalisée *</Label>
                     <Input
                       type="date"
                       value={data.lastIndiceDate || ""}
@@ -318,7 +323,6 @@ export default function Step3Indexation({
                     value={data.baseIndices?.ICHT0}
                     onChange={(v) => setBaseIndex("ICHT0", v)}
                     effectiveDate={data.indexationDate}
-                    placeholder="128.72"
                   />
                 )}
 
@@ -329,14 +333,12 @@ export default function Step3Indexation({
                       value={data.baseIndices?.ICHT0}
                       onChange={(v) => setBaseIndex("ICHT0", v)}
                       effectiveDate={data.indexationDate}
-                      placeholder="128.72"
                     />
                     <VarNumberEditor
                       label="FMOA0 *"
                       value={data.baseIndices?.FMOA0}
                       onChange={(v) => setBaseIndex("FMOA0", v)}
                       effectiveDate={data.indexationDate}
-                      placeholder="102.37"
                     />
                   </>
                 )}
@@ -346,8 +348,7 @@ export default function Step3Indexation({
                     <Label>PN1 (montant période N-1) *</Label>
                     <Input
                       type="number"
-                      step="0.01"
-                      placeholder="52919.2"
+                      step="1"
                       value={data.PN1 || ""}
                       onChange={(e) => ensure({ PN1: e.target.value })}
                     />
@@ -364,17 +365,15 @@ export default function Step3Indexation({
                     <Input
                       type="number"
                       step="0.01"
-                      placeholder="10"
                       value={data.capPercent ?? ""}
                       onChange={(e) => ensure({ capPercent: e.target.value })}
                     />
                   </div>
                   <div>
-                    <Label>Floor (%)</Label>
+                    <Label>Seuil (%)</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      placeholder="-5"
                       value={data.floorPercent ?? ""}
                       onChange={(e) => ensure({ floorPercent: e.target.value })}
                     />

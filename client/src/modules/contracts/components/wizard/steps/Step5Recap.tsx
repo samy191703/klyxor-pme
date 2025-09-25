@@ -296,7 +296,7 @@ export default function Step5Recap({
         <h3 className="font-medium">Indexation</h3>
         {indexationOn ? (
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>Formule ID : {String(data.indexationFormulaId)}</div>
+            {/*   <div>Formule ID : {String(data.indexationFormulaId)}</div> */}
             <div>Type : {String(typeGuess || "—")}</div>
             <div>Date 1ère indexation : {fmtDate(data.indexationDate)}</div>
             <div>Fréquence : {data.indexationFrequency || "annual"}</div>
@@ -352,14 +352,16 @@ export default function Step5Recap({
 
             {/* Cap / Floor */}
             <div>Cap (%) : {data.capPercent ?? "—"}</div>
-            <div>Floor (%) : {data.floorPercent ?? "—"}</div>
+            <div>Seuil (%) : {data.floorPercent ?? "—"}</div>
 
             {/* Revised/Provisional */}
             {data.requireRevised && (
               <div>Publication: {data.requireRevised}</div>
             )}
             {data.lastIndiceDate && (
-              <div>Date de prise d’indice: {fmtDate(data.lastIndiceDate)}</div>
+              <div>
+                Date de révision d’indice: {fmtDate(data.lastIndiceDate)}
+              </div>
             )}
           </div>
         ) : (

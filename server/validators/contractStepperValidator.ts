@@ -14,10 +14,10 @@ const CLIENT_NAME_RX = /^[A-Za-zÀ-ÿ\s\-'.]+$/;
 /** STEP 1 — only general info */
 export const contractStep1Schema = z
   .object({
-    number: z
+    /*  number: z
       .string()
       .min(2, "Le numéro doit contenir au moins 2 caractères")
-      .max(100, "Le numéro ne peut pas dépasser 100 caractères"),
+      .max(100, "Le numéro ne peut pas dépasser 100 caractères"), */
     // .regex(CONTRACT_NUMBER_RX, "Numéro de contrat invalide"),
     title: z
       .string()

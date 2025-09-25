@@ -109,6 +109,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Header from "@/components/layout/header";
+import MenuItem from "@mui/material/MenuItem";
+import TextField from "@mui/material/TextField";
+import Autocomplete from "@mui/material/Autocomplete";
 
 /**
  * Interface définissant les données KPI du tableau de bord
@@ -847,115 +850,125 @@ export default function Dashboard() {
             <Card className="mb-4 lg:mb-6">
               <CardContent className="p-3 lg:p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 lg:gap-3">
-                  <Select value={periodFilter} onValueChange={setPeriodFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Période" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="current_month">
-                        Mois en cours
-                      </SelectItem>
-                      <SelectItem value="30_days">30 jours</SelectItem>
-                      <SelectItem value="custom">Personnalisé</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Période */}
+                  <TextField
+                    select
+                    label="Période"
+                    value={periodFilter}
+                    onChange={(e) => setPeriodFilter(e.target.value)}
+                    size="small"
+                    fullWidth
+                    color="primary"
+                  >
+                    <MenuItem value="all">Tout</MenuItem>
+                    <MenuItem value="current_month">Mois en cours</MenuItem>
+                    <MenuItem value="30_days">30 jours</MenuItem>
+                    <MenuItem value="custom">Personnalisé</MenuItem>
+                  </TextField>
 
-                  <Select value={entityFilter} onValueChange={setEntityFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Entité/BU" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Toutes</SelectItem>
-                      <SelectItem value="solutions_france">
-                        Solutions France
-                      </SelectItem>
-                      <SelectItem value="green_energy">Green Energy</SelectItem>
-                      <SelectItem value="gem">
-                        Global Energy Management
-                      </SelectItem>
-                      <SelectItem value="flex_services">
-                        Flex Services
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Entité/BU */}
+                  <TextField
+                    select
+                    label="Entité/BU"
+                    value={entityFilter}
+                    onChange={(e) => setEntityFilter(e.target.value)}
+                    size="small"
+                    fullWidth
+                    color="primary"
+                  >
+                    <MenuItem value="all">Tout</MenuItem>
+                    <MenuItem value="solutions_france">
+                      Solutions France
+                    </MenuItem>
+                    <MenuItem value="green_energy">Green Energy</MenuItem>
+                    <MenuItem value="gem">Global Energy Management</MenuItem>
+                    <MenuItem value="flex_services">Flex Services</MenuItem>
+                  </TextField>
 
-                  <Select
+                  {/* Type de contrat */}
+                  <TextField
+                    select
+                    label="Type de contrat"
                     value={contractTypeFilter}
-                    onValueChange={setContractTypeFilter}
+                    onChange={(e) => setContractTypeFilter(e.target.value)}
+                    size="small"
+                    fullWidth
+                    color="primary"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Type de contrat" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous</SelectItem>
-                      <SelectItem value="electricity">
-                        Fourniture Électricité
-                      </SelectItem>
-                      <SelectItem value="gas">Fourniture Gaz</SelectItem>
-                      <SelectItem value="renewable">
-                        Production Renouvelable
-                      </SelectItem>
-                      <SelectItem value="maintenance">
-                        Maintenance Infrastructure
-                      </SelectItem>
-                      <SelectItem value="trading">Trading Énergie</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <MenuItem value="all">Tout</MenuItem>
+                    <MenuItem value="electricity">
+                      Fourniture Électricité
+                    </MenuItem>
+                    <MenuItem value="gas">Fourniture Gaz</MenuItem>
+                    <MenuItem value="renewable">
+                      Production Renouvelable
+                    </MenuItem>
+                    <MenuItem value="maintenance">
+                      Maintenance Infrastructure
+                    </MenuItem>
+                    <MenuItem value="trading">Trading Énergie</MenuItem>
+                  </TextField>
 
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="État" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous</SelectItem>
-                      <SelectItem value="draft">Brouillon</SelectItem>
-                      <SelectItem value="to_validate">À valider</SelectItem>
-                      <SelectItem value="active">Actif</SelectItem>
-                      <SelectItem value="terminated">Résilié</SelectItem>
-                      <SelectItem value="closed">Clôturé</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* État */}
+                  <TextField
+                    select
+                    label="État"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    size="small"
+                    fullWidth
+                    color="primary"
+                  >
+                    <MenuItem value="all">Tout</MenuItem>
+                    <MenuItem value="draft">Brouillon</MenuItem>
+                    <MenuItem value="to_validate">À valider</MenuItem>
+                    <MenuItem value="active">Actif</MenuItem>
+                    <MenuItem value="terminated">Résilié</MenuItem>
+                    <MenuItem value="closed">Clôturé</MenuItem>
+                  </TextField>
 
-                  <Select
+                  {/* Valideur */}
+                  <TextField
+                    select
+                    label="Valideur"
                     value={validatorFilter}
-                    onValueChange={setValidatorFilter}
+                    onChange={(e) => setValidatorFilter(e.target.value)}
+                    size="small"
+                    fullWidth
+                    color="primary"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Valideur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous</SelectItem>
-                      {allUsers
-                        .filter(
-                          (user: any) =>
-                            user.role === "validator" ||
-                            user.role === "manager" ||
-                            user.role === "admin"
-                        )
-                        .map((user: any) => (
-                          <SelectItem key={user.id} value={user.username}>
-                            {user.firstName && user.lastName
-                              ? `${user.firstName} ${user.lastName}`
-                              : user.username}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                    <MenuItem value="all">Tout</MenuItem>
+                    {allUsers
+                      .filter(
+                        (user: any) =>
+                          user.role === "validator" ||
+                          user.role === "manager" ||
+                          user.role === "admin"
+                      )
+                      .map((user: any) => (
+                        <MenuItem key={user.id} value={user.username}>
+                          {user.firstName && user.lastName
+                            ? `${user.firstName} ${user.lastName}`
+                            : user.username}
+                        </MenuItem>
+                      ))}
+                  </TextField>
 
-                  <Select
+                  {/* Canal d'alerte */}
+                  <TextField
+                    select
+                    label="Canal d'alerte"
                     value={alertChannelFilter}
-                    onValueChange={setAlertChannelFilter}
+                    onChange={(e) => setAlertChannelFilter(e.target.value)}
+                    size="small"
+                    fullWidth
+                    color="primary"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Canal d'alerte" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous</SelectItem>
-                      <SelectItem value="in-app">In-app</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="teams">Teams</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <MenuItem value="all">Tout</MenuItem>
+                    <MenuItem value="in-app">In-app</MenuItem>
+                    <MenuItem value="email">Email</MenuItem>
+                    <MenuItem value="teams">Teams</MenuItem>
+                  </TextField>
                 </div>
 
                 <div className="mt-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -963,19 +976,20 @@ export default function Dashboard() {
                     Les contenus visibles respectent vos droits (RBAC)
                   </p>
                   <div className="flex gap-2 w-full sm:w-auto">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 sm:flex-none text-xs sm:text-sm"
-                    >
+                    <Button size="sm" className="col-span-2 md:col-span-1">
+                      <Plus className="w-4 h-4 mr-2" />
                       Enregistrer
                     </Button>
-                    <Button
-                      variant="ghost"
+                    {/*  <Button
+                      variant="outline"
                       size="sm"
-                      className="flex-1 sm:flex-none text-xs sm:text-sm"
+                      className="bg-primary flex-1 sm:flex-none text-xs sm:text-sm"
                     >
-                      Réinitialiser
+                      Enregistrer
+                    </Button> */}
+                    <Button variant="outline" onClick={() => null}>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Actualiser
                     </Button>
                   </div>
                 </div>

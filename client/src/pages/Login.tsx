@@ -5,15 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Lock, 
-  User, 
-  AlertCircle, 
+import {
+  Lock,
+  User,
+  AlertCircle,
   Shield,
   ChevronRight,
   Rocket,
   Sparkles,
-  Zap
+  Zap,
 } from "lucide-react";
 
 export default function Login() {
@@ -59,7 +59,7 @@ export default function Login() {
         <div className="absolute top-20 left-20 w-96 h-96 bg-[#C9A646] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-float"></div>
         <div className="absolute top-40 right-20 w-72 h-72 bg-[#C9A646] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-float-delayed"></div>
         <div className="absolute bottom-20 left-1/2 w-80 h-80 bg-white rounded-full mix-blend-multiply filter blur-3xl opacity-5 animate-float-slow"></div>
-        
+
         {/* Geometric patterns */}
         <div className="absolute top-10 right-10 w-32 h-32 border-2 border-[#C9A646] opacity-10 rotate-45 animate-rotate-slow"></div>
         <div className="absolute bottom-10 left-10 w-24 h-24 border-2 border-white opacity-10 animate-rotate-reverse"></div>
@@ -77,7 +77,7 @@ export default function Login() {
               </div>
             </div>
           </div>
-          
+
           <h1 className="text-6xl font-bold text-white mb-2 tracking-wider font-poppins animate-glow">
             KLYXOR
           </h1>
@@ -88,7 +88,7 @@ export default function Login() {
             </p>
             <Sparkles className="w-4 h-4 animate-sparkle-delayed" />
           </div>
-          <p className="text-white/60 text-xs mt-2">Powered by ENGIE</p>
+          {/*      <p className="text-white/60 text-xs mt-2">Powered by ENGIE</p> */}
         </div>
 
         {/* Login Card - Style épuré et moderne */}
@@ -100,7 +100,9 @@ export default function Login() {
               </h2>
               <div className="flex items-center justify-center text-[#C9A646]/80">
                 <Shield className="w-4 h-4 mr-2" />
-                <span className="text-xs uppercase tracking-wide">Environnement Protégé</span>
+                <span className="text-xs uppercase tracking-wide">
+                  Environnement Protégé
+                </span>
               </div>
             </div>
 
@@ -113,7 +115,10 @@ export default function Login() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-[#C9A646] font-medium uppercase text-xs tracking-wide">
+                <Label
+                  htmlFor="username"
+                  className="text-[#C9A646] font-medium uppercase text-xs tracking-wide"
+                >
                   Identifiant
                 </Label>
                 <div className="relative group">
@@ -133,7 +138,10 @@ export default function Login() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-[#C9A646] font-medium uppercase text-xs tracking-wide">
+                <Label
+                  htmlFor="password"
+                  className="text-[#C9A646] font-medium uppercase text-xs tracking-wide"
+                >
                   Mot de passe
                 </Label>
                 <div className="relative group">
@@ -153,8 +161,8 @@ export default function Login() {
               </div>
 
               <div className="pt-2">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full h-12 bg-[#C9A646] hover:bg-[#C9A646]/90 text-[#0F2A43] font-bold shadow-lg hover:shadow-[#C9A646]/30 transform transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed group uppercase tracking-wide"
                   disabled={isLoading}
                   data-testid="button-login"

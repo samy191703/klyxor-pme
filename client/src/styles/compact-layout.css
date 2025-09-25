@@ -68,7 +68,7 @@ body {
 @media (min-width: 1024px) {
   /* Desktop: Content starts immediately after header */
   .lg\:ml-64 {
-    margin-left: 16rem;
+    margin-left: 17rem;
   }
   
   main > *:first-child {

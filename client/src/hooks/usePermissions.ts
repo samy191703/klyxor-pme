@@ -92,11 +92,17 @@ const routePermissions: Record<string, RoutePermission> = {
 
   // Billing - finance and admin
   "/billing-plans": {
-    allowedRoles: ["admin", "finance_manager", "manager"],
+    allowedRoles: ["admin", "finance_manager", "manager", "contract_manager"],
   },
-  "/payment-flows": { allowedRoles: ["admin", "finance_manager"] },
-  "/payment-blocks": { allowedRoles: ["admin", "finance_manager"] },
-  "/payment-proofs": { allowedRoles: ["admin", "finance_manager"] },
+  "/payment-flows": {
+    allowedRoles: ["admin", "finance_manager", "contract_manager"],
+  },
+  "/payment-blocks": {
+    allowedRoles: ["admin", "finance_manager", "contract_manager"],
+  },
+  "/payment-proofs": {
+    allowedRoles: ["admin", "finance_manager", "contract_manager"],
+  },
 
   // Indexation - managers and admin
   "/indexations": {
@@ -165,10 +171,19 @@ export function usePermissions() {
 
   const hasPermission = (route: string): boolean => {
     if (!user) return false;
+    console.log(
+      "Checking permission for route:",
+      route,
+      "User role:",
+      user.role
+    );
 
     const permission = routePermissions[route];
+
+    console.log("Required permission:", permission);
     if (!permission) return true; // No specific permission required
 
+    console.log(permission.allowedRoles.includes(user.role as UserRole));
     return permission.allowedRoles.includes(user.role as UserRole);
   };
 
@@ -184,7 +199,10 @@ export function usePermissions() {
     !!user && ["admin", "manager"].includes(user.role);
 
   const canManageBilling = (): boolean =>
-    !!user && ["admin", "finance_manager", "manager"].includes(user.role);
+    !!user &&
+    ["admin", "finance_manager", "contract_manager", "manager"].includes(
+      user.role
+    );
 
   const canDeleteContract = (): boolean => !!user && user.role === "admin";
 

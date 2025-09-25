@@ -41,6 +41,19 @@ import { FormulaTypePill } from "@/components/pills/indexation-formula-type-pill
 
 // Schema type (Drizzle-inferrred)
 import type { Contract } from "@shared/schema";
+import {
+  BILLING_PERIOD_LABELS,
+  BillingPeriods,
+  BUSINESS_UNIT_LABELS,
+  BusinessUnits,
+  CONTRACT_TYPE_LABELS,
+  ContractTypes,
+  Languages,
+  PAYMENT_TYPE_LABELS,
+  PaymentTypes,
+  Technologies,
+  TECHNOLOGY_LABELS,
+} from "@shared/enums/contracts";
 
 // ───────────────────────────── helpers ─────────────────────────────
 function fmtAmount(
@@ -149,6 +162,19 @@ export default function ContractsTable({
   onEditIndexation?: RowAction;
   onOpenGed?: RowAction;
 }) {
+  const LANGUAGE_LABELS: Record<Languages, string> = {
+    FR: "Français",
+    EN: "Anglais",
+  };
+
+  function labelOf<T extends string>(
+    map: Record<T, string>,
+    value?: string | null
+  ) {
+    if (!value) return "—";
+    return (map as any)[value as T] ?? value; // fallback to raw if unknown
+  }
+
   if (isLoading) {
     return <div className="p-6 text-sm text-gray-500">Chargement…</div>;
   }
@@ -174,7 +200,7 @@ export default function ContractsTable({
               <TableHead>Devise</TableHead>
 
               {/* Billing */}
-              <TableHead>Période de fact.</TableHead>
+              {/*  <TableHead>Période de fact.</TableHead> */}
               <TableHead>Fréquence fact.</TableHead>
               <TableHead>Type de paiement</TableHead>
 
@@ -203,8 +229,8 @@ export default function ContractsTable({
               <TableHead>Montant courant</TableHead>
 
               {/* Series / Indices compact */}
-              <TableHead>Série base montant</TableHead>
-              <TableHead>Série indices</TableHead>
+              {/*  <TableHead>Série base montant</TableHead>
+              <TableHead>Série indices</TableHead> */}
               <TableHead>Valeurs indices</TableHead>
 
               {/* Misc */}
@@ -236,22 +262,53 @@ export default function ContractsTable({
                 <TableCell className="max-w-[220px] truncate">
                   {c.clientName}
                 </TableCell>
-                <TableCell>{c.language ?? "—"}</TableCell>
-                <TableCell>{c.type}</TableCell>
-                <TableCell>{c.technology ?? "—"}</TableCell>
+                {/* Language → label */}
+                <TableCell>
+                  {labelOf(LANGUAGE_LABELS, c.language as Languages)}
+                </TableCell>
+                {/* Type → label */}
+                <TableCell>
+                  {labelOf(CONTRACT_TYPE_LABELS, c.type as ContractTypes)}
+                </TableCell>
+                {/* Technology → label (nullable) */}
+                <TableCell>
+                  {c.technology
+                    ? labelOf(TECHNOLOGY_LABELS, c.technology as Technologies)
+                    : "—"}
+                </TableCell>
+
+                {/* Maintainer stays as-is (free text) */}
                 <TableCell>{c.maintainer ?? "—"}</TableCell>
+                {/* BU → label */}
                 <TableCell className="max-w-[220px] truncate">
-                  {c.businessUnit}
+                  {labelOf(
+                    BUSINESS_UNIT_LABELS,
+                    c.businessUnit as BusinessUnits
+                  )}
                 </TableCell>
 
                 {/* Money */}
                 <TableCell>{fmtAmount(c.amount, c.currency)}</TableCell>
                 <TableCell>{c.currency}</TableCell>
 
-                {/* Billing */}
-                <TableCell>{c.billingPeriod ?? "—"}</TableCell>
-                <TableCell>{c.billingFrequency ?? "—"}</TableCell>
-                <TableCell>{c.paymentType ?? "—"}</TableCell>
+                {/* Billing frequency*/}
+
+                {/*   <TableCell>
+                  {labelOf(
+                    BILLING_PERIOD_LABELS,
+                    c.billingPeriod as BillingPeriods
+                  )}
+                </TableCell> */}
+                <TableCell>
+                  {labelOf(
+                    BILLING_PERIOD_LABELS,
+                    c.billingFrequency as BillingPeriods
+                  )}
+                </TableCell>
+                {/* Payment type → label */}
+                <TableCell>
+                  {labelOf(PAYMENT_TYPE_LABELS, c.paymentType as PaymentTypes)}
+                </TableCell>
 
                 {/* Domain extras (text in DB) */}
                 <TableCell>{fmtNum(c.maxAnnualProduction)}</TableCell>
@@ -291,7 +348,7 @@ export default function ContractsTable({
                 </TableCell>
 
                 {/* Series / Indices compact */}
-                <TableCell
+                {/* <TableCell
                   title={JSON.stringify(
                     c.indexationBaseAmountSeries ?? undefined
                   )}
@@ -304,7 +361,7 @@ export default function ContractsTable({
                   )}
                 >
                   {indicesSeriesSummary(c.indexationBaseIndicesSeries as any)}
-                </TableCell>
+                </TableCell> */}
                 <TableCell
                   title={JSON.stringify(
                     c.indexationBaseIndicesValues ?? undefined

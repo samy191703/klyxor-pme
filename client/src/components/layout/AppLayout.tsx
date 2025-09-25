@@ -11,10 +11,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar - fixed position on desktop */}
       <SidebarWithSubmenu />
-      
+
       {/* Mobile Navigation - only visible on mobile */}
       <MobileNavWithSubmenu />
-      
+
       {/* Main content wrapper - properly offset for sidebar */}
       <div className="lg:pl-64 h-screen flex flex-col">
         {/* Content area - children manage their own layout */}

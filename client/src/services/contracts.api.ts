@@ -11,6 +11,7 @@ import {
 } from "@/_models/contract.model";
 import { BillingPeriods, PaymentTypes } from "@shared/enums/contracts";
 import { ContractStatus } from "@shared/enums/contracts-status.enum";
+import { PatchStep1Payload } from "@shared/models/contract.model";
 import { Contract } from "@shared/schema";
 
 // ---- Internal helpers ----
@@ -99,17 +100,7 @@ export function updateContract(
 
 export async function patchContractStep1(
   id: string | number,
-  payload: {
-    number: string;
-    title: string;
-    clientName: string;
-    type: string;
-    businessUnit: string;
-    currency?: "EUR" | "USD";
-    language?: "FR" | "EN";
-    technology?: string | null;
-    maintainer?: string | null;
-  }
+  payload: PatchStep1Payload
 ) {
   const res = await fetch(`/api/contracts/${id}/step1`, {
     method: "PATCH",

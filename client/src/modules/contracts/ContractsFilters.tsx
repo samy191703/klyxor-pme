@@ -6,6 +6,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import MenuItem from "@mui/material/MenuItem";
+import TextField from "@mui/material/TextField";
 
 export type ContractsFiltersValue = {
   period: "all" | "creation" | "effect";
@@ -31,78 +33,99 @@ export default function ContractsFilters({
 }) {
   return (
     <>
-      <Select
-        value={value.period}
-        onValueChange={(v) => onChange({ period: v as any })}
+      {/* Période */}
+      <TextField
+        select
+        label="Période"
+        value={value.period ?? "all"}
+        onChange={(e) =>
+          onChange({ period: e.target.value as typeof value.period })
+        }
+        size="small"
+        fullWidth
+        color="primary"
       >
-        <SelectTrigger>
-          <SelectValue placeholder="Période" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Toutes les périodes</SelectItem>
-          <SelectItem value="creation">Création</SelectItem>
-          <SelectItem value="effect">Effet</SelectItem>
-        </SelectContent>
-      </Select>
+        <MenuItem value="all">Tout</MenuItem>
+        <MenuItem value="creation">Création</MenuItem>
+        <MenuItem value="effect">Effet</MenuItem>
+      </TextField>
 
-      <Select
-        value={value.status}
-        onValueChange={(v) => onChange({ status: v as any })}
+      {/* Statut */}
+      <TextField
+        select
+        label="Statut"
+        value={value.status ?? "all"}
+        onChange={(e) =>
+          onChange({ status: e.target.value as typeof value.status })
+        }
+        size="small"
+        fullWidth
+        color="primary"
       >
-        <SelectTrigger>
-          <SelectValue placeholder="Statut" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tous les statuts</SelectItem>
-          <SelectItem value="draft">Brouillon</SelectItem>
-          <SelectItem value="pending_validation">À valider</SelectItem>
-          <SelectItem value="active">Actif</SelectItem>
-          <SelectItem value="terminated">Résilié</SelectItem>
-          <SelectItem value="closed">Clôturé</SelectItem>
-        </SelectContent>
-      </Select>
+        <MenuItem value="all">Tout</MenuItem>
+        <MenuItem value="draft">Brouillon</MenuItem>
+        <MenuItem value="pending_validation">À valider</MenuItem>
+        <MenuItem value="active">Actif</MenuItem>
+        <MenuItem value="terminated">Résilié</MenuItem>
+        <MenuItem value="closed">Clôturé</MenuItem>
+      </TextField>
 
-      <Select value={value.type} onValueChange={(v) => onChange({ type: v })}>
-        <SelectTrigger>
-          <SelectValue placeholder="Type" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tous les types</SelectItem>
-          <SelectItem value="electricity">Électricité</SelectItem>
-          <SelectItem value="gas">Gaz</SelectItem>
-          <SelectItem value="renewable_ppa">PPA</SelectItem>
-          <SelectItem value="maintenance">Maintenance</SelectItem>
-          <SelectItem value="OMSA">OMSA</SelectItem>
-          <SelectItem value="LTSA">LTSA</SelectItem>
-          <SelectItem value="OMGC">OMGC</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={value.businessUnit}
-        onValueChange={(v) => onChange({ businessUnit: v })}
+      {/* Type */}
+      <TextField
+        select
+        label="Type"
+        value={value.type ?? "all"}
+        onChange={(e) =>
+          onChange({ type: e.target.value as typeof value.type })
+        }
+        size="small"
+        fullWidth
+        color="primary"
       >
-        <SelectTrigger>
-          <SelectValue placeholder="BU/Entité" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Toutes les BU</SelectItem>
-          {/* Replace with dynamic BU list if needed */}
-          <SelectItem value="ENGIE Solutions France">
-            ENGIE Solutions France
-          </SelectItem>
-          <SelectItem value="ENGIE Green">ENGIE Green</SelectItem>
-          <SelectItem value="ENGIE Flex">ENGIE Flex</SelectItem>
-          <SelectItem value="ENGIE Global Energy Management">
-            ENGIE Global Energy Management
-          </SelectItem>
-        </SelectContent>
-      </Select>
+        <MenuItem value="all">Tout</MenuItem>
+        <MenuItem value="electricity">Électricité</MenuItem>
+        <MenuItem value="gas">Gaz</MenuItem>
+        <MenuItem value="renewable_ppa">PPA</MenuItem>
+        <MenuItem value="maintenance">Maintenance</MenuItem>
+        <MenuItem value="OMSA">OMSA</MenuItem>
+        <MenuItem value="LTSA">LTSA</MenuItem>
+        <MenuItem value="OMGC">OMGC</MenuItem>
+      </TextField>
 
-      <Input
-        placeholder="N°/titre..."
-        value={value.search}
+      {/* BU / Entité */}
+      <TextField
+        select
+        label="BU/Entité"
+        value={value.businessUnit ?? "all"}
+        onChange={(e) =>
+          onChange({
+            businessUnit: e.target.value as typeof value.businessUnit,
+          })
+        }
+        size="small"
+        fullWidth
+        color="primary"
+      >
+        <MenuItem value="all">Tout</MenuItem>
+        {/* Replace with a dynamic list if you have one */}
+        <MenuItem value="ENGIE Solutions France">
+          ENGIE Solutions France
+        </MenuItem>
+        <MenuItem value="ENGIE Green">ENGIE Green</MenuItem>
+        <MenuItem value="ENGIE Flex">ENGIE Flex</MenuItem>
+        <MenuItem value="ENGIE Global Energy Management">
+          ENGIE Global Energy Management
+        </MenuItem>
+      </TextField>
+
+      {/* Recherche N°/titre */}
+      <TextField
+        label="N° / titre"
+        value={value.search ?? ""}
         onChange={(e) => onChange({ search: e.target.value })}
+        size="small"
+        fullWidth
+        color="primary"
       />
     </>
   );

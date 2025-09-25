@@ -25,6 +25,10 @@ import {
   contractTypeDefinitions,
   TECHNOLOGY_VALUES,
 } from "@shared/enums/contracts";
+import { cleanPayload, omitNulAndEmpty } from "@/utils/clean-up";
+import { Contract } from "@shared/schema";
+import { PatchStep1Payload } from "@shared/models/contract.model";
+import { ContractStatus } from "@shared/enums/contracts-status.enum";
 
 export type WizardMode = "create" | "edit";
 
@@ -89,7 +93,7 @@ export default function ContractWizard({
       currency: dto.currency ?? "EUR",
       language: dto.language ?? "FR",
       technology: dto.technology ?? "",
-      maintainer: dto.maintenanceProvider ?? "",
+      maintainer: dto.maintainer ?? "",
 
       // --- Step 2 fields
       startDate: dto.startDate ? String(dto.startDate).slice(0, 10) : "",
@@ -182,7 +186,7 @@ export default function ContractWizard({
     const e: StepErrors = {};
     const v = withDefaults(d, 1);
 
-    if (!v.number) e.number = "N° contrat requis";
+    //if (!v.number) e.number = "N° contrat requis";
     if (!v.title) e.title = "Titre requis";
     if (!v.type) e.type = "Type requis";
     if (!v.businessUnit) e.businessUnit = "Business Unit requise";
@@ -260,17 +264,27 @@ export default function ContractWizard({
   }
 
   // ---------- BUILD PATCHES PER STEP ----------
-  function buildPatchForStep1(d: any) {
-    return {
+  function buildPatchForStep1(d: Contract): PatchStep1Payload {
+    const typeDef = contractTypeDefinitions.find((t) => t.value === d.type);
+
+    const payload: PatchStep1Payload = {
+      number: d.number ?? "", // or omit if truly optional in your API
       title: d.title,
+      clientName: d.clientName,
       type: d.type,
       businessUnit: d.businessUnit,
-      clientName: d.clientName,
-      number: d.number,
-      technology: d.technology,
-      maintenanceProvider: d.maintainer,
       currency: d.currency || "EUR",
+      language: d.language || "FR",
+      // Optional only when present & applicable
+      ...(typeDef?.hasTechnology && d.technology
+        ? { technology: d.technology }
+        : {}),
+      ...(typeDef?.hasMaintainer && d.maintainer
+        ? { maintainer: d.maintainer }
+        : {}),
     };
+
+    return payload;
   }
 
   function buildPatchForStep2(d: any) {
@@ -310,6 +324,15 @@ export default function ContractWizard({
     }
     return payload;
   }
+  // Helpers for Step 3
+  const toNum = (v: any) =>
+    Number.isFinite(v)
+      ? Number(v)
+      : parseFloat(String(v ?? "").replace(",", "."));
+
+  const getTotalAmount = (d: any) =>
+    Math.max(0, toNum(d.fixedAmount) || 0) +
+    Math.max(0, toNum(d.variableAmount) || 0);
 
   function buildPatchForStep3(d: any): PatchStep3Payload {
     const policy = d.indexationPolicy || "AT_PUBLICATION_DATE";
@@ -375,10 +398,14 @@ export default function ContractWizard({
       setFormError(null);
       const draftPayload = {
         ...buildPatchForStep1(data),
-        status: "DRAFT",
+        //status: ContractStatus.DRAFT,
       };
       const created = await createContractDraft(draftPayload);
-      setData((prev: any) => ({ ...prev, contractId: created?.id }));
+      setData((prev: any) => ({
+        ...prev,
+        contractId: created?.id,
+        number: created?.number,
+      }));
       return true;
     } catch (e: any) {
       if (e?.status === 409 && e?.field === "number") {
@@ -445,18 +472,8 @@ export default function ContractWizard({
       setSaving(true);
 
       if (step === 1) {
-        const p = buildPatchForStep1(data);
-        await patchContractStep1(id, {
-          number: p.number,
-          title: p.title,
-          clientName: p.clientName,
-          type: p.type,
-          businessUnit: p.businessUnit,
-          currency: p.currency,
-          language: data.language || "FR",
-          technology: p.technology ?? null,
-          maintainer: p.maintenanceProvider ?? null,
-        });
+        const body = buildPatchForStep1(data) satisfies PatchStep1Payload;
+        await patchContractStep1(id, body);
       } else if (step === 2) {
         await patchContractStep2(id, buildPatchForStep2(data));
       } else if (step === 3) {
@@ -500,18 +517,8 @@ export default function ContractWizard({
     if (step === 1) {
       try {
         setSaving(true);
-        const p = buildPatchForStep1(data);
-        await patchContractStep1(data.contractId, {
-          number: p.number,
-          title: p.title,
-          clientName: p.clientName,
-          type: p.type,
-          businessUnit: p.businessUnit,
-          currency: p.currency,
-          language: data.language || "FR",
-          technology: p.technology ?? null,
-          maintainer: p.maintenanceProvider ?? null,
-        });
+        const body = buildPatchForStep1(data) satisfies PatchStep1Payload;
+        await patchContractStep1(data.contractId, body);
       } catch (e: any) {
         // duplicate number mapping already handled inside service (throws with status=409)
         if (e?.status === 409 && e?.field === "number") {
@@ -579,18 +586,12 @@ export default function ContractWizard({
       } else {
         try {
           setSaving(true);
-          const p = buildPatchForStep1(data);
-          await patchContractStep1(data.contractId, {
-            number: p.number,
-            title: p.title,
-            clientName: p.clientName,
-            type: p.type,
-            businessUnit: p.businessUnit,
-            currency: p.currency,
-            language: data.language || "FR",
-            technology: p.technology ?? null,
-            maintainer: p.maintenanceProvider ?? null,
-          });
+          const body = buildPatchForStep1(data) satisfies PatchStep1Payload;
+          const response = await patchContractStep1(data.contractId, body);
+
+          setData((prev: any) => ({ ...prev, number: response?.number }));
+
+          //setData((prev: any) => ({ ...prev, ...normalizeFromDto(response) }));
         } catch (e: any) {
           setFormError(
             e?.message || "Échec de mise à jour du contrat (étape 1)."
@@ -624,6 +625,20 @@ export default function ContractWizard({
       } finally {
         setSaving(false);
       }
+
+      setData((prev: any) => {
+        const total = getTotalAmount(prev);
+        return {
+          ...prev,
+          // Date d’indexation = Date début si vide
+          indexationDate: prev.startDate || "",
+          // 🔒 P0 TOUJOURS FIXED = fixed + variable
+          baseAmountInput: {
+            mode: "FIXED",
+            fixed: total,
+          },
+        };
+      });
       setStep(3);
       return;
     }
@@ -713,9 +728,9 @@ export default function ContractWizard({
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">
           {title}{" "}
-          {data.contractId && (
+          {data.number && (
             <span className="ml-2 text-xs rounded bg-green-100 text-green-700 px-2 py-0.5">
-              ID: {String(data.contractId)}
+              N°: {String(data.number)}
             </span>
           )}
         </h1>
@@ -740,7 +755,8 @@ export default function ContractWizard({
               <ul className="list-disc ml-4">
                 {Object.entries(errors).map(([k, v]) => (
                   <li key={k}>
-                    <b>{k}</b>: {v}
+                    {/* <b>{k}</b>:  */}
+                    {v}
                   </li>
                 ))}
               </ul>

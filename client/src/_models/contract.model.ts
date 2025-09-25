@@ -12,7 +12,7 @@ export type ContractCore = {
   startsOn?: string; // ISO date (server will convert)
   endsOn?: string | null; // ISO date or null
   technology?: string;
-  maintenanceProvider?: string;
+  maintainer?: string;
   currency?: string; // default handled server-side
   amount?: number;
   fixedAmount?: number;

@@ -42,6 +42,42 @@ export default function ContractsView() {
     itemsPerPage: 25,
   });
 
+  useEffect(() => {
+    const handle = () => {
+      const qs = new URLSearchParams(window.location.search);
+      const wizard = qs.get("wizard"); // "create" | "edit" | null
+      if (wizard === "create") {
+        openWizard({ mode: "create", initialStep: 1, showNextStep: true });
+      } else if (wizard === "edit") {
+        const id = qs.get("id") || undefined;
+        const step = Number(qs.get("step")) as 1 | 2 | 3 | 4 | 5;
+        openWizard({
+          mode: "edit",
+          contractId: id,
+          initialStep: (step && [1, 2, 3, 4, 5].includes(step) ? step : 1) as
+            | 1
+            | 2
+            | 3
+            | 4
+            | 5,
+          showNextStep: qs.get("showNext") !== "false",
+        });
+      } else {
+        // no wizard param -> ensure closed (useful if user cleared query manually)
+        setShowWizard(false);
+      }
+    };
+
+    // run once and then on history/query changes
+    handle();
+    window.addEventListener("popstate", handle);
+    window.addEventListener("app:location-query-changed", handle);
+    return () => {
+      window.removeEventListener("popstate", handle);
+      window.removeEventListener("app:location-query-changed", handle);
+    };
+  }, []);
+
   // ---------- Wizard state ----------
   const [showWizard, setShowWizard] = useState(false);
   const [wizardMode, setWizardMode] = useState<WizardMode>("create");
@@ -122,6 +158,18 @@ export default function ContractsView() {
   function closeWizard() {
     setShowWizard(false);
     refetch();
+    // strip wizard-related params
+    const qs = new URLSearchParams(window.location.search);
+    qs.delete("wizard");
+    qs.delete("id");
+    qs.delete("step");
+    qs.delete("showNext");
+    const next = qs.toString()
+      ? `${window.location.pathname}?${qs.toString()}`
+      : window.location.pathname;
+    window.history.replaceState({}, "", next);
+    window.dispatchEvent(new CustomEvent("app:location-query-changed"));
+    window.dispatchEvent(new PopStateEvent("popstate"));
   }
 
   function submitWizard() {
@@ -219,11 +267,99 @@ export default function ContractsView() {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <ContractsHeader />
+      <div className="mb-2 mt-3 px-4 py-2 lg:px-6 lg:py-1 flex items-center justify-between">
+        <h1 className="ml-3 text-3xl font-bold text-gray-900">
+          Gestion des contrats
+        </h1>
+        {canCreateContract() && !showWizard && (
+          <Button
+            onClick={() => openWizard({ mode: "create" })}
+            className="col-span-2 md:col-span-1"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Créer un contrat
+          </Button>
+        )}
+        {/*  <p className="text-gray-500 mt-2">
+              Gérez vos imports et exports de données
+            </p> */}
+      </div>
 
       <main className="flex-1 overflow-y-auto px-4 py-2 lg:px-6 lg:py-1">
         <div className="max-w-7xl mx-3">
           {!showWizard ? (
-            <Tabs
+            <>
+              <ContractsKpis kpis={kpis} loading={isLoading} />
+
+              <Card className="mb-6">
+                <CardContent className="p-4">
+                  <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <ContractsFilters
+                      value={filters}
+                      onChange={(patch) =>
+                        setFilters((prev) => ({ ...prev, ...patch }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2 justify-end mt-2">
+                    <Button variant="outline" onClick={() => refetch()}>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Actualiser
+                    </Button>
+                    {canExportData() && (
+                      <Button
+                        variant="default"
+                        onClick={() => setShowExport(true)}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Exporter
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Alert className="mb-6">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  La validation est requise pour l'activation d'un contrat.
+                </AlertDescription>
+              </Alert>
+
+              <ContractsTable
+                items={filtered.slice(0, filters.itemsPerPage)}
+                onView={openDetails}
+                onValidate={openValidation}
+                total={filtered.length}
+                pageSize={filters.itemsPerPage}
+                onChangePageSize={(n) =>
+                  setFilters((prev) => ({ ...prev, itemsPerPage: n }))
+                }
+                isLoading={isLoading}
+                // NEW: edit shortcuts for the kebab menu
+                onEditGeneral={handleEditGeneral}
+                onEditPeriods={handleEditPeriods}
+                onEditIndexation={handleEditIndexation}
+                onOpenGed={handleOpenGed}
+                onSubmitForValidation={async (c) => {
+                  try {
+                    await submitContractForValidation(
+                      String(c.id),
+                      "contract-creation"
+                    );
+                    toast({ title: "Contrat soumis pour validation." });
+                    refetch(); // refresh list to show 'pending_validation'
+                  } catch (e: any) {
+                    toast({
+                      title: e?.message ?? "Échec de soumission.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              />
+            </>
+          ) : (
+            /*             <Tabs
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as any)}
             >
@@ -233,87 +369,7 @@ export default function ContractsView() {
               </TabsList>
 
               <TabsContent value="list" className="space-y-6">
-                <ContractsKpis kpis={kpis} loading={isLoading} />
-
-                <Card className="mb-6">
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                      <ContractsFilters
-                        value={filters}
-                        onChange={(patch) =>
-                          setFilters((prev) => ({ ...prev, ...patch }))
-                        }
-                      />
-
-                      {canCreateContract() && (
-                        <Button
-                          onClick={() => openWizard({ mode: "create" })}
-                          className="col-span-2 md:col-span-1"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Créer un contrat
-                        </Button>
-                      )}
-
-                      <Button
-                        variant="outline"
-                        onClick={() => window.location.reload()}
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Actualiser
-                      </Button>
-
-                      {canExportData() && (
-                        <Button
-                          variant="default"
-                          onClick={() => setShowExport(true)}
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Exporter
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Alert className="mb-6">
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    La validation est requise pour l'activation d'un contrat.
-                  </AlertDescription>
-                </Alert>
-
-                <ContractsTable
-                  items={filtered.slice(0, filters.itemsPerPage)}
-                  onView={openDetails}
-                  onValidate={openValidation}
-                  total={filtered.length}
-                  pageSize={filters.itemsPerPage}
-                  onChangePageSize={(n) =>
-                    setFilters((prev) => ({ ...prev, itemsPerPage: n }))
-                  }
-                  isLoading={isLoading}
-                  // NEW: edit shortcuts for the kebab menu
-                  onEditGeneral={handleEditGeneral}
-                  onEditPeriods={handleEditPeriods}
-                  onEditIndexation={handleEditIndexation}
-                  onOpenGed={handleOpenGed}
-                  onSubmitForValidation={async (c) => {
-                    try {
-                      await submitContractForValidation(
-                        String(c.id),
-                        "contract-creation"
-                      );
-                      toast({ title: "Contrat soumis pour validation." });
-                      refetch(); // refresh list to show 'pending_validation'
-                    } catch (e: any) {
-                      toast({
-                        title: e?.message ?? "Échec de soumission.",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                />
+                
               </TabsContent>
 
               <TabsContent value="history" className="space-y-6">
@@ -326,8 +382,7 @@ export default function ContractsView() {
                   </CardContent>
                 </Card>
               </TabsContent>
-            </Tabs>
-          ) : (
+            </Tabs> */
             <ContractWizard
               indexationFormulas={formulas}
               onCancel={closeWizard}

@@ -44,6 +44,7 @@ import IndexationConfig from "@/pages/IndexationConfig";
 import IndexationDashboard from "@/pages/IndexationDashboard";
 import CodeSnippets from "@/pages/CodeSnippets";
 import MainContractsPage from "./modules/contracts";
+import { MuiThemeProvider } from "./styles/mui-theme";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -237,13 +238,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AIHelpProvider>
-          <ModalProvider>
-            <Toaster />
-            <Router />
-            <GlobalModals />
-          </ModalProvider>
-        </AIHelpProvider>
+        <MuiThemeProvider>
+          <AIHelpProvider>
+            <ModalProvider>
+              <Toaster />
+              <Router />
+              <GlobalModals />
+            </ModalProvider>
+          </AIHelpProvider>
+        </MuiThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

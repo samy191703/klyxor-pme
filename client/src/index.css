@@ -7,6 +7,13 @@
 @import './styles/compact-layout.css';
 @import './styles/animations.css';
 
+
+@media (min-width: 1024px) {
+    .lg\:pl-64
+ {
+        padding-left: 17rem !important;
+    }
+}
 :root {
   /* KLYXOR Charte Graphique Colors */
   --klyxor-bleu-nuit: #0F2A43;

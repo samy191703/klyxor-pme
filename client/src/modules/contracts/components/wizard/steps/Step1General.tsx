@@ -46,7 +46,7 @@ export default function Step1General({
 
       {/* Bloc principal */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="w-full">
+        {/* <div className="w-full">
           <Label>N° contrat *</Label>
           <Input
             placeholder="CT-2025-XXXX"
@@ -56,7 +56,7 @@ export default function Step1General({
           <p className="text-xs text-gray-500 mt-1">
             Masque + unicité contrôlée
           </p>
-        </div>
+        </div> */}
 
         <div className="w-full">
           <Label>Titre/SPV *</Label>

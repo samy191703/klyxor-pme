@@ -4,7 +4,7 @@ import { eq, and, like, desc } from "drizzle-orm";
 
 export interface ContractNumberConfig {
   typeCode: string;
-  entityCode: string; 
+  entityCode: string;
   year: number;
 }
 
@@ -15,22 +15,22 @@ export interface ContractNumberConfig {
  */
 export class ContractNumberGenerator {
   private static typeCodeMapping: Record<string, string> = {
-    'electricity': 'ELEC',
-    'gas': 'GAZ',
-    'ppa': 'PPA',
-    'maintenance': 'MAINT',
-    'multi_energy': 'MULTI',
-    'renewable': 'RENEW'
+    electricity: "ELEC",
+    gas: "GAZ",
+    ppa: "PPA",
+    maintenance: "MAINT",
+    multi_energy: "MULTI",
+    renewable: "RENEW",
   };
 
   private static entityCodeMapping: Record<string, string> = {
-    'ENGIE Solutions France': 'ESF',
-    'ENGIE Green': 'EG',
-    'ENGIE Flex': 'EF',
-    'ENGIE Global Energy Management': 'EGEM',
-    'ENGIE France BtoC': 'EFBC',
-    'ENGIE France BtoB': 'EFBB',
-    'ENGIE Entreprises et Collectivités': 'EEC'
+    "ENGIE Solutions France": "ESF",
+    "ENGIE Green": "EG",
+    "ENGIE Flex": "EF",
+    "ENGIE Global Energy Management": "EGEM",
+    "ENGIE France BtoC": "EFBC",
+    "ENGIE France BtoB": "EFBB",
+    "ENGIE Entreprises et Collectivités": "EEC",
   };
 
   /**
@@ -42,12 +42,12 @@ export class ContractNumberGenerator {
     year?: number
   ): Promise<string> {
     const currentYear = year || new Date().getFullYear();
-    const typeCode = this.typeCodeMapping[type] || 'MISC';
-    const entityCode = this.entityCodeMapping[businessUnit] || 'ENT';
-    
+    const typeCode = this.typeCodeMapping[type] || "MISC";
+    const entityCode = this.entityCodeMapping[businessUnit] || "ENT";
+
     // Construire le préfixe du numéro
-    const prefix = `T=${typeCode}–${entityCode}–${currentYear}–`;
-    
+    const prefix = `CT-${typeCode}–${entityCode}–${currentYear}–`;
+
     // Rechercher le dernier numéro séquentiel pour ce préfixe
     const lastContract = await db
       .select({ number: contracts.number })
@@ -55,12 +55,12 @@ export class ContractNumberGenerator {
       .where(like(contracts.number, `${prefix}%`))
       .orderBy(desc(contracts.number))
       .limit(1);
-    
+
     let sequenceNumber = 1;
-    
+
     if (lastContract.length > 0 && lastContract[0].number) {
       // Extraire le numéro séquentiel du dernier contrat
-      const parts = lastContract[0].number.split('–');
+      const parts = lastContract[0].number.split("–");
       if (parts.length >= 4) {
         const lastSequence = parseInt(parts[3], 10);
         if (!isNaN(lastSequence)) {
@@ -68,10 +68,10 @@ export class ContractNumberGenerator {
         }
       }
     }
-    
+
     // Formater le numéro séquentiel sur 4 chiffres
-    const formattedSequence = sequenceNumber.toString().padStart(4, '0');
-    
+    const formattedSequence = sequenceNumber.toString().padStart(4, "0");
+
     return `${prefix}${formattedSequence}`;
   }
 
@@ -90,16 +90,16 @@ export class ContractNumberGenerator {
     if (!this.validateContractNumber(number)) {
       return null;
     }
-    
-    const parts = number.replace('T=', '').split('–');
+
+    const parts = number.replace("T=", "").split("–");
     if (parts.length !== 4) {
       return null;
     }
-    
+
     return {
       typeCode: parts[0],
       entityCode: parts[1],
-      year: parseInt(parts[2], 10)
+      year: parseInt(parts[2], 10),
     };
   }
 

@@ -107,7 +107,7 @@ export const contractValidationSchema = z
 
     // Champs conditionnels pour certains types
     technology: z.enum(TECHNOLOGY_VALUES).optional(),
-    maintenanceProvider: z.string().optional(),
+    maintainer: z.string().optional(),
     maxAnnualProduction: z.number().min(0).optional(),
     numberOfTurbines: z.number().min(0).optional(),
     pricePerMWh: z.number().min(0).optional(),
@@ -276,7 +276,7 @@ const contractBaseSchema = z.object({
 
   // Champs conditionnels pour certains types
   technology: z.enum(["eolien", "PV"]).optional(),
-  maintenanceProvider: z.string().optional(),
+  maintainer: z.string().optional(),
   maxAnnualProduction: z.number().min(0).optional(),
   numberOfTurbines: z.number().min(0).optional(),
   pricePerMWh: z.number().min(0).optional(),
