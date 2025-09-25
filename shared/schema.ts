@@ -16,12 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import {
-  contractTypeEnum,
-  languageEnum,
-  Languages,
-  technologyEnum,
-} from "./enums/contracts";
+import { Languages } from "./enums/contracts";
 
 /**
  * Table des utilisateurs avec système RBAC
@@ -329,18 +324,26 @@ export const amendments = pgTable("amendments", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  contractId: varchar("contract_id").notNull(),
+  contractId: varchar("contract_id")
+    .notNull()
+    .references(() => contracts.id, { onDelete: "cascade" }), // ✅ FK
   number: text("number").notNull().unique(), // AVN-001, AVN-002, etc.
   type: text("type").notNull(), // price_revision, scope_change, duration_extension, indexation_change
-  title: text("title").notNull(),
+  title: text("title"),
   description: text("description"),
   status: text("status").notNull().default("draft"), // draft, pending_signature, active, rejected
-  effectiveDate: timestamp("effective_date").notNull(),
+  effectiveDate: timestamp("effective_date"),
   originalAmount: decimal("original_amount", { precision: 15, scale: 2 }),
   newAmount: decimal("new_amount", { precision: 15, scale: 2 }),
   impactDescription: text("impact_description"),
-  requestedBy: varchar("requested_by").notNull(),
-  approvedBy: varchar("approved_by"),
+  // 🔗 User relations
+  requestedBy: varchar("requested_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }), // requester must exist
+
+  approvedBy: varchar("approved_by").references(() => users.id, {
+    onDelete: "set null",
+  }), // approver may be deleted later
   signedDate: timestamp("signed_date"),
   createdAt: timestamp("created_at")
     .notNull()

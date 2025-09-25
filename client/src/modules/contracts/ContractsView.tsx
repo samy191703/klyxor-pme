@@ -291,8 +291,8 @@ export default function ContractsView() {
             <>
               <ContractsKpis kpis={kpis} loading={isLoading} />
 
-              <Card className="mb-6">
-                <CardContent className="p-4">
+              <Card className="mb-3">
+                <CardContent className="p-4 flex justify-between items-center gap-3">
                   <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     <ContractsFilters
                       value={filters}
@@ -301,7 +301,7 @@ export default function ContractsView() {
                       }
                     />
                   </div>
-                  <div className="flex items-center space-x-2 justify-end mt-2">
+                  <div className="flex items-center space-x-2 justify-end ">
                     <Button variant="outline" onClick={() => refetch()}>
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Actualiser

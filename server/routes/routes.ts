@@ -31,6 +31,7 @@ import { registerAuthRoutes } from "./auth.routes";
 import { registerUploadRoutes } from "./uploads.routes";
 import { User } from "@shared/schema";
 import { registerValidationRoutes } from "./validation.routes";
+import { registerAmendmentRoutes } from "./amendments.routes";
 
 /**
  * Fonction principale d'enregistrement des routes
@@ -102,6 +103,7 @@ export async function registerRoutes(
   registerContractRoutes(app);
   registerUploadRoutes(app);
   registerValidationRoutes(app);
+  registerAmendmentRoutes(app);
 
   app.get("/api/kpis", isAuthenticated, async (req, res) => {
     try {
@@ -483,109 +485,6 @@ export async function registerRoutes(
       res.json(logs);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch import logs" });
-    }
-  });
-
-  // Get amendments
-  app.get("/api/amendments", isAuthenticated, async (req, res) => {
-    try {
-      const amendmentsList = await storage.getAmendments();
-      res.json(amendmentsList);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch amendments" });
-    }
-  });
-
-  // Get amendment by ID
-  app.get("/api/amendments/:id", isAuthenticated, async (req, res) => {
-    try {
-      const amendment = await storage.getAmendment(req.params.id);
-      if (!amendment) {
-        return res.status(404).json({ error: "Amendment not found" });
-      }
-      res.json(amendment);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch amendment" });
-    }
-  });
-
-  // Create amendment
-  app.post(
-    "/api/amendments",
-    requirePermission("amendments", "create"),
-    async (req, res) => {
-      try {
-        const amendmentData = {
-          ...req.body,
-          effectiveDate: req.body.effectiveDate
-            ? new Date(req.body.effectiveDate)
-            : undefined,
-          requestedBy:
-            req.body.requestedBy ||
-            (req.user as any)?.id ||
-            "cfb99f09-eb0f-45fc-82c4-8c468fe67e5c",
-        };
-        const amendment = await storage.createAmendment(amendmentData);
-
-        // Log the activity
-        await storage.createActivityLog({
-          userId: "admin-1",
-          userName: "Admin User",
-          action: "created",
-          entityType: "amendment",
-          entityId: amendment.id,
-          entityReference: amendment.number,
-          details: `Created amendment: ${amendment.title}`,
-        });
-
-        res.json(amendment);
-      } catch (error) {
-        res.status(500).json({ error: "Failed to create amendment" });
-      }
-    }
-  );
-
-  // Update amendment
-  app.put("/api/amendments/:id", isAuthenticated, async (req, res) => {
-    try {
-      const amendmentData = {
-        ...req.body,
-        effectiveDate: req.body.effectiveDate
-          ? new Date(req.body.effectiveDate)
-          : undefined,
-      };
-      const amendment = await storage.updateAmendment(
-        req.params.id,
-        amendmentData
-      );
-      if (!amendment) {
-        return res.status(404).json({ error: "Amendment not found" });
-      }
-
-      // Log the activity
-      await storage.createActivityLog({
-        userId: "admin-1",
-        userName: "Admin User",
-        action: "updated",
-        entityType: "amendment",
-        entityId: amendment.id,
-        entityReference: amendment.number,
-        details: `Updated amendment: ${amendment.title}`,
-      });
-
-      res.json(amendment);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update amendment" });
-    }
-  });
-
-  // Delete amendment
-  app.delete("/api/amendments/:id", isAuthenticated, async (req, res) => {
-    try {
-      await storage.deleteAmendment(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete amendment" });
     }
   });
 

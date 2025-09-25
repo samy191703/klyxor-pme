@@ -12,7 +12,6 @@ import Validation from "@/pages/validation";
 import Workflows from "@/pages/workflows";
 import Deadlines from "@/pages/deadlines";
 import Indexations from "@/pages/indexations";
-import Amendments from "@/pages/amendments";
 import Terminations from "@/pages/terminations";
 import Documents from "@/pages/documents";
 import Imports from "@/pages/imports";
@@ -45,6 +44,7 @@ import IndexationDashboard from "@/pages/IndexationDashboard";
 import CodeSnippets from "@/pages/CodeSnippets";
 import MainContractsPage from "./modules/contracts";
 import { MuiThemeProvider } from "./styles/mui-theme";
+import AmendmentsPage from "./modules/amendments/components/AmendmentsPage";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -112,7 +112,7 @@ function Router() {
           </Route>
           <Route path="/amendments">
             <ProtectedRoute route="/amendments">
-              <Amendments />
+              <AmendmentsPage />
             </ProtectedRoute>
           </Route>
           <Route path="/terminations">

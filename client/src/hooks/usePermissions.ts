@@ -171,19 +171,19 @@ export function usePermissions() {
 
   const hasPermission = (route: string): boolean => {
     if (!user) return false;
-    console.log(
+    /*  console.log(
       "Checking permission for route:",
       route,
       "User role:",
       user.role
-    );
+    ); */
 
     const permission = routePermissions[route];
 
-    console.log("Required permission:", permission);
+    // console.log("Required permission:", permission);
     if (!permission) return true; // No specific permission required
 
-    console.log(permission.allowedRoles.includes(user.role as UserRole));
+    // console.log(permission.allowedRoles.includes(user.role as UserRole));
     return permission.allowedRoles.includes(user.role as UserRole);
   };
 
