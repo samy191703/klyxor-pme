@@ -1,3 +1,5 @@
+// client\src\components\layout\AppLayout.tsx
+
 import { ReactNode } from "react";
 import SidebarWithSubmenu from "./sidebar-with-submenu";
 import MobileNavWithSubmenu from "./mobile-nav-with-submenu";

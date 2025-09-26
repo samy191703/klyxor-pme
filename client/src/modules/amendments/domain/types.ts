@@ -6,12 +6,12 @@ export interface Amendment {
   contractNumber?: string; // populated when joining
   number: string;
   type: AmendmentType;
-  title: string;
+  title?: string;
   description?: string | null;
   status: AmendmentStatus;
-  effectiveDate: string; // ISO date
-  originalAmount?: string | null;
-  newAmount?: string | null;
+  effectiveDate?: string; // ISO date
+  originalAmount?: number;
+  newAmount?: number;
   impactDescription?: string | null;
   requestedBy: string;
   requestedByUser?: User;
@@ -38,6 +38,7 @@ export type AmendmentCreateDto = {
 export type AmendmentUpdateDto = Partial<
   Pick<
     Amendment,
+    | "type"
     | "title"
     | "description"
     | "status"

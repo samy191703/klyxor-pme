@@ -38,7 +38,6 @@ export default function AmendmentsPage() {
     search: "",
     status: "all",
     type: "all",
-    itemsPerPage: 25,
   });
 
   const [selected, setSelected] = useState<Amendment | null>(null);
@@ -58,7 +57,7 @@ export default function AmendmentsPage() {
       if (
         q &&
         !(
-          a.title.toLowerCase().includes(q) ||
+          a.title?.toLowerCase().includes(q) ||
           a.number.toLowerCase().includes(q) ||
           a.contractNumber?.toLowerCase().includes(q)
         )
@@ -68,10 +67,10 @@ export default function AmendmentsPage() {
     });
   }, [amendments, filters]);
 
-  const paged = useMemo(
+  /*   const paged = useMemo(
     () => filtered.slice(0, filters.itemsPerPage),
     [filtered, filters.itemsPerPage]
-  );
+  ); */
 
   const handleDelete = async (id: string) => {
     if (
@@ -113,7 +112,7 @@ export default function AmendmentsPage() {
     await refetch();
     setShowKpis(false);
     setExpanded(true);
-    setFilters((s) => ({ ...s, itemsPerPage: Math.max(s.itemsPerPage, 100) }));
+    setFilters((s) => ({ ...s }));
   };
 
   if (isLoading)
@@ -146,7 +145,7 @@ export default function AmendmentsPage() {
       data-testid="amendments-main"
     >
       <Header />
-      <main className="overflow-y-hidden h-[calc(100vh-64px)] px-4 py-2 lg:px-6 lg:py-1">
+      <main className="h-[calc(100vh-64px)] px-4 py-2 lg:px-6 lg:py-1">
         <div className="max-w-7xl mx-0">
           <div className="mb-3">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
@@ -227,8 +226,8 @@ export default function AmendmentsPage() {
           <Card>
             <CardContent className="p-0">
               <AmendmentsTable
-                rows={paged}
-                height={expanded ? "70vh" : "400px"} // ⬅️ expand height when expanded
+                rows={filtered}
+                height={expanded ? "500px" : "400px"} // ⬅️ expand height when expanded
                 onView={(a) => {
                   setSelected(a);
                   setOpenView(true);
@@ -239,14 +238,14 @@ export default function AmendmentsPage() {
                 }}
                 onDelete={handleDelete}
               />
-              {filtered.length > 0 && (
+              {/*    {filtered.length > 0 && (
                 <div className="border-t px-4 py-3 flex items-center justify-between text-sm text-gray-600">
                   <div>
                     1-{Math.min(filters.itemsPerPage, filtered.length)} sur{" "}
                     {filtered.length}
                   </div>
                 </div>
-              )}
+              )} */}
             </CardContent>
           </Card>
         </div>

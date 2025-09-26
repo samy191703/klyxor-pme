@@ -238,10 +238,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <Toaster />
         <MuiThemeProvider>
           <AIHelpProvider>
             <ModalProvider>
-              <Toaster />
               <Router />
               <GlobalModals />
             </ModalProvider>

@@ -17,7 +17,6 @@ export type AmendmentFiltersValue = {
     | "scope_change"
     | "indexation_change";
   search: string;
-  itemsPerPage: number; // now numeric, like your Contracts filters
 };
 
 export default function AmendmentFilters({
@@ -96,7 +95,7 @@ export default function AmendmentFilters({
       </TextField>
 
       {/* Afficher (pagination) */}
-      <TextField
+      {/*   <TextField
         select
         label="Afficher"
         value={value.itemsPerPage ?? 25}
@@ -108,7 +107,7 @@ export default function AmendmentFilters({
         <MenuItem value={25}>25</MenuItem>
         <MenuItem value={50}>50</MenuItem>
         <MenuItem value={100}>100</MenuItem>
-      </TextField>
+      </TextField> */}
     </>
   );
 }
