@@ -112,6 +112,7 @@ export function AmendmentsTable({
       <TableContainer sx={{ maxHeight: height, overflowX: "auto" }}>
         <Table
           stickyHeader
+          size="small"
           sx={{
             tableLayout: "fixed",
             minWidth: "1100px",

@@ -1,4 +1,4 @@
-import { db } from "../db";
+import { db } from "../../db";
 import { contracts } from "@shared/schema";
 import { eq, and, like, desc } from "drizzle-orm";
 

@@ -122,7 +122,7 @@ export function registerContractRoutes(app: Express): void {
     async (req: Request, res: Response) => {
       try {
         const { ContractNumberGenerator } = await import(
-          "../services/contractNumberGenerator"
+          "../services/references-generator/contractNumberGenerator"
         );
         const { validateContract } = await import(
           "../validators/contractStepperValidator"
@@ -1114,7 +1114,7 @@ export function registerContractRoutes(app: Express): void {
         });
 
         await storage.createAuditLog({
-          user: (req as any).user?.id || "system",
+          userId: (req as any).user?.id || "system",
           action: "manual_amount_modification",
           entityType: "contract",
           entityId: contractId,
@@ -1298,7 +1298,7 @@ export function registerContractRoutes(app: Express): void {
         // Audit log (non bloquant)
         try {
           await storage.createAuditLog?.({
-            user: (req as any).user?.id || "system",
+            userId: (req as any).user?.id || "system",
             username: (req as any).user?.name || "system",
             action: "status_change",
             traceId: `contract-${id}`,

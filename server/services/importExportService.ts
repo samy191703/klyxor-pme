@@ -8,7 +8,7 @@ import {
   validationRequests,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { ContractNumberGenerator } from "./contractNumberGenerator";
+import { ContractNumberGenerator } from "./references-generator/contractNumberGenerator";
 
 export interface ImportError {
   row: number;

@@ -32,6 +32,7 @@ import { registerUploadRoutes } from "./uploads.routes";
 import { User } from "@shared/schema";
 import { registerValidationRoutes } from "./validation.routes";
 import { registerAmendmentRoutes } from "./amendments.routes";
+import { registerTerminationRoutes } from "./termination.routes";
 
 /**
  * Fonction principale d'enregistrement des routes
@@ -104,6 +105,7 @@ export async function registerRoutes(
   registerUploadRoutes(app);
   registerValidationRoutes(app);
   registerAmendmentRoutes(app);
+  registerTerminationRoutes(app);
 
   app.get("/api/kpis", isAuthenticated, async (req, res) => {
     try {
@@ -1687,7 +1689,7 @@ export async function registerRoutes(
   app.post("/api/admin/contracts", async (req, res) => {
     try {
       const { ContractNumberGenerator } = await import(
-        "../services/contractNumberGenerator"
+        "../services/references-generator/contractNumberGenerator"
       );
       const { BillingPlanGenerator } = await import(
         "../services/billingPlanGenerator"

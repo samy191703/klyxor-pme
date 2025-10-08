@@ -268,7 +268,7 @@ export default function ContractsView() {
     <div className="flex flex-col h-full bg-gray-50">
       <ContractsHeader />
       <div className="mb-2 mt-3 px-4 py-2 lg:px-6 lg:py-1 flex items-center justify-between">
-        <h1 className="ml-3 text-3xl font-bold text-gray-900">
+        <h1 className="ml-3 text-2xl font-bold text-gray-900">
           Gestion des contrats
         </h1>
         {canCreateContract() && !showWizard && (
@@ -286,7 +286,7 @@ export default function ContractsView() {
       </div>
 
       <main className="flex-1 overflow-y-auto px-4 py-2 lg:px-6 lg:py-1">
-        <div className="max-w-7xl mx-3">
+        <div className="w-full mx-3">
           {!showWizard ? (
             <>
               <ContractsKpis kpis={kpis} loading={isLoading} />

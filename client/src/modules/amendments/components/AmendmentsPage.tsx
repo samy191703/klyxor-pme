@@ -146,7 +146,7 @@ export default function AmendmentsPage() {
     >
       <Header />
       <main className="h-[calc(100vh-64px)] px-4 py-2 lg:px-6 lg:py-1">
-        <div className="max-w-7xl mx-0">
+        <div className="w-full">
           <div className="mb-3">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
               <div>

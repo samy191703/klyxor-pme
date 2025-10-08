@@ -45,6 +45,7 @@ import CodeSnippets from "@/pages/CodeSnippets";
 import MainContractsPage from "./modules/contracts";
 import { MuiThemeProvider } from "./styles/mui-theme";
 import AmendmentsPage from "./modules/amendments/components/AmendmentsPage";
+import { TerminationsPage } from "./modules/terminations";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -117,7 +118,7 @@ function Router() {
           </Route>
           <Route path="/terminations">
             <ProtectedRoute route="/terminations">
-              <Terminations />
+              <TerminationsPage />
             </ProtectedRoute>
           </Route>
           <Route path="/documents">

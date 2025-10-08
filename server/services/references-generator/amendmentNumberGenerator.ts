@@ -1,6 +1,6 @@
 // server/services/amendmentNumberGenerator.ts
 
-import { db } from "../db";
+import { db } from "../../db";
 import { contracts, amendments } from "@shared/schema";
 import { eq, and, like, desc, count } from "drizzle-orm";
 

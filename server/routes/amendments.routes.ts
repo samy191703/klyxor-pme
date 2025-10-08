@@ -468,7 +468,7 @@ export function registerAmendmentRoutes(app: Express): void {
         let resolvedNumber = "AVN-" + Date.now(); // fallback
         try {
           const { AmendmentNumberGenerator } = await import(
-            "../services/amendmentNumberGenerator"
+            "../services/references-generator/amendmentNumberGenerator"
           );
 
           const number = await AmendmentNumberGenerator.generateAmendmentNumber(
@@ -746,7 +746,7 @@ export function registerAmendmentRoutes(app: Express): void {
 
         // Audit log (non-blocking)
         await storage.createAuditLog?.({
-          user: safeUserId(req),
+          userId: safeUserId(req),
           action: "amendment_status_change",
           entityType: "amendment",
           entityId: id,
