@@ -46,6 +46,7 @@ import MainContractsPage from "./modules/contracts";
 import { MuiThemeProvider } from "./styles/mui-theme";
 import AmendmentsPage from "./modules/amendments/components/AmendmentsPage";
 import { TerminationsPage } from "./modules/terminations";
+import { GEDPage } from "./modules/ged";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -123,7 +124,7 @@ function Router() {
           </Route>
           <Route path="/documents">
             <ProtectedRoute route="/documents">
-              <Documents />
+              <GEDPage />
             </ProtectedRoute>
           </Route>
           <Route path="/code-snippets">
