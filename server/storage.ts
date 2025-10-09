@@ -160,6 +160,25 @@ export interface IStorage {
     request: Partial<ValidationRequest>
   ): Promise<ValidationRequest | undefined>;
 
+  // after your existing validation requests methods
+  findValidationRequests(filters?: {
+    status?: ValidationRequest["status"][]; // 'pending' | 'approved' | 'rejected' | 'redirected'
+    type?: string;
+    assignedTo?: string;
+    requestedBy?: string;
+    referenceId?: string;
+    search?: string; // matches subject/reference (client-side filtered)
+    limit?: number;
+    offset?: number;
+  }): Promise<ValidationRequest[]>;
+
+  bulkUpdateValidationRequests(
+    ids: string[],
+    patch: Partial<ValidationRequest>
+  ): Promise<ValidationRequest[]>;
+
+  incrementAgesForPending(): Promise<void>;
+
   // ========== GESTION DES INDEXATIONS ==========
   getIndexations(): Promise<Indexation[]>;
   getIndexation(id: string): Promise<Indexation | undefined>;
@@ -601,7 +620,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<ValidationRequest> {
     const [request] = await db
       .insert(validationRequests)
-      .values(insertRequest)
+      .values(insertRequest) // let DB defaults/triggers set created_at/updated_at
       .returning();
     return request;
   }
@@ -612,7 +631,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<ValidationRequest | undefined> {
     const [request] = await db
       .update(validationRequests)
-      .set(updates)
+      .set(updates) // no manual updatedAt
       .where(eq(validationRequests.id, id))
       .returning();
     return request || undefined;
@@ -631,7 +650,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(indexations.createdAt));
 
     // Si aucune donnée en base, retourner des données de test pour démonstration
-    if (dbIndexations.length === 0) {
+    /*  if (dbIndexations.length === 0) {
       const mockIndexations: Indexation[] = [
         {
           id: "idx-001",
@@ -823,7 +842,7 @@ export class DatabaseStorage implements IStorage {
       ];
       return mockIndexations;
     }
-
+ */
     // Retourner les vraies données de la base
     return dbIndexations;
   }
@@ -1251,12 +1270,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Security Events
-  async getSecurityEvents(): Promise<SecurityEvent[]> {
+  /*  async getSecurityEvents(): Promise<SecurityEvent[]> {
     return await db
       .select()
       .from(securityEvents)
       .orderBy(desc(securityEvents.createdAt));
-  }
+  } */
 
   async createSecurityEvent(
     insertEvent: InsertSecurityEvent
@@ -1729,6 +1748,82 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // 1) findValidationRequests
+  async findValidationRequests(filters?: {
+    status?: ValidationRequest["status"][];
+    type?: string;
+    assignedTo?: string;
+    requestedBy?: string;
+    referenceId?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ValidationRequest[]> {
+    const {
+      status,
+      type,
+      assignedTo,
+      requestedBy,
+      referenceId,
+      search,
+      limit = 50,
+      offset = 0,
+    } = filters ?? {};
+
+    // Build simple AND filters (portable)
+    const clauses: any[] = [];
+    if (status?.length)
+      clauses.push(sql`${validationRequests.status} = ANY(${status})`);
+    if (type) clauses.push(eq(validationRequests.type, type));
+    if (assignedTo) clauses.push(eq(validationRequests.assignedTo, assignedTo));
+    if (requestedBy)
+      clauses.push(eq(validationRequests.requestedBy, requestedBy));
+    if (referenceId)
+      clauses.push(eq(validationRequests.referenceId, referenceId));
+
+    const base = db
+      .select()
+      .from(validationRequests)
+      .where(clauses.length ? and(...clauses) : undefined)
+      .orderBy(desc(validationRequests.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const rows = await base;
+
+    // simple in-memory search on subject/reference (keeps code DB-agnostic)
+    if (!search) return rows;
+    const q = search.toLowerCase();
+    return rows.filter(
+      (r) =>
+        (r.subject ?? "").toLowerCase().includes(q) ||
+        (r.reference ?? "").toLowerCase().includes(q)
+    );
+  }
+
+  // 2) bulkUpdateValidationRequests
+  async bulkUpdateValidationRequests(
+    ids: string[],
+    patch: Partial<ValidationRequest>
+  ): Promise<ValidationRequest[]> {
+    if (!ids.length) return [];
+    const res = await db
+      .update(validationRequests)
+      .set(patch)
+      .where(sql`${validationRequests.id} = ANY(${ids})`)
+      .returning();
+    return res;
+  }
+
+  // 3) incrementAgesForPending
+  async incrementAgesForPending(): Promise<void> {
+    await db.execute(sql`
+    UPDATE ${validationRequests}
+    SET age = age + 1
+    WHERE status = 'pending'
+  `);
+  }
+
   /**
    * Récupère les événements de sécurité depuis la base de données
    * @param {number} limit - Nombre maximum d'événements à récupérer
@@ -1746,9 +1841,9 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(securityEvents.createdAt))
         .limit(limit);
 
-      if (eventType) {
+      /*  if (eventType) {
         query = query.where(eq(securityEvents.eventType, eventType));
-      }
+      } */
 
       const events = await query;
       return events || [];
