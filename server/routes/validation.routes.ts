@@ -45,6 +45,85 @@ const ALLOWED: Record<VStatus, VStatus[]> = {
 const canTransition = (from: VStatus, to: VStatus) =>
   (ALLOWED[from] ?? []).includes(to);
 
+/* ------------------------------------------------------------------ */
+/*         ✅ Decision side-effects on underlying entities            */
+/* ------------------------------------------------------------------ */
+/**
+ * Mapping:
+ * - contract:
+ *    approve → contracts.status = "active"
+ *    reject  → contracts.status = "draft"
+ * - amendment:
+ *    approve → amendments.status = "active"
+ *    reject  → amendments.status = "rejected"
+ * - termination:
+ *    approve → terminations.status = "validated" AND related contracts.status = "terminated"
+ *    reject  → terminations.status = "rejected" (contract unchanged)
+ * - indexation-proposal: TODO when entity exists
+ */
+type Decision = "approved" | "rejected";
+
+async function applyDecisionSideEffects(opts: {
+  type: string;
+  referenceId: string;
+  decision: Decision;
+  reason?: string | null;
+}) {
+  const { type, referenceId, decision } = opts;
+  try {
+    switch (type) {
+      case ValidationRequestType.CONTRACT: {
+        console.log(referenceId, decision);
+        if (decision === "approved") {
+          await storage.updateContract?.(referenceId, { status: "active" });
+        } else {
+          await storage.updateContract?.(referenceId, { status: "draft" });
+        }
+        break;
+      }
+      case ValidationRequestType.AMENDMENT: {
+        if (decision === "approved") {
+          await storage.updateAmendment?.(referenceId, { status: "active" });
+        } else {
+          await storage.updateAmendment?.(referenceId, { status: "rejected" });
+        }
+        break;
+      }
+      case ValidationRequestType.TERMINATION: {
+        if (decision === "approved") {
+          // validate termination
+          await storage.updateTermination?.(referenceId, {
+            status: "validated",
+          });
+          // and terminate related contract
+          const term = await storage.getTermination?.(referenceId);
+          const contractId =
+            (term as any)?.contractId ?? (term as any)?.contract_id ?? null;
+          if (contractId) {
+            await storage.updateContract?.(contractId, {
+              status: "terminated",
+            });
+          }
+        } else {
+          await storage.updateTermination?.(referenceId, {
+            status: "rejected",
+          });
+        }
+        break;
+      }
+      case ValidationRequestType.INDEXATION: {
+        // TODO: implement when indexation-proposals entity exists
+        break;
+      }
+      default:
+        // no-op
+        break;
+    }
+  } catch {
+    // best-effort; do not block validation endpoints
+  }
+}
+
 /**
  * @function registerValidationRoutes
  * @description Registers validation-request related HTTP endpoints.
@@ -346,6 +425,13 @@ export function registerValidationRoutes(app: Express): void {
           age: 0,
         });
 
+        // 🔁 Side-effects (best-effort, non-blocking)
+        void applyDecisionSideEffects({
+          type: request!.type,
+          referenceId: request!.referenceId,
+          decision: "approved",
+        });
+
         try {
           await storage.createAuditLog?.({
             user: (req as any).user?.id || "system",
@@ -416,6 +502,14 @@ export function registerValidationRoutes(app: Express): void {
           validatedBy: (req as any).user?.id || "system",
           validatedAt: new Date(),
           age: 0,
+        });
+
+        // 🔁 Side-effects (best-effort, non-blocking)
+        void applyDecisionSideEffects({
+          type: request!.type,
+          referenceId: request!.referenceId,
+          decision: "rejected",
+          reason,
         });
 
         try {
