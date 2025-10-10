@@ -8,7 +8,7 @@ import {
   rejectValidationRequest,
   redirectValidationRequest,
   type SearchParams,
-} from "../services/validation-requests.service";
+} from "../services/validation-requests.api";
 import { VALIDATION_REQUESTS_QK } from "../domain/constants";
 import { ValidationRequest } from "../domain/types";
 
