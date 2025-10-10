@@ -12,6 +12,10 @@ import { amendments, contracts, users } from "@shared/schema";
 
 // ---- Small helpers ---------------------------------------------------------
 import { relations } from "drizzle-orm";
+import {
+  ValidationRequestStatus,
+  ValidationRequestTypes,
+} from "@shared/enums/validation-requests.enum";
 
 export const contractsRelations = relations(contracts, ({ many }) => ({
   amendments: many(amendments),
@@ -432,7 +436,7 @@ export function registerAmendmentRoutes(app: Express): void {
    * @openapi
    * /api/amendments:
    *   post:
-   *     summary: Create an amendment (draft)
+   *     summary: Create an amendment (PendingValidation or Draft)
    *     tags: [Amendments]
    *     security:
    *       - cookieAuth: []
@@ -447,6 +451,7 @@ export function registerAmendmentRoutes(app: Express): void {
    *       400: { description: Validation error }
    *       500: { description: Server error }
    */
+
   app.post(
     "/api/amendments",
     requirePermission("amendments", "create"),
@@ -464,21 +469,28 @@ export function registerAmendmentRoutes(app: Express): void {
         }
         const d = parsed.data;
 
+        // Ensure contract exists (needed for assignee resolution context)
+        const existingContract = await storage.getContract(d.contractId);
+        if (!existingContract) {
+          return res.status(404).json({ error: "Contract not found" });
+        }
+
         // Generate amendment number if not provided
-        let resolvedNumber = "AVN-" + Date.now(); // fallback
+        let resolvedNumber = existingContract.number ?? `AVN-${Date.now()}`;
         try {
           const { AmendmentNumberGenerator } = await import(
             "../services/references-generator/amendmentNumberGenerator"
           );
-
-          const number = await AmendmentNumberGenerator.generateAmendmentNumber(
-            d.contractId
-          );
-
-          resolvedNumber = number;
+          resolvedNumber =
+            await AmendmentNumberGenerator.generateAmendmentNumber(
+              d.contractId
+            );
         } catch {
-          resolvedNumber = resolvedNumber || `AVN-${Date.now()}`;
+          resolvedNumber = "AVN-" + existingContract.number;
         }
+
+        // Default status: if client didn’t provide one, we keep pending_validation
+        const status = d.status ?? "pending_validation";
 
         const amendmentData = {
           contractId: d.contractId,
@@ -486,8 +498,8 @@ export function registerAmendmentRoutes(app: Express): void {
           type: d.type,
           title: d.title,
           description: d.description ?? null,
-          status: d.status ?? "draft",
-          effectiveDate: toDateOrNull(d.effectiveDate) /* ?? new Date() */,
+          status,
+          effectiveDate: toDateOrNull(d.effectiveDate),
           originalAmount: d.originalAmount ?? null,
           newAmount: d.newAmount ?? null,
           impactDescription: d.impactDescription ?? null,
@@ -498,20 +510,76 @@ export function registerAmendmentRoutes(app: Express): void {
 
         const amendment = await storage.createAmendment(amendmentData as any);
 
-        // Activity log (non-blocking)
-        await storage.createActivityLog?.({
-          userId: safeUserId(req),
-          userName: (req as any)?.user?.name || "system",
-          action: "created",
-          entityType: "amendment",
-          entityId: amendment.id,
-          entityReference: amendment.number,
-          details: `Created amendment: ${amendment.title}`,
-        });
+        // 🔔 Validation request trigger (like contracts)
+        // Only when the amendment goes to pending_validation
+        if (amendment.status === "pending_validation") {
+          // Build context for rule resolution
+          const ctx = {
+            type: ValidationRequestTypes.AMENDMENT, // "amendment"
+            businessUnit: existingContract.businessUnit, // BU from contract
+            contractType: existingContract.type, // contract.type (e.g. GAZ, ELEC)
+            parkCode: existingContract.parkCode ?? undefined,
+            amount:
+              typeof amendment.newAmount === "number"
+                ? amendment.newAmount
+                : amendment.newAmount != null
+                ? Number(amendment.newAmount)
+                : undefined,
+          };
+
+          // Resolve via rules
+          const { selectedUserId } = await storage.resolveValidationAssignee(
+            ctx
+          );
+
+          // Fallback to first validator
+          let finalAssignee = selectedUserId;
+          if (!finalAssignee) {
+            const allUsers = await storage.getUsers();
+            const fallbackValidator = allUsers.find(
+              (u) => u.role === "validator"
+            );
+            finalAssignee = fallbackValidator?.id || null;
+          }
+
+          if (!finalAssignee) {
+            // Rollback not handled here — we fail explicitly (same behavior as contracts)
+            throw new Error("No validator found for amendment approval.");
+          }
+
+          await storage.createValidationRequest({
+            type: "amendment",
+            referenceId: amendment.id,
+            reference: amendment.number,
+            subject: `Amendment validation — ${amendment.number}`,
+            requestedBy: safeUserId(req) || "system",
+            assignedTo: finalAssignee,
+            status:
+              (ValidationRequestStatus as any)?.PENDING ?? ("pending" as any),
+          });
+        }
+
+        // 🧾 Audit log (best-effort)
+        try {
+          await storage.createAuditLog?.({
+            userId: safeUserId(req) || "system",
+            username: (req as any)?.user?.name || "system",
+            action: "created",
+            traceId: `amendment-${amendment.id}`,
+            entityType: "amendment",
+            entityId: amendment.id,
+            details: JSON.stringify({
+              number: amendment.number,
+              status: amendment.status,
+            }),
+            ipAddress: req.ip || "",
+            userAgent: req.headers["user-agent"] || "",
+          });
+        } catch {}
 
         return res.json(amendment);
       } catch (error: any) {
-        // Handle duplicate numbers gracefully if DB unique constraint
+        // Unique violation on number
         const detail = String(error?.detail || "");
         if (error?.code === "23505" && detail.includes("(number)")) {
           return res.status(409).json({

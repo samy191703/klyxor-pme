@@ -5,12 +5,18 @@ import { isAuthenticated } from "server/auth";
 import { requirePermission } from "server/middlewares/authMiddleware";
 import {
   contracts,
+  Termination,
   terminations,
   users,
   type InsertTermination,
 } from "@shared/schema";
 import { aliasedTable, eq, desc } from "drizzle-orm";
 import { db } from "server/db";
+import {
+  ValidationRequestTypes,
+  ValidationRequestStatus,
+} from "@shared/enums/validation-requests.enum";
+import { safeUserId } from "server/utils/helpers";
 
 // ✅ Statuts & transitions autorisées
 const TerminationStatus = {
@@ -225,10 +231,10 @@ export function registerTerminationRoutes(app: Express): void {
           noticeDate,
           compensationAmount,
           description,
-          submit, // bool facultatif -> si true, status = pending_validation
+          submit,
         } = req.body as Partial<InsertTermination> & { submit?: boolean };
 
-        // 🔎 Contrat requis et existant
+        // 🔎 Required + contract exists
         if (!contractId) {
           return res.status(400).json({ error: "contractId is required" });
         }
@@ -236,30 +242,31 @@ export function registerTerminationRoutes(app: Express): void {
         if (!contract) {
           return res.status(404).json({ error: "Contract not found" });
         }
-
         if (!reason || !type || !effectiveDate) {
           return res.status(400).json({
             error: "Missing required fields (reason, type, effectiveDate)",
           });
         }
 
-        // Génération du numéro (comme pour contracts)
-        let resolvedNumber = number;
+        // Number generation
+        let resolvedNumber = number ?? null;
         try {
           const { TerminationNumberGenerator } = await import(
             "../services/references-generator/terminationNumberGenerator"
           );
           resolvedNumber =
-            resolvedNumber ||
+            resolvedNumber ??
             (await TerminationNumberGenerator.generateTerminationNumber(
               contractId
             ));
         } catch {
-          // fallback
           const year = new Date().getFullYear();
           resolvedNumber =
             resolvedNumber || `RE-${year}-${Date.now().toString().slice(-5)}`;
         }
+
+        // We currently set everything to pending_validation (as before)
+        const status: Termination["status"] = "pending_validation";
 
         const insert: InsertTermination = {
           contractId,
@@ -267,31 +274,75 @@ export function registerTerminationRoutes(app: Express): void {
           reason: String(reason),
           type: String(type),
           effectiveDate: new Date(effectiveDate as any),
-          status: submit ? "pending_validation" : "draft",
+          status,
           noticeDate: toDate(noticeDate),
           compensationAmount:
             compensationAmount != null ? String(compensationAmount) : undefined,
           description: description ?? null,
-          requestedBy: (req as any).user?.id || "system",
+          requestedBy: safeUserId(req) || "system",
           validatedBy: null,
           validatedAt: null,
           executedBy: null,
           rejectionReason: null,
         };
 
-        // Création
         const created = await storage.createTermination(insert);
 
-        // Audit (best-effort)
+        // 🔔 Validation request trigger (like contracts)
+        if (created.status === "pending_validation") {
+          const ctx = {
+            type: ValidationRequestTypes.TERMINATION, // "termination"
+            businessUnit: contract.businessUnit,
+            contractType: contract.type,
+            parkCode: contract.parkCode ?? undefined,
+            amount:
+              created.compensationAmount != null
+                ? Number(created.compensationAmount)
+                : undefined,
+          };
+
+          const { selectedUserId } = await storage.resolveValidationAssignee(
+            ctx
+          );
+
+          let finalAssignee = selectedUserId;
+          if (!finalAssignee) {
+            const allUsers = await storage.getUsers();
+            const fallbackValidator = allUsers.find(
+              (u) => u.role === "validator"
+            );
+            finalAssignee = fallbackValidator?.id || null;
+          }
+
+          if (!finalAssignee) {
+            throw new Error("No validator found for termination approval.");
+          }
+
+          await storage.createValidationRequest({
+            type: "termination",
+            referenceId: created.id,
+            reference: created.number,
+            subject: `Termination validation — ${created.number}`,
+            requestedBy: safeUserId(req) || "system",
+            assignedTo: finalAssignee,
+            status:
+              (ValidationRequestStatus as any)?.PENDING ?? ("pending" as any),
+          });
+        }
+
+        // 🧾 Audit log (best-effort)
         try {
           await storage.createAuditLog?.({
-            userId: (req as any).user?.id || "system",
-            username: (req as any).user?.name || "system",
+            userId: safeUserId(req) || "system",
+            username: (req as any)?.user?.name || "system",
             action: "create",
             entityType: "termination",
             entityId: created.id,
             traceId: `termination-${created.id}`,
-            details: JSON.stringify({ created }),
+            details: JSON.stringify({
+              number: created.number,
+              status: created.status,
+            }),
             ipAddress: req.ip || "",
             userAgent: req.headers["user-agent"] || "",
           });
@@ -299,7 +350,6 @@ export function registerTerminationRoutes(app: Express): void {
 
         res.json(created);
       } catch (error: any) {
-        // Violation unique sur number
         const isDup =
           error?.code === "23505" &&
           String(error?.detail || "").includes("(number)");
