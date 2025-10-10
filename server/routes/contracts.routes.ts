@@ -7,6 +7,10 @@ import { isAuthenticated } from "server/auth";
 import { InsertContract } from "@shared/schema";
 import { makeSetStatusSchema } from "server/validators/contract-status.validator";
 import { ContractStatus } from "@shared/enums/contracts-status.enum";
+import {
+  ValidationRequestStatus,
+  ValidationRequestTypes,
+} from "@shared/enums/validation-requests.enum";
 
 /**
  * @function registerContractRoutes
@@ -1275,6 +1279,49 @@ export function registerContractRoutes(app: Express): void {
 
         // Pre-checks for submission
         if (status === ContractStatus.PENDING_VALIDATION) {
+          const ctx = {
+            type: ValidationRequestTypes.CONTRACT, // "contract"
+            businessUnit: existing.businessUnit, // e.g. ENGIE Green
+            contractType: existing.type, // your contract.type
+            parkCode: existing.parkCode ?? undefined, // optional
+            amount:
+              existing.amount != null ? Number(existing.amount) : undefined, // optional
+          };
+
+          // Use enum if you have it; otherwise fall back to the string literal
+          const PENDING_STATUS =
+            (ValidationRequestStatus?.PENDING as any) ?? "pending";
+          // 1️⃣ Resolve via rules
+          const { selectedUserId } = await storage.resolveValidationAssignee(
+            ctx
+          );
+
+          // 2️⃣ If no matching rule, fallback to first available validator user
+          let finalAssignee = selectedUserId;
+          if (!finalAssignee) {
+            const allUsers = await storage.getUsers();
+            const fallbackValidator = allUsers.find(
+              (u) => u.role === "validator"
+            );
+            finalAssignee = fallbackValidator?.id || null;
+          }
+
+          // 3️⃣ If still no validator in system, fail explicitly (should never happen)
+          if (!finalAssignee) {
+            throw new Error("No validator found for contract approval.");
+          }
+
+          // 4️⃣ Create validation request
+          await storage.createValidationRequest({
+            type: "contract",
+            referenceId: existing.id,
+            reference: existing.number,
+            subject: `Contract validation — ${existing.number}`,
+            requestedBy: (req as any).user?.id || "system",
+            assignedTo: finalAssignee,
+            status: ValidationRequestStatus.PENDING,
+          });
+
           const basicErrors: string[] = [];
           if (!existing.startDate) basicErrors.push("Date de début manquante");
           if (!existing.endDate) basicErrors.push("Date de fin manquante");

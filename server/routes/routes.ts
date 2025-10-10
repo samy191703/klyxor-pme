@@ -1247,7 +1247,7 @@ export async function registerRoutes(
   // ========== OBJECT STORAGE ROUTES ==========
   // Routes pour la gestion des fichiers dans l'object storage
 
-  // Route pour servir les documents privés avec contrôle d'accès
+  /*   // Route pour servir les documents privés avec contrôle d'accès
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
     const userId = (req.user as any)?.id;
     const objectStorageService = new ObjectStorageService();
@@ -1283,9 +1283,9 @@ export async function registerRoutes(
       console.error("Error getting upload URL:", error);
       res.status(500).json({ error: "Failed to get upload URL" });
     }
-  });
+  }); */
 
-  // Route pour enregistrer un document uploadé dans la base
+  /* // Route pour enregistrer un document uploadé dans la base
   app.put("/api/documents/upload", isAuthenticated, async (req, res) => {
     if (!req.body.documentURL) {
       return res.status(400).json({ error: "documentURL is required" });
@@ -1325,7 +1325,7 @@ export async function registerRoutes(
       console.error("Error saving document:", error);
       res.status(500).json({ error: "Internal server error" });
     }
-  });
+  }); */
 
   // Import/Export routes
   app.get("/api/import-logs", isAuthenticated, async (req, res) => {

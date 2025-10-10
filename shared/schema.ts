@@ -137,22 +137,41 @@ export const validationRequests = pgTable(
     id: varchar("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    type: text("type").notNull(), // contract, indexation, amendment, termination, manual_amount
+
+    // Core
+    type: text("type").notNull(), // contract | indexation | amendment | termination | manual_amount
     referenceId: varchar("reference_id").notNull(),
     reference: text("reference").notNull(),
     subject: text("subject").notNull(),
+
+    // Relations (FK -> users)
     requestedBy: varchar("requested_by")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     assignedTo: varchar("assigned_to")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
-    status: text("status").notNull().default("pending"), // pending, approved, rejected, redirected
-    reason: text("reason"),
+
+    // Lifecycle
+    status: text("status").notNull().default("pending"), // pending | approved | rejected | redirected
+    reason: text("reason"), // free-form notes; also used on reject in your routes
+
+    // Decision stamps (added)
+    validatedBy: varchar("validated_by").references(() => users.id, {
+      onDelete: "set null",
+    }), // nullable
+    validatedAt: timestamp("validated_at"), // nullable
+
+    // Timestamps
     createdAt: timestamp("created_at")
       .notNull()
       .default(sql`now()`),
-    age: integer("age").notNull().default(0), // in days
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`now()`), // will be auto-bumped via trigger (below)
+
+    // Aging
+    age: integer("age").notNull().default(0),
   },
   (t) => ({
     byStatus: index("idx_validation_requests_status").on(t.status),
@@ -161,8 +180,83 @@ export const validationRequests = pgTable(
       t.referenceId,
       t.type
     ),
+    byRequested: index("idx_validation_requests_requested_by").on(
+      t.requestedBy
+    ),
+    byValidated: index("idx_validation_requests_validated_by").on(
+      t.validatedBy
+    ),
+    // (optional) compact filter combos often used by UI tables:
+    byAssignedStatus: index("idx_validation_requests_assigned_status").on(
+      t.assignedTo,
+      t.status
+    ),
   })
 );
+
+/* ----------------------- VALIDATION REQUESTS RULES ------------------------ */
+
+export const validationRequestsRules = pgTable(
+  "validation_requests_rules",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    // Matching keys (keep it simple & extensible)
+    type: text("type").notNull(), // contract | amendment | termination | indexation | ...
+    scopeBusinessUnit: text("scope_business_unit"),
+    scopeContractType: text("scope_contract_type"),
+    scopeParkCode: text("scope_park_code"),
+    amountMin: decimal("amount_min", { precision: 15, scale: 2 }),
+    amountMax: decimal("amount_max", { precision: 15, scale: 2 }),
+
+    // Selected assignee (the ONLY thing we ultimately need)
+    selectedUserId: varchar("selected_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+
+    // Rule control
+    priority: integer("priority").notNull().default(100), // lower = higher priority
+    isActive: boolean("is_active").notNull().default(true),
+    validFrom: timestamp("valid_from"),
+    validUntil: timestamp("valid_until"),
+
+    // Audit
+    createdBy: varchar("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    byTypeActive: index("idx_vrr_type_active").on(t.type, t.isActive),
+    byPriority: index("idx_vrr_priority").on(t.priority),
+    byScopes: index("idx_vrr_scopes").on(
+      t.scopeBusinessUnit,
+      t.scopeContractType,
+      t.scopeParkCode
+    ),
+  })
+);
+
+export const insertValidationRequestsRuleSchema = createInsertSchema(
+  validationRequestsRules
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ValidationRequestsRule =
+  typeof validationRequestsRules.$inferSelect;
+export type InsertValidationRequestsRule = z.infer<
+  typeof insertValidationRequestsRuleSchema
+>;
 
 /* ------------------------- INDEXATION FORMULAS ---------------------------- */
 

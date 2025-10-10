@@ -47,6 +47,8 @@ import { MuiThemeProvider } from "./styles/mui-theme";
 import AmendmentsPage from "./modules/amendments/components/AmendmentsPage";
 import { TerminationsPage } from "./modules/terminations";
 import { GEDPage } from "./modules/ged";
+import { ValidationRequestsView } from "./modules/validation-requests";
+import ValidationRequestsPage from "./modules/validation-requests/components/ValidationRequestsPage";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -88,7 +90,7 @@ function Router() {
           </Route>
           <Route path="/validation">
             <ProtectedRoute route="/validation">
-              <Validation />
+              <ValidationRequestsPage />
             </ProtectedRoute>
           </Route>
           <Route path="/workflows">

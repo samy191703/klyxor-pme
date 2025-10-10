@@ -85,6 +85,9 @@ import {
   codeSnippets,
   type CodeSnippet,
   type InsertCodeSnippet,
+  type InsertValidationRequestsRule,
+  type ValidationRequestsRule,
+  validationRequestsRules,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte, gt, sql } from "drizzle-orm";
@@ -387,6 +390,42 @@ export interface IStorage {
     frequency: Partial<InsertIndexationFrequency>
   ): Promise<SelectIndexationFrequency | undefined>;
   deleteIndexationFrequency(id: string): Promise<boolean>;
+
+  // ========== VALIDATION REQUEST RULES ==========
+  findValidationRequestRules(filters?: {
+    type?: string;
+    isActive?: boolean;
+    scopeBusinessUnit?: string;
+    scopeContractType?: string;
+    scopeParkCode?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ValidationRequestsRule[]>;
+
+  getValidationRequestRule(
+    id: string
+  ): Promise<ValidationRequestsRule | undefined>;
+  createValidationRequestRule(
+    rule: InsertValidationRequestsRule
+  ): Promise<ValidationRequestsRule>;
+  updateValidationRequestRule(
+    id: string,
+    patch: Partial<InsertValidationRequestsRule>
+  ): Promise<ValidationRequestsRule | undefined>;
+  deleteValidationRequestRule(id: string): Promise<boolean>;
+
+  /**
+   * Resolve a single assignee from active rules.
+   * Returns { selectedUserId, ruleId } or { selectedUserId: null, ruleId: null } if none match.
+   */
+  resolveValidationAssignee(ctx: {
+    type: string;
+    businessUnit?: string;
+    contractType?: string;
+    parkCode?: string;
+    amount?: number;
+    asOf?: Date; // default now
+  }): Promise<{ selectedUserId: string | null; ruleId: string | null }>;
 }
 
 /**
@@ -1946,6 +1985,167 @@ export class DatabaseStorage implements IStorage {
       .update(codeSnippets)
       .set({ copyCount: sql`${codeSnippets.copyCount} + 1` })
       .where(eq(codeSnippets.id, id));
+  }
+
+  // ========== VALIDATION REQUEST RULES (CRUD) ==========
+
+  async findValidationRequestRules(filters?: {
+    type?: string;
+    isActive?: boolean;
+    scopeBusinessUnit?: string;
+    scopeContractType?: string;
+    scopeParkCode?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ValidationRequestsRule[]> {
+    const {
+      type,
+      isActive,
+      scopeBusinessUnit,
+      scopeContractType,
+      scopeParkCode,
+      limit = 50,
+      offset = 0,
+    } = filters ?? {};
+
+    const clauses: any[] = [];
+    if (type) clauses.push(eq(validationRequestsRules.type, type));
+    if (typeof isActive === "boolean")
+      clauses.push(eq(validationRequestsRules.isActive, isActive));
+    if (scopeBusinessUnit)
+      clauses.push(
+        eq(validationRequestsRules.scopeBusinessUnit, scopeBusinessUnit)
+      );
+    if (scopeContractType)
+      clauses.push(
+        eq(validationRequestsRules.scopeContractType, scopeContractType)
+      );
+    if (scopeParkCode)
+      clauses.push(eq(validationRequestsRules.scopeParkCode, scopeParkCode));
+
+    const rows = await db
+      .select()
+      .from(validationRequestsRules)
+      .where(clauses.length ? and(...clauses) : undefined)
+      .orderBy(validationRequestsRules.priority) // lower first
+      .limit(limit)
+      .offset(offset);
+
+    return rows;
+  }
+
+  async getValidationRequestRule(
+    id: string
+  ): Promise<ValidationRequestsRule | undefined> {
+    const [rule] = await db
+      .select()
+      .from(validationRequestsRules)
+      .where(eq(validationRequestsRules.id, id));
+    return rule || undefined;
+  }
+
+  async createValidationRequestRule(
+    rule: InsertValidationRequestsRule
+  ): Promise<ValidationRequestsRule> {
+    const [created] = await db
+      .insert(validationRequestsRules)
+      .values({
+        ...rule,
+        updatedAt: new Date(),
+      })
+      .returning();
+    return created;
+  }
+
+  async updateValidationRequestRule(
+    id: string,
+    patch: Partial<InsertValidationRequestsRule>
+  ): Promise<ValidationRequestsRule | undefined> {
+    const [updated] = await db
+      .update(validationRequestsRules)
+      .set({
+        ...patch,
+        updatedAt: new Date(),
+      })
+      .where(eq(validationRequestsRules.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteValidationRequestRule(id: string): Promise<boolean> {
+    const res = await db
+      .delete(validationRequestsRules)
+      .where(eq(validationRequestsRules.id, id));
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  // ========== VALIDATION RULES RESOLVER ==========
+
+  async resolveValidationAssignee(ctx: {
+    type: string;
+    businessUnit?: string;
+    contractType?: string;
+    parkCode?: string;
+    amount?: number;
+    asOf?: Date;
+  }): Promise<{ selectedUserId: string | null; ruleId: string | null }> {
+    const now = ctx.asOf ?? new Date();
+
+    // Step 1: pre-filter by type, active, and validity window
+    const baseClauses: any[] = [
+      eq(validationRequestsRules.type, ctx.type),
+      eq(validationRequestsRules.isActive, true),
+      // (validFrom is null OR validFrom <= now)
+      sql`(${validationRequestsRules.validFrom} IS NULL OR ${validationRequestsRules.validFrom} <= ${now})`,
+      // (validUntil is null OR validUntil >= now)
+      sql`(${validationRequestsRules.validUntil} IS NULL OR ${validationRequestsRules.validUntil} >= ${now})`,
+    ];
+
+    // Step 2: fetch candidates ordered by priority (lower = better), then createdAt asc
+    const candidates = await db
+      .select()
+      .from(validationRequestsRules)
+      .where(and(...baseClauses))
+      .orderBy(
+        validationRequestsRules.priority,
+        validationRequestsRules.createdAt
+      );
+
+    if (!candidates.length) {
+      return { selectedUserId: null, ruleId: null };
+    }
+
+    // Step 3: in-memory matching with "null = wildcard" semantics and amount range
+    const matches = candidates.filter((r) => {
+      // scope wildcard logic
+      const buOk =
+        !r.scopeBusinessUnit || r.scopeBusinessUnit === ctx.businessUnit;
+      const ctOk =
+        !r.scopeContractType || r.scopeContractType === ctx.contractType;
+      const parkOk = !r.scopeParkCode || r.scopeParkCode === ctx.parkCode;
+
+      // amount window (inclusive), null means unbounded
+      const amt = ctx.amount;
+      const minOk =
+        r.amountMin == null ||
+        (amt != null && Number(amt) >= Number(r.amountMin));
+      const maxOk =
+        r.amountMax == null ||
+        (amt != null && Number(amt) <= Number(r.amountMax));
+
+      return buOk && ctOk && parkOk && minOk && maxOk;
+    });
+
+    if (!matches.length) {
+      return { selectedUserId: null, ruleId: null };
+    }
+
+    // Step 4: pick the first (best priority, earliest create)
+    const best = matches[0];
+    return {
+      selectedUserId: best.selectedUserId ?? null,
+      ruleId: best.id ?? null,
+    };
   }
 }
 
