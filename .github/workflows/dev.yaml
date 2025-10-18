@@ -50,6 +50,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Update EKS kube config
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name evidenceway-cluster
+
       - name: Update kube deployment
         run: |
           sed -i "s|IMAGE_PLACEHOLDER|${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG|g" kube/deployment.yaml
@@ -58,10 +62,6 @@ jobs:
           sed -i "s|NAMESPACE_PLACEHOLDER|clm|g" kube/ingress.yaml
           sed -i "s|NAMESPACE_PLACEHOLDER|clm|g" kube/service.yaml
           sed -i "s|NAMESPACE_PLACEHOLDER|clm|g" kube/deployment.yaml
-
-      - name: Update EKS kube config
-        run: |
-          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name tms-cluster
 
       - name: Inject environment variable & secret
         run: |
