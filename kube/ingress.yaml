@@ -4,7 +4,7 @@ metadata:
   name: clm-app-ingress
   namespace: NAMESPACE_PLACEHOLDER
   annotations:
-    alb.ingress.kubernetes.io/group.name: clm
+    alb.ingress.kubernetes.io/group.name: tms-dev
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/certificate-arn: ACM_ARN_PLACEHOLDER
