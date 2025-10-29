@@ -84,6 +84,11 @@ export const menuItems: MenuItem[] = [
     children: [
       {
         label: "Plans de facturation",
+        href: "/billing-schedules",
+        icon: FileCheck,
+      },
+      {
+        label: "Plans de facturation ancien",
         href: "/billing-plans",
         icon: FileCheck,
       },

@@ -9,9 +9,20 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { WizardMode } from "../ContractWizard";
-import { BILLING_PERIODS, PAYMENT_TYPE_VALUES } from "@shared/enums/contracts";
+import {
+  BILLING_PERIODS,
+  PAYMENT_TYPE_VALUES,
+  PAYMENT_TYPE_LABELS,
+  PaymentTypes,
+} from "@shared/enums/contracts";
+import {
+  BillingType,
+  BILLING_TYPE_VALUES,
+  BILLING_TYPE_LABELS,
+} from "@shared/enums/billing.enum";
 
 type Props = {
   data: any;
@@ -145,13 +156,43 @@ export default function Step2PeriodAmounts({
               <SelectValue placeholder="Sélectionner" />
             </SelectTrigger>
             <SelectContent>
-              {Array.from(PAYMENT_TYPE_VALUES).map((pt) => (
+              {PAYMENT_TYPE_VALUES.map((pt: PaymentTypes) => (
                 <SelectItem key={pt} value={pt}>
-                  {pt}
+                  {PAYMENT_TYPE_LABELS[pt]}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* BILLING TYPE (RADIO) */}
+        <div className="col-span-2">
+          <Label>Type de facturation</Label>
+          <div className="mt-2">
+            <RadioGroup
+              className="grid grid-cols-2 gap-3"
+              value={data.billingType || ""}
+              onValueChange={(value: BillingType) =>
+                setData({ ...data, billingType: value })
+              }
+            >
+              {BILLING_TYPE_VALUES.map((bt) => (
+                <div
+                  key={bt}
+                  className="flex items-center space-x-2 rounded-md border p-3"
+                >
+                  <RadioGroupItem id={`bt-${bt}`} value={bt} />
+                  <Label htmlFor={`bt-${bt}`} className="cursor-pointer">
+                    {BILLING_TYPE_LABELS[bt]}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            « À échoir » : facturation avant l’échéance; « Terme échu » :
+            facturation après la période.
+          </p>
         </div>
 
         {/* CHAMPS ÉNERGIE */}

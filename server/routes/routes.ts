@@ -33,6 +33,7 @@ import { User } from "@shared/schema";
 import { registerValidationRoutes } from "./validation.routes";
 import { registerAmendmentRoutes } from "./amendments.routes";
 import { registerTerminationRoutes } from "./termination.routes";
+import { registerBillingRoutes } from "./billing.routes";
 
 /**
  * Fonction principale d'enregistrement des routes
@@ -106,6 +107,7 @@ export async function registerRoutes(
   registerValidationRoutes(app);
   registerAmendmentRoutes(app);
   registerTerminationRoutes(app);
+  registerBillingRoutes(app);
 
   app.get("/api/kpis", isAuthenticated, async (req, res) => {
     try {

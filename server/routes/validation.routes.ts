@@ -23,6 +23,7 @@ import {
 } from "@shared/enums/validation-requests.enum";
 import { aliasedTable, eq, ilike, and, desc } from "drizzle-orm";
 import { db } from "server/db";
+import { generateBillingScheduleForContract } from "server/services/billing.service";
 
 type VStatus =
   (typeof ValidationRequestStatus)[keyof typeof ValidationRequestStatus];
@@ -76,6 +77,10 @@ async function applyDecisionSideEffects(opts: {
         console.log(referenceId, decision);
         if (decision === "approved") {
           await storage.updateContract?.(referenceId, { status: "active" });
+          await generateBillingScheduleForContract({
+            contractId: referenceId,
+            userId: "system",
+          });
         } else {
           await storage.updateContract?.(referenceId, { status: "draft" });
         }

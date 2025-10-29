@@ -458,6 +458,7 @@ export function registerContractRoutes(app: Express): void {
           variableAmount,
           amount,
           billingPeriod: d.billingPeriod, // "monthly" | "quarterly" | "semi-annual" | "annual"
+          billingType: d.billingType,
           //billingFrequency: d.billingFrequency ?? d.billingPeriod,
           paymentType: d.paymentType,
           currency: d.currency ?? existing.currency ?? "EUR",

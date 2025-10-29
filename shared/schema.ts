@@ -56,6 +56,7 @@ export const contracts = pgTable(
     amount: decimal("amount", { precision: 15, scale: 2 }).$type<number>(),
     billingPeriod: text("billing_period"),
     billingFrequency: text("billing_frequency"),
+    billingType: text("billing_type"),
     paymentType: text("payment_type"),
 
     maxAnnualProduction: text("max_annual_production"),
@@ -285,8 +286,6 @@ export const indexationFormulas = pgTable(
     byActive: index("idx_idxformulas_active").on(t.isActive),
   })
 );
-
-/* ---------------------------- INDEX VALUES -------------------------------- */
 
 export const indexValues = pgTable(
   "index_values",
@@ -538,6 +537,92 @@ export const terminations = pgTable(
     byRequested: index("idx_terminations_requested_by").on(t.requestedBy),
     byAssigned: index("idx_terminations_assigned_validator").on(
       t.assignedValidator
+    ),
+  })
+);
+
+export const billingSchedules = pgTable(
+  "billing_schedules",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    contractId: varchar("contract_id")
+      .notNull()
+      .references(() => contracts.id, { onDelete: "cascade" }),
+
+    // ✅ timestamps au lieu de date()
+    startDate: timestamp("start_date").notNull(),
+    endDate: timestamp("end_date").notNull(),
+
+    // ✅ enums en string
+    frequency: text("frequency").notNull(), // "MONTHLY" | "QUARTERLY" | "ANNUAL" | "MILESTONE"
+    billingType: text("billing_type").notNull(), // "A_ECHOIR" | "TERME_ECHU"
+
+    version: integer("version").notNull(),
+    status: text("status").notNull().default("draft"), // "draft" | "active" | "archived"
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    // 🔒 Unicité (contract_id, version)
+    uqContractVersion: uniqueIndex("uq_billing_schedules_contract_version").on(
+      t.contractId,
+      t.version
+    ),
+
+    byContract: index("idx_billing_schedules_contract").on(t.contractId),
+    byStatus: index("idx_billing_schedules_status").on(t.status),
+    byDates: index("idx_billing_schedules_dates").on(t.startDate, t.endDate),
+  })
+);
+
+/* -------------------------------- BILLING LINES ------------------------------ */
+
+export const billingLines = pgTable(
+  "billing_lines",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    scheduleId: varchar("schedule_id")
+      .notNull()
+      .references(() => billingSchedules.id, { onDelete: "cascade" }),
+
+    sequenceNo: integer("sequence_no").notNull(), // 1..N
+
+    // ✅ timestamp (due_date)
+    dueDate: timestamp("due_date").notNull(),
+
+    amountHt: decimal("amount_ht", { precision: 15, scale: 2 }).notNull(),
+    status: text("status").notNull().default("A_FACTURER"), // "A_FACTURER" | "FACTUREE"
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    // 🔒 Unicité (schedule_id, due_date)
+    uqScheduleDueDate: uniqueIndex("uq_billing_lines_schedule_duedate").on(
+      t.scheduleId,
+      t.dueDate
+    ),
+
+    bySchedule: index("idx_billing_lines_schedule").on(t.scheduleId),
+    byDueDate: index("idx_billing_lines_duedate").on(t.dueDate),
+    byScheduleDueDate: index("idx_billing_lines_schedule_duedate").on(
+      t.scheduleId,
+      t.dueDate
     ),
   })
 );

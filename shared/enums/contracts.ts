@@ -111,6 +111,13 @@ export const BILLING_PERIOD_LABELS: Record<BillingPeriods, string> = {
   [BillingPeriods.ANNUAL]: "Annuelle",
 };
 
+export const BILLING_PERIODS = [
+  { value: BillingPeriods.MONTHLY, label: "Mensuelle" },
+  { value: BillingPeriods.QUARTERLY, label: "Trimestrielle" },
+  { value: BillingPeriods.SEMIANNUAL, label: "Semestrielle" },
+  { value: BillingPeriods.ANNUAL, label: "Annuelle" },
+];
+
 // ===============================
 // Payment types
 // ===============================
@@ -132,13 +139,6 @@ export const PAYMENT_TYPE_LABELS: Record<PaymentTypes, string> = {
   [PaymentTypes.PRELEVEMENT]: "Prélèvement",
   [PaymentTypes.CHEQUE]: "Chèque",
 };
-
-export const BILLING_PERIODS = [
-  { value: BillingPeriods.MONTHLY, label: "Mensuelle" },
-  { value: BillingPeriods.QUARTERLY, label: "Trimestrielle" },
-  { value: BillingPeriods.SEMIANNUAL, label: "Semestrielle" },
-  { value: BillingPeriods.ANNUAL, label: "Annuelle" },
-];
 
 //export const paymentTypeEnum = pgEnum("payment_type", PAYMENT_TYPE_VALUES);
 

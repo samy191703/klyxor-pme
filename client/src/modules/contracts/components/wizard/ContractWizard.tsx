@@ -102,6 +102,7 @@ export default function ContractWizard({
       variableAmount: dto.variableAmount ?? 0,
       billingPeriod: dto.billingPeriod ?? dto.billingFrequency ?? "",
       billingFrequency: dto.billingFrequency ?? dto.billingPeriod ?? "",
+      billingType: dto.billingType ?? "",
       paymentType: dto.paymentType ?? "",
 
       // --- Step 3 fields (indexation)
@@ -220,6 +221,8 @@ export default function ContractWizard({
       e.amount = "Au moins un montant (fixe ou variable) doit être > 0";
     }
 
+    if (!d.billingType) e.billingType = "Type de facturation requis";
+
     if (!d.billingPeriod && !d.billingFrequency) {
       e.billingPeriod = "Périodicité de facturation requise";
     }
@@ -308,6 +311,7 @@ export default function ContractWizard({
       variableAmount: variable || 0,
       billingPeriod,
       billingFrequency,
+      billingType: d.billingType,
       paymentType: d.paymentType,
       currency: d.currency || "EUR",
     };

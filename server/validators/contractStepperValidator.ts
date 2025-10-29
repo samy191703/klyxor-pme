@@ -1,3 +1,4 @@
+import { BILLING_TYPE_VALUES } from "@shared/enums/billing.enum";
 import {
   CONTRACT_TYPE_VALUES,
   BUSINESS_UNIT_VALUES,
@@ -62,6 +63,10 @@ const BILLING_ENUM = z.enum(BILLING_PERIOD_VALUES, {
 const PAYMENT_ENUM = z.enum(PAYMENT_TYPE_VALUES, {
   errorMap: () => ({ message: "Type de paiement invalide" }),
 });
+const BILLING_TYPE_ENUM = z.enum(BILLING_TYPE_VALUES, {
+  // ← NEW
+  errorMap: () => ({ message: "Type de facturation invalide" }),
+});
 
 export const contractStep2Schema = z
   .object({
@@ -96,6 +101,7 @@ export const contractStep2Schema = z
     billingPeriod: BILLING_ENUM, // "monthly" | "quarterly" | "semi-annual" | "annual"
     billingFrequency: BILLING_ENUM.optional(), // compat éventuelle
     paymentType: PAYMENT_ENUM, // "virement" | "prelevement" | "cheque"
+    billingType: BILLING_TYPE_ENUM,
     currency: z
       .enum(["EUR", "USD"], {
         errorMap: () => ({ message: "Devise invalide" }),

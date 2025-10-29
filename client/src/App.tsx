@@ -49,6 +49,7 @@ import { TerminationsPage } from "./modules/terminations";
 import { GEDPage } from "./modules/ged";
 import { ValidationRequestsView } from "./modules/validation-requests";
 import ValidationRequestsPage from "./modules/validation-requests/components/ValidationRequestsPage";
+import BillingModulePage from "./modules/billing/components/BillingModulePage";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -164,9 +165,9 @@ function Router() {
               <PermissionsDemo />
             </ProtectedRoute>
           </Route>
-          <Route path="/billing-plans">
-            <ProtectedRoute route="/billing-plans">
-              <BillingPlans />
+          <Route path="/billing-schedules">
+            <ProtectedRoute route="/billing-schedules">
+              <BillingModulePage />
             </ProtectedRoute>
           </Route>
           <Route path="/payment-flows">
