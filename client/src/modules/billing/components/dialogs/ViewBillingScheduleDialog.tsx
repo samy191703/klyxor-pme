@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { BillingSchedule, BillingLine } from "../domain/types";
-import { formatDateFR, formatMoneyEUR } from "../utils/formatters";
-import { BILLING_STATUS_LABELS } from "../domain/constants";
+import type { BillingSchedule, BillingLine } from "../../domain/types";
+import { formatDateFR, formatMoneyEUR } from "../../utils/formatters";
+import { BILLING_STATUS_LABELS } from "../../domain/constants";
 
 import type { Contract } from "@shared/schema";
 import type { CalculateDto } from "@/_dtos/calculate-indexation.dto";

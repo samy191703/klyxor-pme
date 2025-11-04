@@ -47,6 +47,11 @@ export interface BillingScheduleCreateDto {
   status?: BillingScheduleStatus; // défaut "draft" côté DB
 }
 
+/** DTOs (frontend -> backend) */
+export interface BillingScheduleGenerateDto {
+  id: string;
+}
+
 export interface BillingScheduleUpdateDto {
   startDate?: string;
   endDate?: string;

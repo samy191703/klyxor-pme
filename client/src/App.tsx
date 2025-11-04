@@ -49,7 +49,7 @@ import { TerminationsPage } from "./modules/terminations";
 import { GEDPage } from "./modules/ged";
 import { ValidationRequestsView } from "./modules/validation-requests";
 import ValidationRequestsPage from "./modules/validation-requests/components/ValidationRequestsPage";
-import BillingModulePage from "./modules/billing/components/BillingModulePage";
+import BillingModulePage from "./modules/billing/_views/BillingModulePage";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();

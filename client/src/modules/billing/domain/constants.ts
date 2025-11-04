@@ -24,6 +24,8 @@ export const BILLING_QK = {
       [...BILLING_QK.lines.all, "by-schedule", scheduleId] as const,
     detail: (id: string) => [...BILLING_QK.lines.all, "detail", id] as const,
   },
+  // 🔹 Same style as TERMINATIONS_QK.contracts
+  contracts: ["/api/contracts"] as const,
 };
 
 /* -----------------------------

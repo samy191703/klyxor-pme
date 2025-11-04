@@ -1,4 +1,3 @@
-// src/modules/billing/components/BillingModulePage.tsx
 import { useMemo, useState } from "react";
 import Header from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,16 +15,19 @@ import type {
 import { useBillingSchedules } from "../queries/useBillingSchedules";
 import { useBillingLinesBySchedule } from "../queries/useBillingLinesBySchedule";
 
-import { BillingSchedulesTable } from "./BillingSchedulesTable";
-import { BillingLinesTable } from "./BillingLinesTable";
+import { BillingSchedulesTable } from "../components/BillingSchedulesTable";
+import { BillingLinesTable } from "../components/BillingLinesTable";
 
-import { CreateBillingScheduleDialog } from "./CreateBillingScheduleDialog";
-import { ViewBillingScheduleDialog } from "./ViewBillingScheduleDialog";
-import { EditBillingScheduleDialog } from "./EditBillingScheduleDialog";
-import { DeleteBillingScheduleDialog } from "./DeleteBillingScheduleDialog";
-import BillingScheduleFilters from "./BillingScheduleFilters";
+import { CreateBillingScheduleDialog } from "../components/dialogs/CreateBillingScheduleDialog";
+import { ViewBillingScheduleDialog } from "../components/dialogs/ViewBillingScheduleDialog";
+import { EditBillingScheduleDialog } from "../components/dialogs/EditBillingScheduleDialog";
+import { DeleteBillingScheduleDialog } from "../components/dialogs/DeleteBillingScheduleDialog";
+import BillingScheduleFilters from "../components/BillingScheduleFilters";
 
 import { downloadBillingSchedulePdf } from "../api/billing.api";
+import { BILLING_QK } from "../domain/constants";
+import { Contract } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
 
 export default function BillingModulePage() {
   const { canCreateContract, canModifyContract, canDeleteContract } =
@@ -42,6 +44,10 @@ export default function BillingModulePage() {
     error,
     refetch,
   } = useBillingSchedules();
+  // 🔹 Fetch contracts
+  const { data: contracts = [] } = useQuery<Contract[]>({
+    queryKey: BILLING_QK.contracts,
+  });
 
   // Plan sélectionné (alimente l’onglet Lignes)
   const [selectedSchedule, setSelectedSchedule] =
@@ -223,14 +229,14 @@ export default function BillingModulePage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                {/* <Button
+                <Button
                   onClick={() => setOpenCreate(true)}
                   data-testid="button-new-billing-schedule"
                   disabled={!canCreateContract()}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Nouveau plan
-                </Button> */}
+                  Nouvel échéancier
+                </Button>
                 <Button
                   variant="outline"
                   onClick={toggleExpand}
@@ -380,11 +386,11 @@ export default function BillingModulePage() {
       </main>
 
       {/* Dialogs Plans */}
-      {/* <CreateBillingScheduleDialog
+      <CreateBillingScheduleDialog
         open={openCreate}
         onOpenChange={setOpenCreate}
-      /> */}
-
+        contracts={contracts}
+      />
       <ViewBillingScheduleDialog
         open={openView}
         onOpenChange={(v) => {

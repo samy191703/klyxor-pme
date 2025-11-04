@@ -7,6 +7,7 @@ import type {
   BillingLine,
   BillingLineCreateDto,
   BillingLineUpdateDto,
+  BillingScheduleGenerateDto,
 } from "../domain/types";
 import { BILLING_QK } from "../domain/constants";
 
@@ -24,9 +25,9 @@ export async function fetchBillingSchedule(
 }
 
 export async function createBillingSchedule(
-  payload: BillingScheduleCreateDto
+  payload: BillingScheduleGenerateDto
 ): Promise<BillingSchedule> {
-  const res = await apiRequest("POST", "/api/billing-schedules", payload);
+  const res = await apiRequest("POST", `/api/billing-schedules/${payload.id}`);
   await queryClient.invalidateQueries({
     queryKey: BILLING_QK.schedules.list(),
   });

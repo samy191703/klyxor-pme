@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useUpdateBillingSchedule } from "../queries/useUpdateBillingSchedule";
-import type { BillingSchedule } from "../domain/types";
+import { useUpdateBillingSchedule } from "../../queries/useUpdateBillingSchedule";
+import type { BillingSchedule } from "../../domain/types";
 
 export function EditBillingScheduleDialog({ open, onOpenChange, bs }: { open: boolean; onOpenChange: (v: boolean) => void; bs: BillingSchedule | null }) {
   const [form, setForm] = useState({
@@ -19,7 +19,7 @@ export function EditBillingScheduleDialog({ open, onOpenChange, bs }: { open: bo
         frequency: bs.frequency,
         startDate: bs.startDate,
         endDate: bs.endDate,
-        totalAmount: bs.totalAmount,
+        totalAmount: bs.,
         currency: bs.currency || "EUR",
         status: bs.status,
       });

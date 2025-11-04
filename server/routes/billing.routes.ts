@@ -215,7 +215,7 @@ export function registerBillingRoutes(app: Express) {
       if (!contractId) {
         return res.status(400).json({ error: "Missing contractId in path" });
       }
-
+      console.log(" Generating billing schedule for contract:", contractId);
       try {
         const out = await generateBillingScheduleForContract({
           contractId,
