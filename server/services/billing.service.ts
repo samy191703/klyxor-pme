@@ -4,8 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { billingLines, billingSchedules, contracts } from "@shared/schema";
 import { BillingFrequency, BillingType } from "@shared/enums/billing.enum";
 import {
-  buildPeriods,
-  // prorataForPeriod,  // ⬅️ plus utilisé, la logique est maintenant locale
+  // buildPeriods, // ⬅️ plus utilisé, le builder est maintenant local
   splitAmountWithRounding,
 } from "server/utils/billing";
 import { storage } from "server/storage";
@@ -37,9 +36,10 @@ function addDaysUtc(d: Date, days: number): Date {
 
 /**
  * Ajoute une période "théorique" à partir de pStart selon la fréquence :
- * - MONTHLY  -> +1 mois
- * - QUARTERLY -> +3 mois
- * - YEARLY / ANNUAL -> +1 an
+ * - MONTHLY     -> +1 mois
+ * - QUARTERLY   -> +3 mois
+ * - SEMIANNUAL  -> +6 mois
+ * - ANNUAL      -> +1 an
  * (fallback: +1 mois)
  */
 function addFrequencyUtc(start: Date, frequency: BillingFrequency): Date {
@@ -73,6 +73,70 @@ function addFrequencyUtc(start: Date, frequency: BillingFrequency): Date {
 }
 
 /**
+ * Type de période utilisé localement
+ * pEnd est INCLUSIVE (pour affichage : 31/03, 30/06, etc.)
+ */
+type Period = {
+  pStart: Date;
+  pEnd: Date;
+};
+
+/**
+ * Construit les périodes calendrier entre [start, end] selon la fréquence.
+ *
+ * Règles :
+ * - on part exactement de start (ex: 06/01/2025)
+ * - on avance de +1 mois / +3 mois / +6 mois / +1 an (addFrequencyUtc)
+ * - la fin "naturelle" de la période est (finThéoriqueExclusive - 1 jour)
+ * - on tronque sur la fin de contrat si besoin
+ */
+function buildPeriods(
+  start: Date,
+  end: Date,
+  frequency: BillingFrequency
+): Period[] {
+  const periods: Period[] = [];
+
+  const startMid = toUtcMidnight(start);
+  const endMidInclusive = toUtcMidnight(end);
+
+  if (endMidInclusive.getTime() < startMid.getTime()) {
+    return periods;
+  }
+
+  let cursor = startMid;
+
+  while (cursor.getTime() <= endMidInclusive.getTime()) {
+    // Fin théorique EXCLUSIVE (ex: 06/02 pour une période débutant le 06/01 en MONTHLY)
+    const theoreticalEndExclusive = addFrequencyUtc(cursor, frequency);
+
+    // Fin naturelle inclusive (ex: 05/02 = 06/02 - 1 jour)
+    const naturalEndInclusive = addDaysUtc(theoreticalEndExclusive, -1);
+
+    // Clamp sur la fin de contrat : on ne dépasse jamais end
+    const pEndInclusive =
+      naturalEndInclusive.getTime() > endMidInclusive.getTime()
+        ? endMidInclusive
+        : naturalEndInclusive;
+
+    periods.push({
+      pStart: cursor,
+      pEnd: pEndInclusive,
+    });
+
+    // Si la fin théorique exclusive dépasse la fin de contrat, on s'arrête
+    if (theoreticalEndExclusive.getTime() > endMidInclusive.getTime()) {
+      break;
+    }
+
+    // Période suivante : on avance le curseur à la fin théorique (exclusive)
+    cursor = theoreticalEndExclusive;
+  }
+
+  return periods;
+}
+
+/**
  * Prorata rule:
  *   prorata = jours_effectifs / jours_totaux_période  (borne sup exclue)
  *   - jours_effectifs : nombre de jours d'intersection entre [pStart, pEndFull) et [cStart, cEndExcl)
@@ -88,7 +152,7 @@ function periodProrataAgainstContract(
   const p0 = toUtcMidnight(pStart);
   const p1 = toUtcMidnight(pEndFull); // borne sup exclue
   const c0 = toUtcMidnight(contractStart);
-  // contract end : on le rend exclu en ajoutant 1 jour à la borne inclusive
+  // contract end : borne inclusive → on rend exclue en ajoutant 1 jour
   const c1 = addDaysUtc(toUtcMidnight(contractEndInclusive), 1);
 
   const periodDays = (p1.getTime() - p0.getTime()) / MS_PER_DAY;
@@ -106,23 +170,21 @@ function periodProrataAgainstContract(
   return ratio;
 }
 
-// ⬇️ New helper: compute the due date rule you requested:
-// - first period: 15th of the start month
-// - subsequent periods: 1st of the period month (A Échoir)
-function dueDateFirst15Then1st(
+/**
+ * Date d'échéance basée sur la période :
+ * - A_ECHOIR  -> début de période (pStart)
+ * - TERME_ECHU (ou autre) -> fin de période (pEnd)
+ */
+function computeDueDateFromPeriod(
   pStart: Date,
-  periodIndex: number,
+  pEnd: Date,
   billingType: BillingType
 ): Date {
-  // A Échoir only for now. (Keep your existing rule for TERME_ECHU if needed)
   if (billingType === "A_ECHOIR") {
-    const y = pStart.getUTCFullYear();
-    const m = pStart.getUTCMonth();
-    const day = periodIndex === 0 ? 15 : 1;
-    return new Date(Date.UTC(y, m, day, 0, 0, 0));
+    return pStart;
   }
-  // Fallback: keep start-of-period for TERME_ECHU (or adapt to your own rule)
-  return new Date(pStart);
+  // TERME_ECHU ou autres : fin de période
+  return pEnd;
 }
 
 export async function generateBillingScheduleForContract({
@@ -147,7 +209,11 @@ export async function generateBillingScheduleForContract({
       "Contract endDate"
     );
 
-    const frequency = (ct.billingFrequency as BillingFrequency) ?? "MONTHLY";
+    // fréquence dérivée du billingPeriod (MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL)
+    const frequency = ct.billingPeriod
+      ? (ct.billingPeriod.toUpperCase() as BillingFrequency)
+      : ("MONTHLY" as BillingFrequency);
+
     const billingType = (ct.billingType as BillingType) ?? "A_ECHOIR";
 
     // Treat contract.amount as the TOTAL for the whole plan period
@@ -184,7 +250,6 @@ export async function generateBillingScheduleForContract({
 
     // 4.bis) Prorata par période :
     // ratio = jours_effectifs / jours_totaux_période (borne sup exclue)
-    // ⬅️ On utilise maintenant une période THÉORIQUE complète via addFrequencyUtc
     const ratios = periods.map(({ pStart }) => {
       const pEndFull = addFrequencyUtc(pStart, frequency);
       return periodProrataAgainstContract(pStart, pEndFull, start, end);
@@ -239,12 +304,12 @@ export async function generateBillingScheduleForContract({
       .values(scheduleValues)
       .returning();
 
-    // 9) Insert lines with requested due date rule
+    // 9) Insert lines with dueDate based purely on the period (no 15/1 rule)
     type NewLine = typeof billingLines.$inferInsert;
-    const lineValues: NewLine[] = periods.map(({ pStart }, i) => ({
+    const lineValues: NewLine[] = periods.map(({ pStart, pEnd }, i) => ({
       scheduleId: schedule.id,
       sequenceNo: i + 1,
-      dueDate: dueDateFirst15Then1st(pStart, i, billingType), // 15th for first, then 1st
+      dueDate: computeDueDateFromPeriod(pStart, pEnd, billingType),
       amountHt: toMoneyString(amounts[i]),
       status: "A_FACTURER",
     }));
