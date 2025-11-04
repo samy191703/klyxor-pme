@@ -25,6 +25,8 @@ import { EditBillingScheduleDialog } from "./EditBillingScheduleDialog";
 import { DeleteBillingScheduleDialog } from "./DeleteBillingScheduleDialog";
 import BillingScheduleFilters from "./BillingScheduleFilters";
 
+import { downloadBillingSchedulePdf } from "../api/billing.api";
+
 export default function BillingModulePage() {
   const { canCreateContract, canModifyContract, canDeleteContract } =
     usePermissions();
@@ -74,6 +76,9 @@ export default function BillingModulePage() {
 
   const [showKpis, setShowKpis] = useState(true);
   const [expanded, setExpanded] = useState(false);
+
+  // ID de l’échéancier en cours de téléchargement
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const filteredSchedules = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
@@ -155,6 +160,25 @@ export default function BillingModulePage() {
       });
     } finally {
       setViewLoading(false);
+    }
+  };
+
+  const handleDownloadSchedule = async (row: BillingSchedule) => {
+    try {
+      setDownloadingId(row.id);
+      await downloadBillingSchedulePdf(
+        row.id,
+        row.contractNumber ?? row.contractId
+      );
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Erreur",
+        description: "Impossible de télécharger l’échéancier en PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -310,6 +334,8 @@ export default function BillingModulePage() {
                     null;
                   }}
                   onDelete={(row) => handleDeleteSchedule(row.id)}
+                  onDownload={handleDownloadSchedule}
+                  downloadingId={downloadingId}
                 />
               )}
 

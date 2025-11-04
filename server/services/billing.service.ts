@@ -5,7 +5,7 @@ import { billingLines, billingSchedules, contracts } from "@shared/schema";
 import { BillingFrequency, BillingType } from "@shared/enums/billing.enum";
 import {
   buildPeriods,
-  prorataForPeriod,
+  // prorataForPeriod,  // ⬅️ plus utilisé, la logique est maintenant locale
   splitAmountWithRounding,
 } from "server/utils/billing";
 import { storage } from "server/storage";
@@ -19,6 +19,91 @@ function assertNonNullDate(d: Date | null | undefined, label: string): Date {
 }
 function toMoneyString(n: number): string {
   return n.toFixed(2); // Drizzle decimal() expects string
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function toUtcMidnight(d: Date): Date {
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  );
+}
+
+function addDaysUtc(d: Date, days: number): Date {
+  const nd = new Date(d.getTime());
+  nd.setUTCDate(nd.getUTCDate() + days);
+  return nd;
+}
+
+/**
+ * Ajoute une période "théorique" à partir de pStart selon la fréquence :
+ * - MONTHLY  -> +1 mois
+ * - QUARTERLY -> +3 mois
+ * - YEARLY / ANNUAL -> +1 an
+ * (fallback: +1 mois)
+ */
+function addFrequencyUtc(start: Date, frequency: BillingFrequency): Date {
+  const y = start.getUTCFullYear();
+  const m = start.getUTCMonth();
+  const d = start.getUTCDate();
+
+  let monthsToAdd = 0;
+  let yearsToAdd = 0;
+
+  switch (frequency) {
+    case "MONTHLY":
+      monthsToAdd = 1;
+      break;
+    case "QUARTERLY":
+      monthsToAdd = 3;
+      break;
+    case "SEMIANNUAL":
+      monthsToAdd = 6;
+      break;
+    case "ANNUAL":
+      yearsToAdd = 1;
+      break;
+    default:
+      // fallback safe: 1 month
+      monthsToAdd = 1;
+      break;
+  }
+
+  return new Date(Date.UTC(y + yearsToAdd, m + monthsToAdd, d));
+}
+
+/**
+ * Prorata rule:
+ *   prorata = jours_effectifs / jours_totaux_période  (borne sup exclue)
+ *   - jours_effectifs : nombre de jours d'intersection entre [pStart, pEndFull) et [cStart, cEndExcl)
+ *   - jours_totaux_période : pEndFull - pStart (en jours) → période THÉORIQUE complète
+ *   - clampé dans [0, 1]
+ */
+function periodProrataAgainstContract(
+  pStart: Date,
+  pEndFull: Date,
+  contractStart: Date,
+  contractEndInclusive: Date
+): number {
+  const p0 = toUtcMidnight(pStart);
+  const p1 = toUtcMidnight(pEndFull); // borne sup exclue
+  const c0 = toUtcMidnight(contractStart);
+  // contract end : on le rend exclu en ajoutant 1 jour à la borne inclusive
+  const c1 = addDaysUtc(toUtcMidnight(contractEndInclusive), 1);
+
+  const periodDays = (p1.getTime() - p0.getTime()) / MS_PER_DAY;
+  if (periodDays <= 0) return 0;
+
+  const interStartMs = Math.max(p0.getTime(), c0.getTime());
+  const interEndMs = Math.min(p1.getTime(), c1.getTime());
+
+  const overlapDays = Math.max(0, (interEndMs - interStartMs) / MS_PER_DAY);
+
+  let ratio = overlapDays / periodDays;
+  if (ratio < 0) ratio = 0;
+  if (ratio > 1) ratio = 1;
+
+  return ratio;
 }
 
 // ⬇️ New helper: compute the due date rule you requested:
@@ -36,8 +121,7 @@ function dueDateFirst15Then1st(
     const day = periodIndex === 0 ? 15 : 1;
     return new Date(Date.UTC(y, m, day, 0, 0, 0));
   }
-  // Fallback: keep end-of-period for terme échu if you use it
-  // (or adapt to your own rule)
+  // Fallback: keep start-of-period for TERME_ECHU (or adapt to your own rule)
   return new Date(pStart);
 }
 
@@ -98,11 +182,12 @@ export async function generateBillingScheduleForContract({
     if (!periods.length)
       throw new Error("No periods generated for given dates/frequency");
 
-    // 4.bis) Prorata on extremities only (naturally happens because only first/last overlap partially)
-    // Use overlap of period with the CONTRACT [start..end] — THIS is the core fix.
-    const ratios = periods.map(({ pStart, pEnd }) => {
-      const { ratio } = prorataForPeriod(pStart, pEnd, start, end);
-      return ratio; // 0..1
+    // 4.bis) Prorata par période :
+    // ratio = jours_effectifs / jours_totaux_période (borne sup exclue)
+    // ⬅️ On utilise maintenant une période THÉORIQUE complète via addFrequencyUtc
+    const ratios = periods.map(({ pStart }) => {
+      const pEndFull = addFrequencyUtc(pStart, frequency);
+      return periodProrataAgainstContract(pStart, pEndFull, start, end);
     });
 
     // 5) Normalize weights
@@ -156,10 +241,10 @@ export async function generateBillingScheduleForContract({
 
     // 9) Insert lines with requested due date rule
     type NewLine = typeof billingLines.$inferInsert;
-    const lineValues: NewLine[] = periods.map(({ pStart, pEnd }, i) => ({
+    const lineValues: NewLine[] = periods.map(({ pStart }, i) => ({
       scheduleId: schedule.id,
       sequenceNo: i + 1,
-      dueDate: dueDateFirst15Then1st(pStart, i, billingType), // ⬅️ 15th for first, then 1st
+      dueDate: dueDateFirst15Then1st(pStart, i, billingType), // 15th for first, then 1st
       amountHt: toMoneyString(amounts[i]),
       status: "A_FACTURER",
     }));
