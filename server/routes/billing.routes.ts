@@ -397,9 +397,15 @@ export function registerBillingRoutes(app: Express) {
 
         // 4) Generate PDF with Puppeteer
         const browser = await puppeteer.launch({
-          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // set in Dockerfile
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
           headless: true,
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--single-process",
+            "--no-zygote",
+          ],
         });
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: "load", timeout: 60000 });
