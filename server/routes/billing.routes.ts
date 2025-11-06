@@ -410,6 +410,8 @@ export function registerBillingRoutes(app: Express) {
             "--disable-dev-shm-usage",
             "--disable-gpu",
             "--no-zygote",
+            "--disable-software-rasterizer",
+            "--disable-features=UseOzonePlatform",
           ],
         });
 
