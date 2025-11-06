@@ -433,14 +433,23 @@ export function registerBillingRoutes(app: Express) {
         let page: Page | null = null;
 
         try {
+          console.log(
+            "[PDF] Resolving Chrome executablePath from puppeteer..."
+          );
+          const resolvedExecutablePath = await puppeteer.executablePath();
+          console.log(
+            "[PDF] Puppeteer resolved executablePath =",
+            resolvedExecutablePath
+          );
+
           console.log("[PDF] Launching Chrome (puppeteer.launch)...");
           const launchStarted = Date.now();
 
-          // On force un timeout applicatif sur le launch
           const launchPromise = puppeteer.launch({
-            headless: true, // ou true si ta version ne supporte pas "new"
+            headless: true,
             dumpio: true, // logs Chrome dans les logs du pod
-            protocolTimeout: 20000, // timeout CDP interne
+            protocolTimeout: 20000,
+            executablePath: resolvedExecutablePath, // ⬅️ très important
             args: [
               "--no-sandbox",
               "--disable-setuid-sandbox",
@@ -452,7 +461,6 @@ export function registerBillingRoutes(app: Express) {
             ],
           });
 
-          // Timeout applicatif (au cas où Chrome ne répond pas du tout)
           const timeoutPromise = new Promise<never>((_, reject) =>
             setTimeout(() => {
               reject(
