@@ -3,14 +3,16 @@ FROM node:18-bullseye-slim AS builder
 
 WORKDIR /app
 
-# Copy package files and install deps (this will download Chromium for puppeteer)
+# 1) Install deps (this will install puppeteer 24.28.0)
 COPY package*.json ./
-
 RUN npm install
 
-# Copy the rest of the source and build
-COPY . .
+# 2) Pre-download Chromium that puppeteer expects
+#    This populates /root/.cache/puppeteer with Chrome 142.x
+RUN npx puppeteer browsers install chrome
 
+# 3) Copy sources and build
+COPY . .
 RUN npm run build
 
 
@@ -19,7 +21,7 @@ FROM node:18-bullseye-slim AS runner
 
 WORKDIR /app
 
-# Install system dependencies required by Chromium (as recommended by Puppeteer)
+# System dependencies required by Chromium (from Puppeteer docs)
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     fonts-liberation \
@@ -54,16 +56,14 @@ RUN apt-get update && apt-get install -y \
 
 ENV NODE_ENV=production
 
-# ⛔️ IMPORTANT:
-# - No PUPPETEER_SKIP_DOWNLOAD
-# - No PUPPETEER_EXECUTABLE_PATH
-# Puppeteer will use its own bundled Chromium.
-
-# Copy built app + node_modules from builder
+# 4) Copy app, deps and assets
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/server/assets ./server/assets
+
+# 5) 🔥 Copy Puppeteer's browser cache (Chrome 142.x) into runtime
+COPY --from=builder /root/.cache/puppeteer /root/.cache/puppeteer
 
 EXPOSE 5000
 
