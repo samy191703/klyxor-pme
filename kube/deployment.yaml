@@ -29,8 +29,8 @@ spec:
                 name: clm-app-config
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "150m"
+              memory: "512Mi" # min garanti au scheduler
+              cpu: "500m"
             limits:
-              memory: "256Mi"
-              cpu: "250m"
+              memory: "1Gi" # max autorisé
+              cpu: "1"
