@@ -40,6 +40,8 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
+# 🔹 Add assets:
+COPY --from=builder /app/server/assets ./server/assets
 
 EXPOSE 5000
 

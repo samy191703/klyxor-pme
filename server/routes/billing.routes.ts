@@ -403,10 +403,15 @@ export function registerBillingRoutes(app: Express) {
             "--no-sandbox",
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
-            "--single-process",
+            "--disable-gpu",
             "--no-zygote",
+            "--single-process",
           ],
         });
+        console.log(
+          "Using chromium path:",
+          process.env.PUPPETEER_EXECUTABLE_PATH
+        );
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: "load", timeout: 60000 });
 
