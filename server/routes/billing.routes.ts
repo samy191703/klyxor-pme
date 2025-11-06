@@ -436,12 +436,32 @@ export function registerBillingRoutes(app: Express) {
         );
         const browser = await getBrowser();
         const page = await browser.newPage();
-        page.setDefaultTimeout(30000);
+        // 🔥 IMPORTANT : intercepter les requêtes réseau
+        await page.setRequestInterception(true);
+        page.on("request", (reqIntercept) => {
+          const url = reqIntercept.url();
+
+          // Autoriser uniquement les URLs internes nécessaires
+          if (
+            url.startsWith("about:blank") ||
+            url.startsWith("data:") ||
+            url.startsWith("file:")
+          ) {
+            return reqIntercept.continue();
+          }
+
+          // Bloquer TOUT le reste (googles fonts, CDN, etc.)
+          console.log("[PDF] Blocking external request:", url);
+          return reqIntercept.abort();
+        });
+
+        // Timeout raisonnable côté page
+        page.setDefaultTimeout(20000);
 
         console.time("[PDF] setContent");
         await page.setContent(html, {
-          waitUntil: "domcontentloaded", // plus safe que "load" pour du HTML statique
-          timeout: 30000,
+          waitUntil: "domcontentloaded", // suffisant pour du HTML statique
+          timeout: 20000,
         });
         console.timeEnd("[PDF] setContent");
 
