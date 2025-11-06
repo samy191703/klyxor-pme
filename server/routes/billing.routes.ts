@@ -426,7 +426,7 @@ export function registerBillingRoutes(app: Express) {
         );
         console.log("[PDF] HTML generated, length:", html.length);
 
-        // 5) Puppeteer (sans singleton, un browser par requête)
+        // 5) Puppeteer (version simple, sans timeout custom)
         console.log("[PDF] Preparing Puppeteer rendering...");
 
         let browser: Browser | null = null;
@@ -443,13 +443,12 @@ export function registerBillingRoutes(app: Express) {
           );
 
           console.log("[PDF] Launching Chrome (puppeteer.launch)...");
-          const launchStarted = Date.now();
-
-          const launchPromise = puppeteer.launch({
+          console.time("[PDF] launch");
+          browser = await puppeteer.launch({
             headless: true,
-            dumpio: true, // logs Chrome dans les logs du pod
-            protocolTimeout: 20000,
-            executablePath: resolvedExecutablePath, // ⬅️ très important
+            dumpio: true, // logs chromium dans les logs
+            protocolTimeout: 60000, // timeout interne Puppeteer (60s max)
+            executablePath: resolvedExecutablePath,
             args: [
               "--no-sandbox",
               "--disable-setuid-sandbox",
@@ -460,23 +459,8 @@ export function registerBillingRoutes(app: Express) {
               "--disable-features=UseOzonePlatform",
             ],
           });
-
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => {
-              reject(
-                new Error(
-                  "[PDF] Browser launch timeout (took more than 15s in puppeteer.launch)"
-                )
-              );
-            }, 15000)
-          );
-
-          browser = await Promise.race([launchPromise, timeoutPromise]);
-          console.log(
-            "[PDF] Chrome launched in",
-            (Date.now() - launchStarted) / 1000,
-            "s"
-          );
+          console.timeEnd("[PDF] launch");
+          console.log("[PDF] Chrome launched OK");
 
           console.log("[PDF] Creating new page...");
           page = await browser.newPage();
