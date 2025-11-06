@@ -17,6 +17,8 @@ export type BillingLineStatus = "A_FACTURER" | "FACTUREE";
  *  BILLING SCHEDULE
  *  ========================= */
 export interface BillingSchedule {
+  lines: any;
+  clientName?: string;
   id: string;
 
   contractId: string;

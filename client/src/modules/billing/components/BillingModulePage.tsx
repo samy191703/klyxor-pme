@@ -1,11 +1,12 @@
 // src/modules/billing/components/BillingModulePage.tsx
-import { useMemo, useState } from "react";
+import { Key, useEffect, useMemo, useState } from "react";
 import Header from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw, EyeIcon, EyeOffIcon } from "lucide-react";
+import { Plus, RefreshCw, EyeIcon, EyeOffIcon, Search, FileText, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
+import { Filter } from "lucide-react";
 
 import type {
   BillingSchedule,
@@ -25,7 +26,20 @@ import { EditBillingScheduleDialog } from "./EditBillingScheduleDialog";
 import { DeleteBillingScheduleDialog } from "./DeleteBillingScheduleDialog";
 import BillingScheduleFilters from "./BillingScheduleFilters";
 
-import { downloadBillingSchedulePdf } from "../api/billing.api";
+import { BillingSchedulesQuery, downloadBillingSchedulePdf } from "../api/billing.api";
+
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend ,Pie, PieChart} from 'recharts';
+import { startOfMonth, endOfMonth, eachDayOfInterval, format, parseISO, addMonths } from 'date-fns';
+import { useBillingKpis } from "../queries/useBillingKpis";
+import { BillingFrequency } from "@shared/enums/billing.enum";
+import { useContracts } from "@/hooks/contrats/useContracts";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { KpiDashboard } from "./KpiDashboard";
+import { KpiCounters } from "./KpiCounters";
+import { KpiCharts } from "./KpiCharts";
+import FiltersCard from "./FiltersCard";
+import { PaginationControls } from "./PaginationControls";
+import { DEFAULT_FILTERS } from "../domain/constants";
 
 export default function BillingModulePage() {
   const { canCreateContract, canModifyContract, canDeleteContract } =
@@ -36,37 +50,60 @@ export default function BillingModulePage() {
     "schedules"
   );
 
+
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const {
-    data: schedules = [],
+    data: schedulesData,
     isLoading,
     error,
     refetch,
-  } = useBillingSchedules();
+  } = useBillingSchedules(filters);
+  console.log('schedulesData:',schedulesData)
+
+  const schedules = schedulesData?.rows ?? [];
+  const totalSchedules = schedulesData?.total ?? 0;
 
   // Plan sélectionné (alimente l’onglet Lignes)
   const [selectedSchedule, setSelectedSchedule] =
     useState<BillingSchedule | null>(null);
 
+  // Filtres pour les KPIs
+  const [kpiFilters, setKpiFilters] = useState({
+    from: "",
+    to: "",
+    customer: "",
+  });
+
+  const { data: summaryKpis } 
+    = useBillingKpis(kpiFilters);
+
+  const customerOptions = useMemo(() => {
+    if (!schedules) return [];
+    return Array.from(
+      new Set(schedules.map(s => s.clientName).filter(Boolean))
+    );
+  }, [schedules]);
+
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [showCustomerList, setShowCustomerList] = useState(false);
+  const COLORS = ["#4F46E5", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+
+  useEffect(() => {
+    const handler = () => setShowCustomerList(false);
+    window.addEventListener("click", handler);
+    return () => window.removeEventListener("click", handler);
+  }, []);
+
   // Lignes du plan courant
   const currentScheduleId = selectedSchedule?.id ?? null;
   const { data: lines = [] } = useBillingLinesBySchedule(currentScheduleId);
 
-  type ScheduleFiltersValue = {
-    search: string;
-    status: BillingScheduleStatus | "all";
-    itemsPerPage?: number;
-  };
-
-  const [filters, setFilters] = useState<ScheduleFiltersValue>({
-    search: "",
-    status: "all",
-    itemsPerPage: 25,
-  });
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [showKpiFilters, setShowKpiFilters] = useState(false);
 
   // Détail pour la modale "Voir" (avec lignes)
   const [viewingSchedule, setViewingSchedule] = useState<
@@ -74,28 +111,124 @@ export default function BillingModulePage() {
   >(null);
   const [viewLoading, setViewLoading] = useState(false);
 
-  const [showKpis, setShowKpis] = useState(true);
-  const [expanded, setExpanded] = useState(false);
+  const [showKpis, setShowKpis] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   // ID de l’échéancier en cours de téléchargement
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const filteredSchedules = useMemo(() => {
-    const q = filters.search.trim().toLowerCase();
-    return schedules.filter((s) => {
-      if (filters.status !== "all" && s.status !== filters.status) return false;
-      if (
-        q &&
-        !(
-          s.id.toLowerCase().includes(q) ||
-          s.contractNumber?.toLowerCase().includes(q) ||
-          s.contractId.toLowerCase().includes(q)
-        )
-      )
-        return false;
-      return true;
+  // useMemo KPI 
+  const kpi = useMemo(() => {
+    const api = summaryKpis;
+
+    if (!api)
+      return {
+        totalCount: 0,
+        totalAmount: 0,
+        draft: 0,
+        active: 0,
+        archived: 0,
+        A_ECHOIR: 0,
+        TERME_ECHU: 0,
+      };
+
+    const getStatus = (name: string) => Number(api.status?.find((x: any) => x.status === name)?.count ?? 0);
+    const getType = (name: string) => Number(api.billingType?.find((x: any) => x.billingType === name)?.count ?? 0);
+
+    return {
+      totalCount: Number(api.totals?.count ?? 0),
+      totalAmount: api.totals?.totalCentimes ? Number(api.totals.totalCentimes) / 100 : 0,
+      draft: getStatus("draft"),
+      active: getStatus("active"),
+      archived: getStatus("archived"),
+      A_ECHOIR: getType("A_ECHOIR"),
+      TERME_ECHU: getType("TERME_ECHU"),
+    };
+  }, [summaryKpis]);
+
+  // useMemo Graphe
+  const paymentsByDay = useMemo(() => {
+    if (!schedules || schedules.length === 0) return [];
+
+    const now = new Date();
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+    const daysInMonth = eachDayOfInterval({ start, end });
+
+    const data = daysInMonth.map(day => ({
+      date: format(day, "yyyy-MM-dd"),
+      totalAmount: 0,
+    }));
+
+    schedules.forEach(schedule => {
+      if (!schedule.lines || schedule.lines.length === 0) return;
+
+      const totalScheduleAmount = (schedule.lines as BillingLine[]).reduce(
+        (sum: number, line: BillingLine) => sum + (Number(line.amountHt) || 0),
+        0
+      );
+
+      let numPayments = 1;
+      switch (schedule.frequency) {
+        case BillingFrequency.MONTHLY: numPayments = 12; break;
+        case BillingFrequency.QUARTERLY : numPayments = 4; break;
+        case BillingFrequency.SEMIANNUAL : numPayments = 2; break;
+        case BillingFrequency.ANNUAL : numPayments = 1; break;
+      }
+
+      const paymentAmount = totalScheduleAmount / numPayments;
+
+      let paymentDates: Date[] = [];
+      const startDate = parseISO(schedule.startDate);
+      for (let i = 0; i < numPayments; i++) {
+        let payDate: Date;
+        switch (schedule.frequency) {
+          case BillingFrequency.MONTHLY:
+            payDate = addMonths(startDate, i);
+            break;
+          case BillingFrequency.QUARTERLY:
+            payDate = addMonths(startDate, i * 3);
+            break;
+          case BillingFrequency.SEMIANNUAL:
+            payDate = addMonths(startDate, i * 6);
+            break;
+          case BillingFrequency.ANNUAL:
+            payDate = addMonths(startDate, i * 12);
+            break;
+          default:
+            payDate = startDate;
+        }
+        paymentDates.push(payDate);
+      }
+
+      paymentDates.forEach(pd => {
+        if (pd >= start && pd <= end) {
+          const dayData = data.find(d => d.date === format(pd, "yyyy-MM-dd"));
+          if (dayData) dayData.totalAmount += paymentAmount;
+        }
+      });
     });
-  }, [schedules, filters]);
+
+    return data;
+  }, [schedules]);
+
+  const donutData = useMemo(() => {
+    if (!summaryKpis || !summaryKpis.status) return [];
+
+    const total = summaryKpis.status.reduce(
+      (sum: number, s: any) => sum + Number(s.count || 0),
+      0
+    );
+
+    return summaryKpis.status.map((item: any) => ({
+      name: item.status,
+      value: Number(item.count || 0),
+      percent: total > 0 ? (Number(item.count) / total) * 100 : 0,
+    }));
+  }, [summaryKpis]);
+
+const filteredSchedules = schedules; 
+const paginatedSchedules = schedules; 
 
   const handleDeleteSchedule = async (id: string) => {
     if (
@@ -128,16 +261,19 @@ export default function BillingModulePage() {
     setExpanded((e) => {
       const next = !e;
       setShowKpis(!next ? true : false);
-      setFilters((s) => ({ ...s, itemsPerPage: next ? 25 : 100 }));
       return next;
     });
   };
 
   const handleRefresh = async () => {
     await refetch();
+
     setShowKpis(false);
     setExpanded(true);
-    setFilters((s) => ({ ...s }));
+
+    setFilters(DEFAULT_FILTERS);
+    setCustomerSearch("");
+    setKpiFilters({ from: "", to: "", customer: "" });
   };
 
   const handleViewSchedule = async (row: BillingSchedule) => {
@@ -182,29 +318,13 @@ export default function BillingModulePage() {
     }
   };
 
-  if (isLoading)
-    return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        Chargement des plans de facturation...
-      </div>
-    );
+  const customerOptionsClean: string[] = customerOptions.filter(
+    (c): c is string => typeof c === "string" && c.trim() !== ""
+  );
 
-  if (error) {
-    console.log(error);
-    return (
-      <div className="flex items-center justify-center h-full text-red-500">
-        Erreur lors du chargement {(error as Error).message}
-      </div>
-    );
-  }
 
-  // KPIs (draft/active/archived)
-  const kpi = {
-    total: schedules.length,
-    drafts: schedules.filter((s) => s.status === "draft").length,
-    active: schedules.filter((s) => s.status === "active").length,
-    archived: schedules.filter((s) => s.status === "archived").length,
-  };
+  if (error)
+    return <div className="flex items-center justify-center h-full text-red-500">Erreur lors du Chargement{(error as Error).message}</div>;
 
   return (
     <div className="flex flex-col h-full bg-gray-50" data-testid="billing-main">
@@ -243,6 +363,16 @@ export default function BillingModulePage() {
                   )}
                   Statistiques
                 </Button>
+                 <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowKpiFilters((v) => !v)}
+                  className="rounded-lg hover:bg-blue-50 text-blue-600 border-blue-300 relative"
+                  title="Afficher / masquer les filtres KPI"
+                >
+                  <Filter className="w-5 h-5" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
+                </Button>
               </div>
             </div>
           </div>
@@ -267,66 +397,57 @@ export default function BillingModulePage() {
             </Button>
           </div>
 
-          {/* KPI – cachés si expanded */}
           {activeTab === "schedules" && showKpis && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-3">
-              {[
-                { v: kpi.total, l: "Total plans", c: "" },
-                { v: kpi.drafts, l: "Brouillons", c: "text-gray-600" },
-                { v: kpi.active, l: "Actifs", c: "text-green-600" },
-                { v: kpi.archived, l: "Archivés", c: "text-purple-600" },
-              ].map((x, i) => (
-                <Card key={i}>
-                  <CardContent className="p-4">
-                    <div className={`text-2xl font-bold ${x.c}`}>{x.v}</div>
-                    <div className="text-sm text-gray-600">{x.l}</div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div>
+              {showKpiFilters && (
+                // KpiDashboard
+               <KpiDashboard
+                  kpiFilters={kpiFilters}
+                  setKpiFilters={setKpiFilters}
+                  customerSearch={customerSearch}
+                  setCustomerSearch={setCustomerSearch}
+                  showCustomerList={showCustomerList}
+                  setShowCustomerList={setShowCustomerList}
+                  customerOptions={customerOptions.filter((c): c is string => c !== undefined)}
+                  kpi={kpi}
+                  paymentsByDay={paymentsByDay}
+                  donutData={donutData}
+                  COLORS={COLORS}
+                />
+              )}
+
+              {/* KpiCounters */}
+              <KpiCounters kpi={kpi} />
+
+              {/* KpiCharts */}
+              <KpiCharts
+                paymentsByDay={paymentsByDay}
+                donutData={donutData}
+                COLORS={COLORS}
+              />
             </div>
           )}
 
-          {/* Filtres + Refresh */}
-          {activeTab === "schedules" && (
-            <Card className="mb-3">
-              <CardContent className="p-4 flex justify-between items-center gap-3">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <BillingScheduleFilters
-                    value={{
-                      status:
-                        filters.status === "all"
-                          ? ("all" as any)
-                          : filters.status,
-                      search: filters.search,
-                    }}
-                    onChange={(patch) =>
-                      setFilters((s) => ({
-                        ...s,
-                        search: patch.search ?? s.search,
-                        status:
-                          (patch.status as ScheduleFiltersValue["status"]) ??
-                          s.status,
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2 justify-end">
-                  <Button variant="outline" onClick={handleRefresh}>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Actualiser
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Table */}
+          <FiltersCard
+            filters={filters}
+            setFilters={setFilters}
+            customerOptions={customerOptionsClean}
+            showCustomerList={showCustomerList}
+            setShowCustomerList={setShowCustomerList}
+            handleRefresh={handleRefresh}
+          />
+
           <Card>
             <CardContent className="p-0">
               {activeTab === "schedules" && (
+                isLoading ? (
+          <div className="flex items-center justify-center p-4 text-gray-500">
+            Chargement des plans de facturation...
+          </div>
+        ) : (
                 <BillingSchedulesTable
-                  rows={filteredSchedules}
+                  rows={paginatedSchedules}
                   onView={handleViewSchedule}
                   onEdit={(row) => {
                     /*   setSelectedSchedule(row);
@@ -337,7 +458,21 @@ export default function BillingModulePage() {
                   onDownload={handleDownloadSchedule}
                   downloadingId={downloadingId}
                 />
+        )
               )}
+            {/* Pagination Controls */}
+                <PaginationControls
+                  limit={filters.limit ?? 25}
+                  offset={filters.offset ?? 0}
+                  total={totalSchedules}
+                  onChange={(newLimit, newOffset) =>
+                    setFilters(f => ({
+                      ...f,
+                      limit: newLimit,
+                      offset: newOffset,
+                    }))
+                  }
+                />
 
               {activeTab === "lines" && (
                 <div className="p-4">
@@ -354,7 +489,7 @@ export default function BillingModulePage() {
                         </div>
                       </div>
                       <BillingLinesTable
-                        rows={lines as BillingLine[]}
+                        rows={selectedSchedule?.lines ?? []}
                         onEdit={() => {
                           toast({
                             title: "Action d’édition",
