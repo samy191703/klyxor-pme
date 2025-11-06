@@ -239,8 +239,9 @@ export function registerBillingRoutes(app: Express) {
       console.log("[PDF] Launching Chromium with puppeteer-core...");
       browserPromise = puppeteer.launch({
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-        headless: "new" as any, // ou true si ta version ne supporte pas "new"
+        headless: true, // ou true selon ta version
         dumpio: true,
+        protocolTimeout: 20000, // ⬅️ IMPORTANT pour éviter un freeze silencieux
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
