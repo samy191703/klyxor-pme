@@ -34,7 +34,7 @@ RUN apk add --no-cache \
 ENV NODE_ENV=production
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Alpine's chromium binary path
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Copy built app + node_modules from builder
 COPY --from=builder /app/node_modules ./node_modules

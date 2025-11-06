@@ -394,24 +394,25 @@ export function registerBillingRoutes(app: Express) {
           linesForPdf,
           { logoDataUrl }
         );
+        console.log(
+          "Using chromium path:",
+          process.env.PUPPETEER_EXECUTABLE_PATH
+        );
 
         // 4) Generate PDF with Puppeteer
         const browser = await puppeteer.launch({
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
           headless: true,
+          dumpio: true,
           args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu",
             "--no-zygote",
-            "--single-process",
           ],
         });
-        console.log(
-          "Using chromium path:",
-          process.env.PUPPETEER_EXECUTABLE_PATH
-        );
+
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: "load", timeout: 60000 });
 
