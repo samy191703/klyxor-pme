@@ -6,7 +6,7 @@ import { db } from "server/db";
 import { and, desc, eq } from "drizzle-orm";
 import { billingSchedules, billingLines, contracts } from "@shared/schema";
 import { renderBillingScheduleHtml } from "server/templates/billing-schedule.template";
-import puppeteer from "puppeteer";
+import puppeteer, { Browser } from "puppeteer-core";
 import path from "path";
 import fs from "fs";
 
@@ -231,6 +231,29 @@ export function registerBillingRoutes(app: Express) {
     }
   );
 
+  // --- Browser global (singleton) --- //
+  let browserPromise: Promise<Browser> | null = null;
+
+  async function getBrowser(): Promise<Browser> {
+    if (!browserPromise) {
+      console.log("[PDF] Launching Chromium with puppeteer-core...");
+      browserPromise = puppeteer.launch({
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        headless: "new" as any, // ou true si ta version ne supporte pas "new"
+        dumpio: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--no-zygote",
+          "--disable-software-rasterizer",
+          "--disable-features=UseOzonePlatform",
+        ],
+      });
+    }
+    return browserPromise;
+  }
   /**
    * @openapi
    * /api/billing-schedules/{id}/pdf:
@@ -310,6 +333,9 @@ export function registerBillingRoutes(app: Express) {
     "/api/billing-schedules/:id/pdf",
     isAuthenticated,
     async (req: Request, res: Response) => {
+      const startedAt = Date.now();
+      console.log("[PDF] Request received for schedule", req.params.id);
+
       try {
         const id = req.params.id;
 
@@ -334,6 +360,7 @@ export function registerBillingRoutes(app: Express) {
           .limit(1);
 
         if (!scheduleRows.length) {
+          console.log("[PDF] Schedule not found", id);
           return res.status(404).json({ error: "Billing schedule not found" });
         }
 
@@ -359,26 +386,32 @@ export function registerBillingRoutes(app: Express) {
           status: ln.status,
         }));
 
-        // 3) Build HTML with your template + logo
-        let logoDataUrl: string | undefined;
+        console.log(
+          "[PDF] Loaded schedule & lines",
+          id,
+          "lines:",
+          linesForPdf.length
+        );
 
+        // 3) Logo
+        let logoDataUrl: string | undefined;
         try {
           const logoPath = path.join(
             process.cwd(),
             "server",
             "assets",
-            "logo.jpeg" // adapt to your actual file name
+            "logo.jpeg"
           );
           const logoBuffer = fs.readFileSync(logoPath);
           logoDataUrl = `data:image/jpeg;base64,${logoBuffer.toString(
             "base64"
           )}`;
+          console.log("[PDF] Logo loaded from", logoPath);
         } catch (err) {
-          console.warn("Logo not found or failed to load:", err);
-          // logoDataUrl stays undefined → no <img> rendered
+          console.warn("[PDF] Logo not found or failed to load:", err);
         }
 
-        // 3) Build HTML with your simplified template
+        // 4) Render HTML
         const html = renderBillingScheduleHtml(
           {
             contractNumber: schedule.contractNumber ?? null,
@@ -394,30 +427,25 @@ export function registerBillingRoutes(app: Express) {
           linesForPdf,
           { logoDataUrl }
         );
+        console.log("[PDF] HTML generated, length:", html.length);
+
+        // 5) Puppeteer
         console.log(
           "Using chromium path:",
           process.env.PUPPETEER_EXECUTABLE_PATH
         );
-
-        // 4) Generate PDF with Puppeteer
-        const browser = await puppeteer.launch({
-          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-          headless: true,
-          dumpio: true,
-          args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--no-zygote",
-            "--disable-software-rasterizer",
-            "--disable-features=UseOzonePlatform",
-          ],
-        });
-
+        const browser = await getBrowser();
         const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: "load", timeout: 60000 });
+        page.setDefaultTimeout(30000);
 
+        console.time("[PDF] setContent");
+        await page.setContent(html, {
+          waitUntil: "domcontentloaded", // plus safe que "load" pour du HTML statique
+          timeout: 30000,
+        });
+        console.timeEnd("[PDF] setContent");
+
+        console.time("[PDF] page.pdf");
         const pdfBuffer = await page.pdf({
           format: "A4",
           printBackground: true,
@@ -428,13 +456,15 @@ export function registerBillingRoutes(app: Express) {
             right: "15mm",
           },
         });
-        await browser.close();
+        console.timeEnd("[PDF] page.pdf");
+
+        await page.close();
 
         console.log("PDF length:", pdfBuffer.length);
         console.log(
           "PDF first bytes:",
           Buffer.from(pdfBuffer.subarray(0, 8)).toString("ascii")
-        ); // %PDF-1.4
+        );
 
         const rawContractNumber =
           schedule.contractNumber || schedule.contractId || "plan";
@@ -444,7 +474,6 @@ export function registerBillingRoutes(app: Express) {
         console.log("PDF filename (raw):", baseFilename);
         console.log("PDF filename (sanitized):", filename);
 
-        // 🔐 Make sure pdfBuffer is a real Buffer and send raw bytes
         const pdfBuf = Buffer.isBuffer(pdfBuffer)
           ? pdfBuffer
           : Buffer.from(pdfBuffer);
@@ -455,6 +484,13 @@ export function registerBillingRoutes(app: Express) {
           `attachment; filename=${filename}`
         );
         res.end(pdfBuf);
+
+        console.log(
+          `[PDF] Response sent in ${
+            (Date.now() - startedAt) / 1000
+          }s for schedule`,
+          id
+        );
       } catch (e: any) {
         console.error("PDF generation error:", e);
         if (!res.headersSent) {
