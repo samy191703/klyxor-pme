@@ -427,6 +427,7 @@ export function registerBillingRoutes(app: Express) {
         console.log("[PDF] HTML generated, length:", html.length);
 
         // 5) Puppeteer (version simple, sans timeout custom)
+
         console.log("[PDF] Preparing Puppeteer rendering...");
 
         let browser: Browser | null = null;
@@ -442,13 +443,15 @@ export function registerBillingRoutes(app: Express) {
             resolvedExecutablePath
           );
 
-          console.log("[PDF] Launching Chrome (puppeteer.launch)...");
+          console.log("[PDF] Launching Chrome (puppeteer.launch) with pipe...");
           console.time("[PDF] launch");
           browser = await puppeteer.launch({
             headless: true,
-            dumpio: true, // logs chromium dans les logs
-            protocolTimeout: 60000, // timeout interne Puppeteer (60s max)
+            dumpio: true,
+            protocolTimeout: 60000,
             executablePath: resolvedExecutablePath,
+            // ⬇⬇ important
+            pipe: true,
             args: [
               "--no-sandbox",
               "--disable-setuid-sandbox",
@@ -457,6 +460,7 @@ export function registerBillingRoutes(app: Express) {
               "--no-zygote",
               "--disable-software-rasterizer",
               "--disable-features=UseOzonePlatform",
+              // NE PAS mettre --remote-debugging-port ici, puppeteer gère avec pipe
             ],
           });
           console.timeEnd("[PDF] launch");
@@ -466,7 +470,6 @@ export function registerBillingRoutes(app: Express) {
           page = await browser.newPage();
           console.log("[PDF] newPage() done.");
 
-          // 🔥 Interception réseau : on bloque tout ce qui est externe
           await page.setRequestInterception(true);
           console.log("[PDF] Request interception enabled.");
           page.on("request", (reqIntercept) => {
