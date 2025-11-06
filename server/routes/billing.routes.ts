@@ -6,7 +6,7 @@ import { db } from "server/db";
 import { and, desc, eq } from "drizzle-orm";
 import { billingSchedules, billingLines, contracts } from "@shared/schema";
 import { renderBillingScheduleHtml } from "server/templates/billing-schedule.template";
-import puppeteer, { Browser } from "puppeteer-core";
+import puppeteer, { Browser, Page } from "puppeteer";
 import path from "path";
 import fs from "fs";
 
@@ -236,25 +236,21 @@ export function registerBillingRoutes(app: Express) {
 
   async function getBrowser(): Promise<Browser> {
     if (!browserPromise) {
-      console.log("[PDF] Launching Chromium with puppeteer-core...");
+      console.log("[PDF] Launching bundled Chromium with puppeteer...");
       browserPromise = puppeteer.launch({
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-        headless: true, // ou true selon ta version
-        dumpio: true,
-        protocolTimeout: 20000, // ⬅️ IMPORTANT pour éviter un freeze silencieux
+        headless: true,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
           "--disable-gpu",
           "--no-zygote",
-          "--disable-software-rasterizer",
-          "--disable-features=UseOzonePlatform",
         ],
       });
     }
     return browserPromise;
   }
+
   /**
    * @openapi
    * /api/billing-schedules/{id}/pdf:
@@ -430,13 +426,12 @@ export function registerBillingRoutes(app: Express) {
         );
         console.log("[PDF] HTML generated, length:", html.length);
 
-        // 5) Puppeteer
-        console.log(
-          "Using chromium path:",
-          process.env.PUPPETEER_EXECUTABLE_PATH
-        );
+        // 5) Generate PDF with Puppeteer
+        console.log("[PDF] Preparing Puppeteer rendering...");
+
         const browser = await getBrowser();
         const page = await browser.newPage();
+
         // 🔥 IMPORTANT : intercepter les requêtes réseau
         await page.setRequestInterception(true);
         page.on("request", (reqIntercept) => {
