@@ -426,87 +426,146 @@ export function registerBillingRoutes(app: Express) {
         );
         console.log("[PDF] HTML generated, length:", html.length);
 
-        // 5) Generate PDF with Puppeteer
+        // 5) Puppeteer (sans singleton, un browser par requête)
         console.log("[PDF] Preparing Puppeteer rendering...");
 
-        const browser = await getBrowser();
-        const page = await browser.newPage();
+        let browser: Browser | null = null;
+        let page: Page | null = null;
 
-        // 🔥 IMPORTANT : intercepter les requêtes réseau
-        await page.setRequestInterception(true);
-        page.on("request", (reqIntercept) => {
-          const url = reqIntercept.url();
+        try {
+          console.log("[PDF] Launching Chrome (puppeteer.launch)...");
+          const launchStarted = Date.now();
 
-          // Autoriser uniquement les URLs internes nécessaires
-          if (
-            url.startsWith("about:blank") ||
-            url.startsWith("data:") ||
-            url.startsWith("file:")
-          ) {
-            return reqIntercept.continue();
+          // On force un timeout applicatif sur le launch
+          const launchPromise = puppeteer.launch({
+            headless: true, // ou true si ta version ne supporte pas "new"
+            dumpio: true, // logs Chrome dans les logs du pod
+            protocolTimeout: 20000, // timeout CDP interne
+            args: [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+              "--no-zygote",
+              "--disable-software-rasterizer",
+              "--disable-features=UseOzonePlatform",
+            ],
+          });
+
+          // Timeout applicatif (au cas où Chrome ne répond pas du tout)
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => {
+              reject(
+                new Error(
+                  "[PDF] Browser launch timeout (took more than 15s in puppeteer.launch)"
+                )
+              );
+            }, 15000)
+          );
+
+          browser = await Promise.race([launchPromise, timeoutPromise]);
+          console.log(
+            "[PDF] Chrome launched in",
+            (Date.now() - launchStarted) / 1000,
+            "s"
+          );
+
+          console.log("[PDF] Creating new page...");
+          page = await browser.newPage();
+          console.log("[PDF] newPage() done.");
+
+          // 🔥 Interception réseau : on bloque tout ce qui est externe
+          await page.setRequestInterception(true);
+          console.log("[PDF] Request interception enabled.");
+          page.on("request", (reqIntercept) => {
+            const url = reqIntercept.url();
+
+            if (
+              url.startsWith("about:blank") ||
+              url.startsWith("data:") ||
+              url.startsWith("file:")
+            ) {
+              return reqIntercept.continue();
+            }
+
+            console.log("[PDF] Blocking external request:", url);
+            return reqIntercept.abort();
+          });
+
+          page.setDefaultTimeout(20000);
+
+          console.time("[PDF] setContent");
+          await page.setContent(html, {
+            waitUntil: "domcontentloaded",
+            timeout: 20000,
+          });
+          console.timeEnd("[PDF] setContent");
+
+          console.time("[PDF] page.pdf");
+          const pdfBuffer = await page.pdf({
+            format: "A4",
+            printBackground: true,
+            margin: {
+              top: "20mm",
+              bottom: "20mm",
+              left: "15mm",
+              right: "15mm",
+            },
+          });
+          console.timeEnd("[PDF] page.pdf");
+
+          await page.close();
+          page = null;
+
+          console.log("PDF length:", pdfBuffer.length);
+          console.log(
+            "PDF first bytes:",
+            Buffer.from(pdfBuffer.subarray(0, 8)).toString("ascii")
+          );
+
+          const rawContractNumber =
+            schedule.contractNumber || schedule.contractId || "plan";
+          const baseFilename = `echeancier_${rawContractNumber}_v${schedule.version}.pdf`;
+          const filename = sanitizeFilename(baseFilename);
+
+          console.log("PDF filename (raw):", baseFilename);
+          console.log("PDF filename (sanitized):", filename);
+
+          const pdfBuf = Buffer.isBuffer(pdfBuffer)
+            ? pdfBuffer
+            : Buffer.from(pdfBuffer);
+
+          res.setHeader("Content-Type", "application/pdf");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=${filename}`
+          );
+          res.end(pdfBuf);
+
+          console.log(
+            `[PDF] Response sent in ${
+              (Date.now() - startedAt) / 1000
+            }s for schedule`,
+            id
+          );
+        } catch (e: any) {
+          console.error("[PDF] Error during Puppeteer block:", e);
+          if (page) {
+            try {
+              await page.close();
+            } catch (_) {}
           }
-
-          // Bloquer TOUT le reste (googles fonts, CDN, etc.)
-          console.log("[PDF] Blocking external request:", url);
-          return reqIntercept.abort();
-        });
-
-        // Timeout raisonnable côté page
-        page.setDefaultTimeout(20000);
-
-        console.time("[PDF] setContent");
-        await page.setContent(html, {
-          waitUntil: "domcontentloaded", // suffisant pour du HTML statique
-          timeout: 20000,
-        });
-        console.timeEnd("[PDF] setContent");
-
-        console.time("[PDF] page.pdf");
-        const pdfBuffer = await page.pdf({
-          format: "A4",
-          printBackground: true,
-          margin: {
-            top: "20mm",
-            bottom: "20mm",
-            left: "15mm",
-            right: "15mm",
-          },
-        });
-        console.timeEnd("[PDF] page.pdf");
-
-        await page.close();
-
-        console.log("PDF length:", pdfBuffer.length);
-        console.log(
-          "PDF first bytes:",
-          Buffer.from(pdfBuffer.subarray(0, 8)).toString("ascii")
-        );
-
-        const rawContractNumber =
-          schedule.contractNumber || schedule.contractId || "plan";
-        const baseFilename = `echeancier_${rawContractNumber}_v${schedule.version}.pdf`;
-        const filename = sanitizeFilename(baseFilename);
-
-        console.log("PDF filename (raw):", baseFilename);
-        console.log("PDF filename (sanitized):", filename);
-
-        const pdfBuf = Buffer.isBuffer(pdfBuffer)
-          ? pdfBuffer
-          : Buffer.from(pdfBuffer);
-
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader(
-          "Content-Disposition",
-          `attachment; filename=${filename}`
-        );
-        res.end(pdfBuf);
-
-        console.log(
-          `[PDF] Response sent in ${
-            (Date.now() - startedAt) / 1000
-          }s for schedule`,
-          id
-        );
+          if (browser) {
+            try {
+              await browser.close();
+            } catch (_) {}
+          }
+          if (!res.headersSent) {
+            return res
+              .status(500)
+              .json({ error: e.message || "PDF generation error" });
+          }
+        }
       } catch (e: any) {
         console.error("PDF generation error:", e);
         if (!res.headersSent) {
