@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import Header from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw, EyeIcon, EyeOffIcon } from "lucide-react";
+import { Plus, RefreshCw, EyeIcon, EyeOffIcon, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -10,6 +10,7 @@ import type {
   BillingSchedule,
   BillingLine,
   BillingScheduleStatus,
+  BillingScheduleWithLines,
 } from "../domain/types";
 
 import { useBillingSchedules } from "../queries/useBillingSchedules";
@@ -24,19 +25,22 @@ import { EditBillingScheduleDialog } from "../components/dialogs/EditBillingSche
 import { DeleteBillingScheduleDialog } from "../components/dialogs/DeleteBillingScheduleDialog";
 import BillingScheduleFilters from "../components/BillingScheduleFilters";
 
-import { downloadBillingSchedulePdf } from "../api/billing.api";
+import {
+  downloadBillingSchedulePdf,
+  fetchBillingScheduleWithLines,
+} from "../api/billing.api";
 import { BILLING_QK } from "../domain/constants";
 import { Contract } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
+import {
+  exportBillingSchedulesListToExcel,
+  exportBillingScheduleToExcel,
+} from "../utils/export-excel";
 
 export default function BillingModulePage() {
   const { canCreateContract, canModifyContract, canDeleteContract } =
     usePermissions();
   const { toast } = useToast();
-
-  const [activeTab, setActiveTab] = useState<"schedules" | "lines">(
-    "schedules"
-  );
 
   const {
     data: schedules = [],
@@ -44,6 +48,7 @@ export default function BillingModulePage() {
     error,
     refetch,
   } = useBillingSchedules();
+
   // 🔹 Fetch contracts
   const { data: contracts = [] } = useQuery<Contract[]>({
     queryKey: BILLING_QK.contracts,
@@ -60,12 +65,18 @@ export default function BillingModulePage() {
   type ScheduleFiltersValue = {
     search: string;
     status: BillingScheduleStatus | "all";
+    frequency: "all" | BillingSchedule["frequency"];
+    billingType: "all" | BillingSchedule["billingType"];
+    version: string;
     itemsPerPage?: number;
   };
 
   const [filters, setFilters] = useState<ScheduleFiltersValue>({
     search: "",
     status: "all",
+    frequency: "all",
+    billingType: "all",
+    version: "",
     itemsPerPage: 25,
   });
 
@@ -86,10 +97,56 @@ export default function BillingModulePage() {
   // ID de l’échéancier en cours de téléchargement
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
+  // ID de l’échéancier en cours d’export Excel
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
+  const [exportingAll, setExportingAll] = useState(false);
+
+  const handleExportExcel = async (row: BillingSchedule) => {
+    try {
+      setExportingId(row.id);
+
+      const data: BillingScheduleWithLines =
+        await fetchBillingScheduleWithLines(row.id);
+
+      exportBillingScheduleToExcel(data);
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Export Excel échoué",
+        description:
+          error?.message ??
+          "Une erreur est survenue lors de l’export de l’échéancier.",
+      });
+    } finally {
+      setExportingId(null);
+    }
+  };
+
   const filteredSchedules = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
+    const v = filters.version.trim();
+
     return schedules.filter((s) => {
+      // Statut
       if (filters.status !== "all" && s.status !== filters.status) return false;
+
+      // Fréquence
+      if (filters.frequency !== "all" && s.frequency !== filters.frequency)
+        return false;
+
+      // Type
+      if (
+        filters.billingType !== "all" &&
+        s.billingType !== filters.billingType
+      )
+        return false;
+
+      // Version (match strict sur la valeur)
+      if (v && String(s.version) !== v) return false;
+
+      // Recherche ID / contrat
       if (
         q &&
         !(
@@ -97,8 +154,10 @@ export default function BillingModulePage() {
           s.contractNumber?.toLowerCase().includes(q) ||
           s.contractId.toLowerCase().includes(q)
         )
-      )
+      ) {
         return false;
+      }
+
       return true;
     });
   }, [schedules, filters]);
@@ -127,6 +186,25 @@ export default function BillingModulePage() {
         description: "Impossible de supprimer le plan de facturation",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleExportAllExcel = () => {
+    try {
+      setExportingAll(true);
+      const toExport = filteredSchedules.length ? filteredSchedules : schedules;
+      exportBillingSchedulesListToExcel(toExport);
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Export Excel échoué",
+        description:
+          error?.message ??
+          "Une erreur est survenue lors de l’export des plans de facturation.",
+      });
+    } finally {
+      setExportingAll(false);
     }
   };
 
@@ -253,28 +331,8 @@ export default function BillingModulePage() {
             </div>
           </div>
 
-          {/* Tabs internes */}
-          <div className="flex items-center gap-2 mb-3">
-            <Button
-              variant={activeTab === "schedules" ? "default" : "outline"}
-              onClick={() => setActiveTab("schedules")}
-            >
-              Plans
-            </Button>
-            <Button
-              variant={activeTab === "lines" ? "default" : "outline"}
-              onClick={() => setActiveTab("lines")}
-              disabled={!currentScheduleId}
-              title={
-                !currentScheduleId ? "Sélectionnez un plan de facturation" : ""
-              }
-            >
-              Lignes
-            </Button>
-          </div>
-
           {/* KPI – cachés si expanded */}
-          {activeTab === "schedules" && showKpis && (
+          {showKpis && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-3">
               {[
                 { v: kpi.total, l: "Total plans", c: "" },
@@ -293,93 +351,72 @@ export default function BillingModulePage() {
           )}
 
           {/* Filtres + Refresh */}
-          {activeTab === "schedules" && (
-            <Card className="mb-3">
-              <CardContent className="p-4 flex justify-between items-center gap-3">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <BillingScheduleFilters
-                    value={{
+          <Card className="mb-3">
+            <CardContent className="p-4 flex justify-between items-center gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                <BillingScheduleFilters
+                  value={{
+                    search: filters.search,
+                    status: filters.status as any, // "all" | "draft" | "active" | "archived"
+                    frequency: filters.frequency,
+                    billingType: filters.billingType,
+                    version: filters.version,
+                  }}
+                  onChange={(patch) =>
+                    setFilters((s) => ({
+                      ...s,
+                      search: patch.search ?? s.search,
                       status:
-                        filters.status === "all"
-                          ? ("all" as any)
-                          : filters.status,
-                      search: filters.search,
-                    }}
-                    onChange={(patch) =>
-                      setFilters((s) => ({
-                        ...s,
-                        search: patch.search ?? s.search,
-                        status:
-                          (patch.status as ScheduleFiltersValue["status"]) ??
-                          s.status,
-                      }))
-                    }
-                  />
-                </div>
+                        (patch.status as ScheduleFiltersValue["status"]) ??
+                        s.status,
+                      frequency:
+                        (patch.frequency as ScheduleFiltersValue["frequency"]) ??
+                        s.frequency,
+                      billingType:
+                        (patch.billingType as ScheduleFiltersValue["billingType"]) ??
+                        s.billingType,
+                      version: patch.version ?? s.version,
+                    }))
+                  }
+                />
+              </div>
 
-                <div className="flex items-center space-x-2 justify-end">
-                  <Button variant="outline" onClick={handleRefresh}>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Actualiser
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              <div className="flex items-center space-x-2 justify-end">
+                <Button variant="outline" onClick={handleRefresh}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Actualiser
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleExportAllExcel}
+                  disabled={exportingAll}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {exportingAll ? "Export en cours..." : "Exporter EXCEL"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Table */}
           <Card>
             <CardContent className="p-0">
-              {activeTab === "schedules" && (
-                <BillingSchedulesTable
-                  rows={filteredSchedules}
-                  onView={handleViewSchedule}
-                  onEdit={(row) => {
-                    /*   setSelectedSchedule(row);
-                    setOpenEdit(true); */
-                    null;
-                  }}
-                  onDelete={(row) => handleDeleteSchedule(row.id)}
-                  onDownload={handleDownloadSchedule}
-                  downloadingId={downloadingId}
-                />
-              )}
+              <BillingSchedulesTable
+                rows={filteredSchedules}
+                onView={handleViewSchedule}
+                onEdit={(row) => {
+                  /* setSelectedSchedule(row);
+                     setOpenEdit(true); */
+                  null;
+                }}
+                onDelete={(row) => handleDeleteSchedule(row.id)}
+                onDownload={handleDownloadSchedule}
+                onExportExcel={handleExportExcel}
+                downloadingId={downloadingId}
+                exportingId={exportingId}
+              />
 
-              {activeTab === "lines" && (
-                <div className="p-4">
-                  {!currentScheduleId && (
-                    <div className="text-gray-600">
-                      Sélectionnez un plan de facturation pour voir ses lignes.
-                    </div>
-                  )}
-                  {currentScheduleId && (
-                    <>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="text-sm text-gray-700">
-                          Lignes du plan <b>{currentScheduleId}</b>
-                        </div>
-                      </div>
-                      <BillingLinesTable
-                        rows={lines as BillingLine[]}
-                        onEdit={() => {
-                          toast({
-                            title: "Action d’édition",
-                            description:
-                              "Brancher ici la modale d’édition de ligne si nécessaire.",
-                          });
-                        }}
-                        onDelete={() => {
-                          toast({
-                            title: "Action de suppression",
-                            description:
-                              "Brancher ici la suppression de ligne (ou une modale de confirmation).",
-                          });
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              )}
+              {/* bloc Lignes désactivé pour l'instant */}
             </CardContent>
           </Card>
         </div>
@@ -399,7 +436,6 @@ export default function BillingModulePage() {
         }}
         schedule={viewingSchedule}
       />
-
       {/* <EditBillingScheduleDialog
         open={openEdit}
         onOpenChange={setOpenEdit}

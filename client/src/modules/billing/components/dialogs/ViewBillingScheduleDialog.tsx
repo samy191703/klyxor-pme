@@ -12,7 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { BillingSchedule, BillingLine } from "../../domain/types";
 import { formatDateFR, formatMoneyEUR } from "../../utils/formatters";
-import { BILLING_STATUS_LABELS } from "../../domain/constants";
+import {
+  BILLING_STATUS_LABELS,
+  BILLING_FREQUENCY_LABELS,
+  BILLING_LINE_STATUS_LABELS,
+} from "../../domain/constants";
+import { BILLING_TYPE_LABELS } from "@shared/enums/billing.enum";
 
 import type { Contract } from "@shared/schema";
 import type { CalculateDto } from "@/_dtos/calculate-indexation.dto";
@@ -138,6 +143,8 @@ export function ViewBillingScheduleDialog({
   };
 
   const statusLabel = BILLING_STATUS_LABELS[status] ?? status;
+  const frequencyLabel = BILLING_FREQUENCY_LABELS[frequency] ?? frequency;
+  const billingTypeLabel = BILLING_TYPE_LABELS[billingType] ?? billingType;
 
   // ---------- INDEXATION STATE ----------
   const [idxLoading, setIdxLoading] = useState(false);
@@ -218,25 +225,38 @@ export function ViewBillingScheduleDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>
-            Détails du Plan de facturation : {contractNumber ?? "—"}
-          </DialogTitle>
-          <DialogDescription>
-            {frequency} / {billingType} (v{version})
-          </DialogDescription>
+        <DialogHeader className="flex flex-row items-center justify-between">
+          <div>
+            <DialogTitle className="text-lg font-semibold">
+              Détails du Plan de facturation
+            </DialogTitle>
+            <DialogDescription className="font-bold text-sm text-gray-700">
+              {contractNumber ?? "—"}
+            </DialogDescription>
+          </div>
+          <div className="text-sm text-gray-500">
+            Créé le {formatDateFR(createdAt)}
+          </div>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label className="text-gray-600">Contrat</Label>
-              <p className="font-medium">{contractNumber ?? "—"}</p>
+              <p className="font-medium text-gray-900">
+                {contractNumber ?? "—"}
+              </p>
             </div>
             <div>
               <Label className="text-gray-600">Période</Label>
-              <p className="font-medium">
+              <p className="font-medium text-gray-900">
                 {formatDateFR(startDate)} — {formatDateFR(endDate)}
+              </p>
+            </div>
+            <div className="flex flex-col justify-start items-start gap-2">
+              <Label className="text-gray-600">Statut</Label>
+              <p className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                {statusLabel}
               </p>
             </div>
           </div>
@@ -244,32 +264,15 @@ export function ViewBillingScheduleDialog({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label className="text-gray-600">Fréquence</Label>
-              <p className="font-medium">{frequency}</p>
+              <p className="font-medium text-gray-900">{frequencyLabel}</p>
             </div>
             <div>
               <Label className="text-gray-600">Type</Label>
-              <p className="font-medium">{billingType}</p>
+              <p className="font-medium text-gray-900">{billingTypeLabel}</p>
             </div>
             <div>
               <Label className="text-gray-600">Version</Label>
-              <p className="font-medium">{version}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-gray-600">Statut</Label>
-              <p className="font-medium">{statusLabel}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm text-gray-500">
-              <div>
-                <Label className="text-gray-600">Créé le</Label>
-                <p>{formatDateFR(createdAt)}</p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Modifié le</Label>
-                <p>{formatDateFR(updatedAt)}</p>
-              </div>
+              <p className="font-medium text-gray-900">{version}</p>
             </div>
           </div>
 
@@ -338,6 +341,9 @@ export function ViewBillingScheduleDialog({
                             ? res.price
                             : null;
 
+                        const lineStatusLabel =
+                          BILLING_LINE_STATUS_LABELS[ln.status] ?? ln.status;
+
                         return (
                           <tr key={ln.id} className="border-b last:border-0">
                             <td className="px-3 py-2">{ln.sequenceNo}</td>
@@ -354,7 +360,7 @@ export function ViewBillingScheduleDialog({
                             </td>
                             <td className="px-3 py-2">
                               <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-                                {ln.status}
+                                {lineStatusLabel}
                               </span>
                             </td>
                           </tr>

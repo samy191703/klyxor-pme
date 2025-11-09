@@ -8,6 +8,7 @@ import type {
   BillingLineCreateDto,
   BillingLineUpdateDto,
   BillingScheduleGenerateDto,
+  BillingScheduleWithLines,
 } from "../domain/types";
 import { BILLING_QK } from "../domain/constants";
 
@@ -20,6 +21,13 @@ export async function fetchBillingSchedules(): Promise<BillingSchedule[]> {
 export async function fetchBillingSchedule(
   id: string
 ): Promise<BillingSchedule> {
+  const res = await apiRequest("GET", `/api/billing-schedules/${id}`);
+  return res.json();
+}
+
+export async function fetchBillingScheduleWithLines(
+  id: string
+): Promise<BillingScheduleWithLines> {
   const res = await apiRequest("GET", `/api/billing-schedules/${id}`);
   return res.json();
 }

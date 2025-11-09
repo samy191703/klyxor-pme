@@ -96,3 +96,7 @@ export interface BillingLineUpdateDto {
   amountHt?: number;
   status?: BillingLineStatus;
 }
+
+export type BillingScheduleWithLines = BillingSchedule & {
+  lines: BillingLine[];
+};

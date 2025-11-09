@@ -1,18 +1,28 @@
 // src/modules/billing/components/BillingScheduleFilters.tsx
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import TextField from "@mui/material/TextField";
+import MenuItem from "@mui/material/MenuItem";
+import InputAdornment from "@mui/material/InputAdornment";
+import { Search as SearchIcon } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  BILLING_FREQUENCY_LABELS,
+  BILLING_TYPE_LABELS,
+} from "../domain/constants";
 
 export type BillingScheduleFiltersValue = {
   search: string;
   status: "all" | "draft" | "active" | "archived";
+  frequency: "all" | keyof typeof BILLING_FREQUENCY_LABELS;
+  billingType: "all" | keyof typeof BILLING_TYPE_LABELS;
+  version: string;
 };
+
+// Options locales
+const STATUS_OPTIONS = [
+  { value: "all", label: "Tous" },
+  { value: "draft", label: "Brouillon" },
+  { value: "active", label: "Actif" },
+  { value: "archived", label: "Archivé" },
+];
 
 export default function BillingScheduleFilters({
   value,
@@ -23,35 +33,100 @@ export default function BillingScheduleFilters({
 }) {
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="search">Recherche</Label>
-        <Input
-          id="search"
-          placeholder="ID échéancier / N° contrat"
-          value={value.search}
-          onChange={(e) => onChange({ search: e.target.value })}
-        />
-      </div>
+      {/* Recherche ID/Contrat */}
+      <TextField
+        label="ID échéancier / N° contrat"
+        value={value.search ?? ""}
+        onChange={(e) => onChange({ search: e.target.value })}
+        size="small"
+        fullWidth
+        color="primary"
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon size={18} />
+            </InputAdornment>
+          ),
+        }}
+      />
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="status">Statut</Label>
-        <Select
-          value={value.status}
-          onValueChange={(v) =>
-            onChange({ status: v as BillingScheduleFiltersValue["status"] })
-          }
-        >
-          <SelectTrigger id="status" className="w-full">
-            <SelectValue placeholder="Tous les statuts" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous</SelectItem>
-            <SelectItem value="draft">Brouillon</SelectItem>
-            <SelectItem value="active">Actif</SelectItem>
-            <SelectItem value="archived">Archivé</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Statut */}
+      <TextField
+        select
+        label="Statut"
+        value={value.status ?? "all"}
+        onChange={(e) =>
+          onChange({
+            status: e.target.value as BillingScheduleFiltersValue["status"],
+          })
+        }
+        size="small"
+        fullWidth
+        color="primary"
+      >
+        {STATUS_OPTIONS.map((o) => (
+          <MenuItem key={o.value} value={o.value}>
+            {o.label}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      {/* Fréquence */}
+      <TextField
+        select
+        label="Fréquence"
+        value={value.frequency ?? "all"}
+        onChange={(e) =>
+          onChange({
+            frequency: e.target
+              .value as BillingScheduleFiltersValue["frequency"],
+          })
+        }
+        size="small"
+        fullWidth
+        color="primary"
+      >
+        <MenuItem value="all">Toutes</MenuItem>
+        {Object.entries(BILLING_FREQUENCY_LABELS).map(([key, label]) => (
+          <MenuItem key={key} value={key}>
+            {label}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      {/* Type */}
+      <TextField
+        select
+        label="Type de facturation"
+        value={value.billingType ?? "all"}
+        onChange={(e) =>
+          onChange({
+            billingType: e.target
+              .value as BillingScheduleFiltersValue["billingType"],
+          })
+        }
+        size="small"
+        fullWidth
+        color="primary"
+      >
+        <MenuItem value="all">Tous</MenuItem>
+        {Object.entries(BILLING_TYPE_LABELS).map(([key, label]) => (
+          <MenuItem key={key} value={key}>
+            {label}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      {/* Version */}
+      <TextField
+        label="Version"
+        value={value.version ?? ""}
+        onChange={(e) => onChange({ version: e.target.value })}
+        size="small"
+        fullWidth
+        color="primary"
+        placeholder="Ex. 1, 2, 3..."
+      />
     </>
   );
 }
