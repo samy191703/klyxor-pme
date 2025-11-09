@@ -1,4 +1,5 @@
 // src/modules/billing/domain/constants.ts
+import { BillingSchedulesQuery } from "../api/billing.api";
 import type {
   BillingFrequency,
   BillingType,
@@ -12,7 +13,11 @@ import type {
 export const BILLING_QK = {
   schedules: {
     all: ["billing-schedules"] as const,
-    list: () => [...BILLING_QK.schedules.all, "list"] as const,
+
+    // ✅ Accept filters
+    list: (filters?: BillingSchedulesQuery) =>
+      [...BILLING_QK.schedules.all, "list", filters] as const,
+
     detail: (id: string) =>
       [...BILLING_QK.schedules.all, "detail", id] as const,
     lines: (scheduleId: string) =>
@@ -24,6 +29,9 @@ export const BILLING_QK = {
       [...BILLING_QK.lines.all, "by-schedule", scheduleId] as const,
     detail: (id: string) => [...BILLING_QK.lines.all, "detail", id] as const,
   },
+
+  kpis: (params?: { from?: string; to?: string; customer?: string }) =>
+    ["billing-schedules", "kpis", params] as const,
   // 🔹 Same style as TERMINATIONS_QK.contracts
   contracts: ["/api/contracts"] as const,
 };
@@ -84,3 +92,18 @@ export const BILLING_LINE_STATUS_OPTIONS = (
   value,
   label: BILLING_LINE_STATUS_LABELS[value],
 }));
+
+export const DEFAULT_FILTERS: BillingSchedulesQuery = {
+  search: "",
+  status: "",
+  customer: "",
+  type: "",
+  frequency: "",
+  from: "",
+  to: "",
+  contractNumber: "",
+  limit: 5,
+  offset: 0,
+  sortBy: "createdAt",
+  sortOrder: "desc",
+};
