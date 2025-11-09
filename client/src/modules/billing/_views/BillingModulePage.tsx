@@ -94,6 +94,10 @@ export default function BillingModulePage() {
   const schedules = schedulesData?.rows ?? [];
   const totalSchedules = schedulesData?.total ?? 0;
 
+  const limit = filters.limit ?? 25; 
+  const offset = filters.offset ?? 0;  
+
+
   // Plan sélectionné (alimente l’onglet Lignes)
   const [selectedSchedule, setSelectedSchedule] =
     useState<BillingSchedule | null>(null);
@@ -539,14 +543,17 @@ export default function BillingModulePage() {
                   Chargement des plans de facturation...
                 </div>
               ) : (
-                <BillingSchedulesTable
+                // Pagination Controls
+               <BillingSchedulesTable
                   rows={paginatedSchedules}
-                  onView={handleViewSchedule}
-                  onEdit={(row) => {
-                    /*   setSelectedSchedule(row);
-                    setOpenEdit(true); */
-                    null;
+                  total={totalSchedules}
+                  limit={limit}
+                  offset={offset}
+                  onChangePage={(newLimit, newOffset) => {
+                    setFilters((prev) => ({ ...prev, limit: newLimit, offset: newOffset }));
                   }}
+                  onView={handleViewSchedule}
+                  onEdit={(row) => null}
                   onDelete={(row) => handleDeleteSchedule(row.id)}
                   onDownload={handleDownloadSchedule}
                   onExportExcel={handleExportExcel}
@@ -554,25 +561,12 @@ export default function BillingModulePage() {
                   exportingId={exportingId}
                 />
               )}
-              {/* Pagination Controls */}
-              <PaginationControls
-                limit={filters.limit ?? 25}
-                offset={filters.offset ?? 0}
-                total={totalSchedules}
-                onChange={(newLimit, newOffset) =>
-                  setFilters((f) => ({
-                    ...f,
-                    limit: newLimit,
-                    offset: newOffset,
-                  }))
-                }
-              />
               <div className="p-4">
-                {!currentScheduleId && (
+                {/* {!currentScheduleId && (
                   <div className="text-gray-600">
                     Sélectionnez un plan de facturation pour voir ses lignes.
                   </div>
-                )}
+                )} */}
                 {currentScheduleId && (
                   <>
                     <div className="flex items-center justify-between mb-3">

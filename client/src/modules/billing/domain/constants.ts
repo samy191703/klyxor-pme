@@ -102,7 +102,7 @@ export const DEFAULT_FILTERS: BillingSchedulesQuery = {
   from: "",
   to: "",
   contractNumber: "",
-  limit: 5,
+  limit: 25,
   offset: 0,
   sortBy: "createdAt",
   sortOrder: "desc",
