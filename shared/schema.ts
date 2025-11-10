@@ -54,12 +54,6 @@ export const contracts = pgTable(
     businessUnit: text("business_unit").notNull(),
 
     amount: decimal("amount", { precision: 15, scale: 2 }).$type<number>(),
-    // ticket 1
-    // amount c'est le montant HT
-    // TODO : ajouter TVA rate : float 
-    // les Taux : 7%, 10%, 14%, 20%  
-    // ttc => HT = 1000 dh et TVA rate20%  = 1000+1000*0.2 = 1200dh
-    // sur C:\Users\DESKTOP\Desktop\EvidenceProject\engine\engie-clm-app\client\src\modules\contracts\components\wizard\steps\Step2PeriodAmounts.tsx
     billingPeriod: text("billing_period"),
     billingFrequency: text("billing_frequency"),
     billingType: text("billing_type"),

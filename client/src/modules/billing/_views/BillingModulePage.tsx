@@ -58,11 +58,11 @@ import { BillingFrequency } from "@shared/enums/billing.enum";
 import { useContracts } from "@/hooks/contrats/useContracts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { DEFAULT_FILTERS } from "../domain/constants";
 import { BillingLinesTable } from "../components/BillingLinesTable";
 import { BillingSchedulesTable } from "../components/BillingSchedulesTable";
 import { DeleteBillingScheduleDialog } from "../components/dialogs/DeleteBillingScheduleDialog";
 import ViewBillingScheduleDialog from "../components/dialogs/ViewBillingScheduleDialog";
+import { BILLING_STATUS_LABELS, DEFAULT_FILTERS } from "../domain/constants";
 import FiltersCard from "../components/FiltersCard";
 import { KpiCharts } from "../components/KpiCharts";
 import { KpiCounters } from "../components/KpiCounters";
@@ -120,7 +120,15 @@ export default function BillingModulePage() {
 
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerList, setShowCustomerList] = useState(false);
-  const COLORS = ["#4F46E5", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+
+  const rootStyles = getComputedStyle(document.documentElement);
+
+  const COLORS = [
+    rootStyles.getPropertyValue("--klyxor-bleu-nuit").trim(),
+    rootStyles.getPropertyValue("--klyxor-or").trim(),
+    rootStyles.getPropertyValue("--klyxor-blanc").trim(),
+  ];
+
 
   useEffect(() => {
     const handler = () => setShowCustomerList(false);
@@ -295,7 +303,9 @@ export default function BillingModulePage() {
     );
 
     return summaryKpis.status.map((item: any) => ({
-      name: item.status,
+      name:
+        BILLING_STATUS_LABELS[item.status as BillingScheduleStatus] ||
+        item.status,
       value: Number(item.count || 0),
       percent: total > 0 ? (Number(item.count) / total) * 100 : 0,
     }));
