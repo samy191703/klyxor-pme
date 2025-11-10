@@ -128,6 +128,7 @@ export function ViewBillingScheduleDialog({
   const {
     contractId,
     contractNumber,
+    tvaRate,
     startDate,
     endDate,
     frequency,
@@ -328,6 +329,8 @@ export function ViewBillingScheduleDialog({
                         <th className="px-3 py-2 w-[80px]">#</th>
                         <th className="px-3 py-2 w-[140px]">Échéance</th>
                         <th className="px-3 py-2 w-[140px]">Montant HT</th>
+                        <th className="px-3 py-2 w-[140px]">Montant TTC</th>
+                        <th className="px-3 py-2 w-[140px]">Montant TVA</th>
                         <th className="px-3 py-2 w-[160px]">Montant indexé</th>
                         <th className="px-3 py-2">Statut</th>
                       </tr>
@@ -352,6 +355,12 @@ export function ViewBillingScheduleDialog({
                             </td>
                             <td className="px-3 py-2">
                               {formatMoneyEUR(rawAmount)}
+                            </td>
+                            <td className="px-3 py-2">
+                              {10}
+                            </td>
+                            <td className="px-3 py-2">
+                              {tvaRate ?? "—"}
                             </td>
                             <td className="px-3 py-2">
                               {indexedAmount != null

@@ -603,7 +603,7 @@ export const billingLines = pgTable(
     dueDate: timestamp("due_date").notNull(),
 
     amountHt: decimal("amount_ht", { precision: 15, scale: 2 }).notNull(),
-    tvaRate: decimal("tva_rate", { precision: 5, scale: 2 }).default("0.20"),
+    // tvaRate: decimal("tva_rate", { precision: 5, scale: 2 }).default("0.20"),
     status: text("status").notNull().default("A_FACTURER"), // "A_FACTURER" | "FACTUREE"
 
     createdAt: timestamp("created_at")

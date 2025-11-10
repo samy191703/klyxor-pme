@@ -25,6 +25,10 @@ export interface BillingSchedule {
   /** Optionnel – côté API tu peux “join” pour l’affichage */
   contractNumber?: string | null;
 
+  ttc?: number | null;
+
+  tvaRate?: number | null;
+
   startDate: string; // ISO timestamp
   endDate: string; // ISO timestamp
 
