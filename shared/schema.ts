@@ -54,7 +54,7 @@ export const contracts = pgTable(
     businessUnit: text("business_unit").notNull(),
 
     amount: decimal("amount", { precision: 15, scale: 2 }).$type<number>(),
-    tvaRate: decimal("tva_rate", { precision: 5, scale: 2 }).$type<number>(),
+    tvaRate: decimal("tva_rate", { precision: 5, scale: 2 }).$type<number>().default(0.07),
     billingPeriod: text("billing_period"),
     billingFrequency: text("billing_frequency"),
     billingType: text("billing_type"),
