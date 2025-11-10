@@ -97,6 +97,12 @@ export const contractStep2Schema = z
       })
       .min(0, "Le montant variable ne peut pas être négatif")
       .default(0),
+    tvaRate: z.coerce
+      .number({
+        invalid_type_error: "Le taux de TVA doit être un nombre",
+      })
+      .min(0.07, "Le taux de TVA ne peut pas être négatif")
+      .default(0.07),
 
     billingPeriod: BILLING_ENUM, // "monthly" | "quarterly" | "semi-annual" | "annual"
     billingFrequency: BILLING_ENUM.optional(), // compat éventuelle

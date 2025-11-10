@@ -164,6 +164,7 @@ export function registerContractRoutes(app: Express): void {
 
           // Step 2 placeholders
           amount: safeAmount,
+          tvaRate: validation.data.tvaRate ?? 0.07,
           currency: String(validation.data.currency ?? "EUR"),
           startDate: safeStartDate,
           endDate: null,

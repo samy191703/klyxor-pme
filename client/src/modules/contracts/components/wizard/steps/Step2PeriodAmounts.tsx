@@ -127,6 +127,7 @@ export default function Step2PeriodAmounts({
             </SelectContent>
           </Select>
         </div>
+        
         <div className="w-full">
           <Label>Montant variable</Label>
           <Input
