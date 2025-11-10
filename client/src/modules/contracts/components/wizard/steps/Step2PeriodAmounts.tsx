@@ -17,6 +17,7 @@ import {
   PAYMENT_TYPE_VALUES,
   PAYMENT_TYPE_LABELS,
   PaymentTypes,
+  TVA_RATE_VALUES,
 } from "@shared/enums/contracts";
 import {
   BillingType,
@@ -102,6 +103,30 @@ export default function Step2PeriodAmounts({
           />
         </div>
 
+        {/* tvaRate */}
+        <div className="w-full">
+          <Label>Taux TVA</Label>
+          <Select
+            value={String(data.tvaRate ?? "")}
+            onValueChange={(value) =>
+              setData({
+                ...data,
+                tvaRate: value ? parseFloat(value) : undefined,
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionner" />
+            </SelectTrigger>
+            <SelectContent>
+              {TVA_RATE_VALUES.map((p) => (
+                <SelectItem key={String(p.value)} value={String(p.value)}>
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="w-full">
           <Label>Montant variable</Label>
           <Input

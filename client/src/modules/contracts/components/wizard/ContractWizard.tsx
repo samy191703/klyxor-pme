@@ -308,6 +308,7 @@ export default function ContractWizard({
       startDate: d.startDate,
       endDate: d.endDate,
       fixedAmount: fixed || 0,
+      tvaRate: d.tvaRate || 0.07,
       variableAmount: variable || 0,
       billingPeriod,
       billingFrequency,

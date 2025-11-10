@@ -445,6 +445,7 @@ export function registerContractRoutes(app: Express): void {
         const fixedAmount = Math.max(0, toNum(d.fixedAmount) || 0);
         const variableAmount = Math.max(0, toNum(d.variableAmount) || 0);
         const amount = fixedAmount + variableAmount;
+        const tvaRate = toNum(d.tvaRate) || 0.07; // Default TVA rate 
 
         // 4) Dates (stockage Date si ton ORM/DB le demande)
         const startDate = new Date(d.startDate);
@@ -457,6 +458,7 @@ export function registerContractRoutes(app: Express): void {
           fixedAmount,
           variableAmount,
           amount,
+          tvaRate,
           billingPeriod: d.billingPeriod, // "monthly" | "quarterly" | "semi-annual" | "annual"
           billingType: d.billingType,
           //billingFrequency: d.billingFrequency ?? d.billingPeriod,

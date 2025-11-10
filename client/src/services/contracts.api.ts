@@ -133,6 +133,7 @@ export async function patchContractStep2(
     startDate: string;
     endDate: string;
     fixedAmount?: number;
+    tvaRate?: number;
     variableAmount?: number;
     billingPeriod: BillingPeriods;
     billingFrequency?: BillingPeriods;
