@@ -31,17 +31,26 @@ export function exportBillingScheduleToExcel(
 
   const wsSchedule = XLSX.utils.aoa_to_sheet(scheduleSheetData);
 
-  // --- Sheet 2: Lignes d’échéance ---
-  const linesHeader = ["#", "Date d’échéance", "Montant HT", "Statut"];
+  // --- Sheet 2: Lignes d'échéance ---
+  const linesHeader = ["#", "Date d'échéance", "Montant HT", "Montant TVA", "Montant TTC", "Statut"];
   let linesRows: (string | number | null)[][] = [];
 
   if (data.lines && data.lines.length > 0) {
-    linesRows = data.lines.map((ln) => [
-      ln.sequenceNo,
-      formatDateFR(ln.dueDate),
-      Number(ln.amountHt),
-      BILLING_LINE_STATUS_LABELS[ln.status] ?? ln.status,
-    ]);
+    const tvaRateValue = Number(data.tvaRate ?? 0);
+    linesRows = data.lines.map((ln) => {
+      const amountHt = Number(ln.amountHt);
+      const tvaAmount = amountHt * tvaRateValue;
+      const ttcAmount = amountHt + tvaAmount;
+      
+      return [
+        ln.sequenceNo,
+        formatDateFR(ln.dueDate),
+        amountHt,
+        tvaAmount,
+        ttcAmount,
+        BILLING_LINE_STATUS_LABELS[ln.status] ?? ln.status,
+      ];
+    });
   }
 
   const wsLines = XLSX.utils.aoa_to_sheet([linesHeader, ...linesRows]);

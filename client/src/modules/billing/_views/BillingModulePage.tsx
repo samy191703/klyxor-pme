@@ -586,11 +586,12 @@ export default function BillingModulePage() {
                     </div>
                     <BillingLinesTable
                       rows={selectedSchedule?.lines ?? []}
+                      tvaRate={selectedSchedule?.tvaRate}
                       onEdit={() => {
                         toast({
-                          title: "Action d’édition",
+                          title: "Action d'édition",
                           description:
-                            "Brancher ici la modale d’édition de ligne si nécessaire.",
+                            "Brancher ici la modale d'édition de ligne si nécessaire.",
                         });
                       }}
                       onDelete={() => {

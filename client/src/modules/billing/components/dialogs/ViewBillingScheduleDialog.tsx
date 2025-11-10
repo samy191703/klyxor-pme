@@ -191,7 +191,7 @@ export function ViewBillingScheduleDialog({
       }
 
       // 2) Pour chaque ligne, construire un payload dédié avec P0 = montant de l'échéance
-      const promises = lines.map(async (ln) => {
+      const promises = lines.map(async (ln: BillingLine) => {
         const rawAmount = Number(ln.amountHt || 0);
         const dto = buildCalculateFromContract(contract, {
           baseAmountOverride: rawAmount,
@@ -336,7 +336,7 @@ export function ViewBillingScheduleDialog({
                       </tr>
                     </thead>
                     <tbody>
-                      {lines.map((ln) => {
+                      {lines.map((ln: BillingLine) => {
                         const rawAmount = Number(ln.amountHt || 0);
                         const res = lineResults[ln.id];
                         const indexedAmount =
@@ -345,7 +345,12 @@ export function ViewBillingScheduleDialog({
                             : null;
 
                         const lineStatusLabel =
-                          BILLING_LINE_STATUS_LABELS[ln.status] ?? ln.status;
+                          (BILLING_LINE_STATUS_LABELS[ln.status as keyof typeof BILLING_LINE_STATUS_LABELS] ?? ln.status) as string;
+
+                        // Calculate TVA and TTC
+                        const tvaRateValue = Number(tvaRate ?? 0);
+                        const tvaAmount = rawAmount * tvaRateValue;
+                        const ttcAmount = rawAmount + tvaAmount;
 
                         return (
                           <tr key={ln.id} className="border-b last:border-0">
@@ -357,10 +362,10 @@ export function ViewBillingScheduleDialog({
                               {formatMoneyEUR(rawAmount)}
                             </td>
                             <td className="px-3 py-2">
-                              {10}
+                              {formatMoneyEUR(ttcAmount)}
                             </td>
                             <td className="px-3 py-2">
-                              {tvaRate ?? "—"}
+                              {formatMoneyEUR(tvaAmount)}
                             </td>
                             <td className="px-3 py-2">
                               {indexedAmount != null

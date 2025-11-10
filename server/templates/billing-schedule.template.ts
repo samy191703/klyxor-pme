@@ -17,6 +17,7 @@ type BillingScheduleForPdf = {
   status: string; // "draft" | "active" | "archived"
   createdAt: Date | string;
   updatedAt: Date | string;
+  tvaRate?: number | null;
 };
 
 type BillingLineForPdf = {
@@ -82,14 +83,22 @@ export function renderBillingScheduleHtml(
 ): string {
   const safeContractNumber = schedule.contractNumber ?? "—";
 
+  const tvaRateValue = Number(schedule.tvaRate ?? 0);
+  
   const rowsHtml = lines
     .map((ln) => {
       const lineStatusLabel = labelOf(BILLING_LINE_STATUS_LABELS, ln.status);
+      const amountHt = Number(ln.amountHt || 0);
+      const tvaAmount = amountHt * tvaRateValue;
+      const ttcAmount = amountHt + tvaAmount;
+      
       return `
         <tr>
           <td>${ln.sequenceNo}</td>
           <td>${formatDateFR(ln.dueDate)}</td>
-          <td>${formatMoneyEUR(ln.amountHt)}</td>
+          <td>${formatMoneyEUR(amountHt)}</td>
+          <td>${formatMoneyEUR(tvaAmount)}</td>
+          <td>${formatMoneyEUR(ttcAmount)}</td>
           <td>${lineStatusLabel}</td>
         </tr>
       `;
@@ -233,6 +242,8 @@ export function renderBillingScheduleHtml(
         <th>#</th>
         <th>Échéance</th>
         <th>Montant HT</th>
+        <th>Montant TVA</th>
+        <th>Montant TTC</th>
         <th>Statut</th>
       </tr>
     </thead>
