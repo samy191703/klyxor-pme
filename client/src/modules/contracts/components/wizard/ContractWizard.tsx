@@ -99,6 +99,7 @@ export default function ContractWizard({
       startDate: dto.startDate ? String(dto.startDate).slice(0, 10) : "",
       endDate: dto.endDate ? String(dto.endDate).slice(0, 10) : "",
       fixedAmount: dto.fixedAmount ?? dto.amount ?? 0,
+      tvaRate: dto.tvaRate ?? 0.07,
       variableAmount: dto.variableAmount ?? 0,
       billingPeriod: dto.billingPeriod ?? dto.billingFrequency ?? "",
       billingFrequency: dto.billingFrequency ?? dto.billingPeriod ?? "",
