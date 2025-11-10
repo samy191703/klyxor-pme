@@ -534,9 +534,9 @@ export default function Dashboard() {
       .filter((d: any) => {
         const daysUntil = d.dueDate
           ? Math.floor(
-              (new Date(d.dueDate).getTime() - Date.now()) /
-                (1000 * 60 * 60 * 24)
-            )
+            (new Date(d.dueDate).getTime() - Date.now()) /
+            (1000 * 60 * 60 * 24)
+          )
           : 0;
         return daysUntil <= 7 && daysUntil > 0;
       })
@@ -547,12 +547,12 @@ export default function Dashboard() {
         title: "Échéance proche",
         message: `${d.title || d.description} - Dans ${
           d.dueDate
-            ? Math.floor(
-                (new Date(d.dueDate).getTime() - Date.now()) /
-                  (1000 * 60 * 60 * 24)
-              )
-            : 0
-        } jours`,
+          ? Math.floor(
+            (new Date(d.dueDate).getTime() - Date.now()) /
+            (1000 * 60 * 60 * 24)
+          )
+          : 0
+          } jours`,
         timestamp: d.dueDate ? new Date(d.dueDate) : new Date(),
         read: false,
         severity: "warning" as const,
@@ -577,8 +577,8 @@ export default function Dashboard() {
       slaDue: r.dueDate ? new Date(r.dueDate) : new Date(Date.now() + 86400000),
       age: r.requestedAt
         ? Math.floor(
-            (Date.now() - new Date(r.requestedAt).getTime()) / (1000 * 60 * 60)
-          )
+          (Date.now() - new Date(r.requestedAt).getTime()) / (1000 * 60 * 60)
+        )
         : 0,
       lastAction: r.last_action || "En attente",
       status: "pending" as const,
@@ -603,9 +603,9 @@ export default function Dashboard() {
         d.daysRemaining ||
         (d.dueDate
           ? Math.floor(
-              (new Date(d.dueDate).getTime() - Date.now()) /
-                (1000 * 60 * 60 * 24)
-            )
+            (new Date(d.dueDate).getTime() - Date.now()) /
+            (1000 * 60 * 60 * 24)
+          )
           : 0),
       alertChannel: "email" as "email" | "teams" | "in-app",
     }));
@@ -635,39 +635,39 @@ export default function Dashboard() {
     alertsFeed.length > 0
       ? alertsFeed
       : [
-          {
-            id: "alert-1",
-            timestamp: new Date(Date.now() - 1800000),
-            type: "workflow",
-            severity: "critical",
-            message: "Validation contrat électricité en attente depuis 24h",
-            contractNumber: "CNT-2024-001",
-            sendStatus: "sent",
-            readStatus: false,
-            channel: "in-app",
-          },
-          {
-            id: "alert-2",
-            timestamp: new Date(Date.now() - 3600000),
-            type: "deadline",
-            severity: "warning",
-            message: "Renouvellement contrat gaz dans 7 jours",
-            contractNumber: "CNT-2023-089",
-            sendStatus: "sent",
-            readStatus: true,
-            channel: "email",
-          },
-          {
-            id: "alert-3",
-            timestamp: new Date(Date.now() - 7200000),
-            type: "integration",
-            severity: "critical",
-            message: "Erreur synchronisation système CMS",
-            sendStatus: "failed",
-            readStatus: false,
-            channel: "teams",
-          },
-        ];
+        {
+          id: "alert-1",
+          timestamp: new Date(Date.now() - 1800000),
+          type: "workflow",
+          severity: "critical",
+          message: "Validation contrat électricité en attente depuis 24h",
+          contractNumber: "CNT-2024-001",
+          sendStatus: "sent",
+          readStatus: false,
+          channel: "in-app",
+        },
+        {
+          id: "alert-2",
+          timestamp: new Date(Date.now() - 3600000),
+          type: "deadline",
+          severity: "warning",
+          message: "Renouvellement contrat gaz dans 7 jours",
+          contractNumber: "CNT-2023-089",
+          sendStatus: "sent",
+          readStatus: true,
+          channel: "email",
+        },
+        {
+          id: "alert-3",
+          timestamp: new Date(Date.now() - 7200000),
+          type: "integration",
+          severity: "critical",
+          message: "Erreur synchronisation système CMS",
+          sendStatus: "failed",
+          readStatus: false,
+          channel: "teams",
+        },
+      ];
 
   // Logs d'audit depuis les vraies données
   const auditLogsData: AuditLog[] = auditLogs.map((log: any) => ({
@@ -804,46 +804,56 @@ export default function Dashboard() {
                     user?.role === "admin"
                       ? "default"
                       : user?.role === "manager"
-                      ? "secondary"
-                      : user?.role === "validator"
-                      ? "outline"
-                      : "secondary"
+                        ? "secondary"
+                        : user?.role === "validator"
+                          ? "outline"
+                          : "secondary"
                   }
                   className={`text-xs sm:text-sm ${
                     user?.role === "admin"
-                      ? "bg-[#C9A646] hover:bg-[#C9A646]/90"
-                      : user?.role === "manager"
+                    ? "bg-[#C9A646] hover:bg-[#C9A646]/90"
+                    : user?.role === "manager"
                       ? "bg-blue-100 text-blue-800 border-blue-200"
                       : user?.role === "validator"
-                      ? "bg-green-100 text-green-800 border-green-200"
-                      : ""
-                  }`}
+                        ? "bg-green-100 text-green-800 border-green-200"
+                        : ""
+                    }`}
                 >
                   {user?.role === "admin"
                     ? "👑 Administrateur"
                     : user?.role === "manager"
-                    ? "📊 Gestionnaire"
-                    : user?.role === "validator"
-                    ? "✅ Validateur"
-                    : user?.role === "business_unit_manager"
-                    ? "🏢 Resp. BU"
-                    : user?.role === "contract_manager"
-                    ? "📄 Resp. Contrats"
-                    : user?.role === "finance_manager"
-                    ? "💰 Resp. Finance"
-                    : "👤 Utilisateur"}
+                      ? "📊 Gestionnaire"
+                      : user?.role === "validator"
+                        ? "✅ Validateur"
+                        : user?.role === "business_unit_manager"
+                          ? "🏢 Resp. BU"
+                          : user?.role === "contract_manager"
+                            ? "📄 Resp. Contrats"
+                            : user?.role === "finance_manager"
+                              ? "💰 Resp. Finance"
+                              : "👤 Utilisateur"}
                 </Badge>
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 {user?.role === "admin"
                   ? "Vue complète avec accès total aux fonctionnalités d'administration"
                   : user?.role === "manager"
-                  ? "Gestion des contrats et validation des demandes de votre périmètre"
-                  : user?.role === "validator"
-                  ? "Validation des demandes qui vous sont assignées"
-                  : "Consultation des données selon vos permissions"}
+                    ? "Gestion des contrats et validation des demandes de votre périmètre"
+                    : user?.role === "validator"
+                      ? "Validation des demandes qui vous sont assignées"
+                      : "Consultation des données selon vos permissions"}
               </p>
               <AIHelpBubble context={{ page: "dashboard", section: "main" }} />
+
+              <Alert className="mt-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <AlertDescription className="text-sm font-medium">
+                    3 échéance  arrive à échéance cette semaine.
+                  </AlertDescription>
+                </div>
+              </Alert>
+
             </div>
 
             {/* Filters Bar */}
@@ -1523,9 +1533,9 @@ export default function Dashboard() {
                               key={day}
                               className={`text-center py-1 rounded ${
                                 day === 7 || day === 15 || day === 30
-                                  ? "bg-amber-100 font-medium"
-                                  : "hover:bg-gray-100"
-                              }`}
+                                ? "bg-amber-100 font-medium"
+                                : "hover:bg-gray-100"
+                                }`}
                             >
                               {day}
                             </div>
@@ -1838,15 +1848,15 @@ export default function Dashboard() {
                             <div
                               className={`w-3 h-3 rounded-full ${
                                 item.status === "Actif"
-                                  ? "bg-blue-500"
-                                  : item.status === "À valider"
+                                ? "bg-blue-500"
+                                : item.status === "À valider"
                                   ? "bg-amber-500"
                                   : item.status === "Brouillon"
-                                  ? "bg-gray-400"
-                                  : item.status === "Résilié"
-                                  ? "bg-red-500"
-                                  : "bg-purple-500"
-                              }`}
+                                    ? "bg-gray-400"
+                                    : item.status === "Résilié"
+                                      ? "bg-red-500"
+                                      : "bg-purple-500"
+                                }`}
                             />
                             <span className="text-sm">{item.status}</span>
                           </div>
@@ -2271,8 +2281,8 @@ export default function Dashboard() {
                       selectedNotification.severity === "critical"
                         ? "destructive"
                         : selectedNotification.severity === "warning"
-                        ? "secondary"
-                        : "outline"
+                          ? "secondary"
+                          : "outline"
                     }
                   >
                     {selectedNotification.severity}
