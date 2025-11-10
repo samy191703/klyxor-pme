@@ -3,31 +3,166 @@ import type { Express, Request, Response } from "express";
 import { isAuthenticated } from "server/auth";
 import { generateBillingScheduleForContract } from "server/services/billing.service";
 import { db } from "server/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import { billingSchedules, billingLines, contracts } from "@shared/schema";
 import { renderBillingScheduleHtml } from "server/templates/billing-schedule.template";
 import puppeteer, { Browser, Page } from "puppeteer";
 import path from "path";
 import fs from "fs";
+import { BillingSchedulesQueryDto, KpiFiltersDto } from "@shared/enums/billing.enum";
 
 export function registerBillingRoutes(app: Express) {
+  /**
+   * @openapi
+   * /api/billing-schedules/summary/_issam:
+   *   get:
+   *     summary: KPIs for Billing
+   *     description: Aggregated KPIs for billing schedules and billing lines.
+   *     tags:
+   *       - Billing
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: from
+   *         schema:
+   *           type: string
+   *           format: date
+   *       - in: query
+   *         name: to
+   *         schema:
+   *           type: string
+   *           format: date
+   *       - in: query
+   *         name: customer
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Summary KPIs
+   *       401:
+   *         description: Unauthorized
+   */
+  app.get(
+    "/api/billing-schedules/summary/_issam",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        const { from, to, customer } = req.query as KpiFiltersDto ;
+
+        const conditions: any[] = [];
+
+        if (from) conditions.push(gte(billingSchedules.startDate, new Date(from)));
+        if (to) conditions.push(lte(billingSchedules.endDate, new Date(to)));
+        if (customer) conditions.push(eq(contracts.clientName, customer));
+
+        const whereClause = conditions.length ? and(...conditions) : undefined;
+
+        const statusKpis = await db
+          .select({
+            status: billingSchedules.status,
+            count: sql`COUNT(*)`,
+            totalCentimes: sql`COALESCE(SUM(${billingLines.amountHt} * 100), 0)`,
+          })
+          .from(billingSchedules)
+          .leftJoin(billingLines, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(whereClause)
+          .groupBy(billingSchedules.status);
+
+        const typeKpis = await db
+          .select({
+            billingType: billingSchedules.billingType,
+            count: sql`COUNT(*)`,
+            totalCentimes: sql`COALESCE(SUM(${billingLines.amountHt} * 100), 0)`,
+          })
+          .from(billingSchedules)
+          .leftJoin(billingLines, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(whereClause)
+          .groupBy(billingSchedules.billingType);
+
+        const totals = await db
+          .select({
+            count: sql`COUNT(*)`,
+            totalCentimes: sql`COALESCE(SUM(${billingLines.amountHt} * 100), 0)`,
+          })
+          .from(billingSchedules)
+          .leftJoin(billingLines, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(whereClause);
+
+        return res.status(200).json({
+          status: statusKpis,
+          billingType: typeKpis,
+          totals: totals[0],
+        });
+      } catch (e: any) {
+        return res.status(500).json({ error: e.message });
+      }
+    }
+  );
+
   /**
    * @openapi
    * /api/billing-schedules:
    *   get:
    *     summary: List billing schedules
-   *     description: Returns all billing schedules. Optionally filter by contractId.
+   *     description: Returns billing schedules with pagination and optional filters.
    *     tags: [Billing, SAP Integration]
    *     security:
    *       - cookieAuth: []
    *     parameters:
    *       - in: query
-   *         name: contractId
+   *         name: contractNumber
    *         schema:
    *           type: string
-   *           format: uuid
    *         required: false
-   *         description: Filter schedules by contract ID
+   *         description: Filter schedules by contract number
+   *       - in: query
+   *         name: customer
+   *         schema:
+   *           type: string
+   *         required: false
+   *         description: Filter schedules by client name
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *         required: false
+   *         description: Search filter
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: string
+   *         required: false
+   *         description: Filter schedules by status
+   *       - in: query
+   *         name: type
+   *         schema:
+   *           type: string
+   *         required: false
+   *         description: Filter schedules by billing type
+   *       - in: query
+   *         name: from
+   *         schema:
+   *           type: string
+   *           format: date
+   *         required: false
+   *         description: Start date filter (YYYY-MM-DD)
+   *       - in: query
+   *         name: to
+   *         schema:
+   *           type: string
+   *           format: date
+   *         required: false
+   *         description: End date filter (YYYY-MM-DD)
+   *       - in: query
+   *         name: frequency
+   *         schema:
+   *           type: string
+   *         required: false
+   *         description: Filter schedules by frequency
    *       - in: query
    *         name: limit
    *         schema:
@@ -35,66 +170,216 @@ export function registerBillingRoutes(app: Express) {
    *           minimum: 1
    *           maximum: 200
    *         required: false
-   *         description: Max number of items to return (default 50)
+   *         description: Max number of items to return
    *       - in: query
    *         name: offset
    *         schema:
    *           type: integer
    *           minimum: 0
    *         required: false
-   *         description: Pagination offset (default 0)
+   *         description: Pagination offset
+   *       - in: query
+   *         name: sortBy
+   *         schema:
+   *           type: string
+   *         required: false
+   *         description: Sort by a specific field
+   *       - in: query
+   *         name: sortOrder
+   *         schema:
+   *           type: string
+   *           enum: [asc, desc]
+   *         required: false
+   *         description: Sort order
    *     responses:
    *       200:
-   *         description: List of billing schedules
+   *         description: List of billing schedules with pagination
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 total:
+   *                   type: integer
+   *                   description: Total number of schedules matching filters
+   *                 rows:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       id:
+   *                         type: string
+   *                       contractId:
+   *                         type: string
+   *                       contractNumber:
+   *                         type: string
+   *                       clientName:
+   *                         type: string
+   *                         description: Nom du client
+   *                       startDate:
+   *                         type: string
+   *                         format: date
+   *                       endDate:
+   *                         type: string
+   *                         format: date
+   *                       frequency:
+   *                         type: string
+   *                       billingType:
+   *                         type: string
+   *                       version:
+   *                         type: integer
+   *                       status:
+   *                         type: string
+   *                       createdAt:
+   *                         type: string
+   *                         format: date-time
+   *                       updatedAt:
+   *                         type: string
+   *                         format: date-time
+   *                       lines:
+   *                         type: array
+   *                         items:
+   *                           type: object
+   *                           description: Billing lines associated with schedule
    *       401:
    *         description: Unauthorized
    */
   app.get(
-    "/api/billing-schedules",
-    isAuthenticated,
-    async (req: Request, res: Response) => {
-      try {
-        const { contractId } = req.query as { contractId?: string };
-        const limit = Math.min(
-          parseInt(String(req.query.limit ?? "50"), 10) || 50,
-          200
-        );
-        const offset = parseInt(String(req.query.offset ?? "0"), 10) || 0;
+  "/api/billing-schedules",
+  isAuthenticated,
+  async (req: Request<{}, {}, {}, BillingSchedulesQueryDto>, res: Response) => {
+    try {
+      const {
+        contractNumber,
+        customer,
+        search,
+        status,
+        type,
+        from,
+        to,
+        frequency,
+        limit = 25,
+        offset = 0,
+        sortBy = "createdAt",
+        sortOrder = "desc",
+      } = req.query;
 
-        const where = contractId
-          ? and(eq(billingSchedules.contractId, contractId))
-          : undefined;
+      const parsedLimit = Math.min(Number(limit) || 25, 200);
+      const parsedOffset = Number(offset) || 0;
+      const parsedSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
-        const rows = await db
-          .select({
-            // billingSchedules fields
-            id: billingSchedules.id,
-            contractId: billingSchedules.contractId,
-            startDate: billingSchedules.startDate,
-            endDate: billingSchedules.endDate,
-            frequency: billingSchedules.frequency,
-            billingType: billingSchedules.billingType,
-            version: billingSchedules.version,
-            status: billingSchedules.status,
-            createdAt: billingSchedules.createdAt,
-            updatedAt: billingSchedules.updatedAt,
+      const parsedFrom = from ? new Date(from) : undefined;
+      const parsedTo = to ? new Date(to) : undefined;
 
-            // ⬅️ joined contract number for display
-            contractNumber: contracts.number,
-          })
-          .from(billingSchedules)
-          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
-          .where(where as any) // drizzle ignores undefined
-          .orderBy(desc(billingSchedules.createdAt))
-          .limit(limit)
-          .offset(offset);
 
-        return res.status(200).json(rows);
-      } catch (e: any) {
-        return res.status(500).json({ error: e.message || "Server error" });
+      const whereConditions: any[] = [];
+
+      // Contract Number
+      if (contractNumber?.toString().trim()) {
+        whereConditions.push(sql`${contracts.number} LIKE ${`%${contractNumber.toString().trim()}%`}`);
       }
+
+      // Customer
+      if (customer?.toString().trim()) {
+        const cust = customer.toString().trim();
+        whereConditions.push(ilike(contracts.clientName, `%${cust}%`));
+      }
+
+      // Status, Type, Frequency
+      if (status) whereConditions.push(eq(billingSchedules.status, String(status)));
+      if (type) whereConditions.push(eq(billingSchedules.billingType, String(type)));
+      if (frequency) whereConditions.push(eq(billingSchedules.frequency, String(frequency)));
+
+      // Date filters
+      if (parsedFrom && parsedTo) {
+        whereConditions.push(
+          and(
+            gte(billingSchedules.startDate, parsedFrom),
+            lte(billingSchedules.endDate, parsedTo)
+          )
+        );
+      } else if (parsedFrom) {
+        whereConditions.push(gte(billingSchedules.startDate, parsedFrom));
+      } else if (parsedTo) {
+        whereConditions.push(lte(billingSchedules.endDate, parsedTo));
+      }
+
+      // Search filter (trim + lowercase)
+      if (search?.toString().trim()) {
+        const s = search.toString().trim().toLowerCase();
+        whereConditions.push(
+          sql`(
+            LOWER(${contracts.number}) LIKE ${"%" + s + "%"} OR
+            LOWER(${contracts.clientName}) LIKE ${"%" + s + "%"} OR
+            LOWER(${billingSchedules.status}) LIKE ${"%" + s + "%"} OR
+            LOWER(${billingSchedules.billingType}) LIKE ${"%" + s + "%"} OR
+            LOWER(${billingSchedules.frequency}) LIKE ${"%" + s + "%"} OR
+            CAST(${billingSchedules.version} AS TEXT) LIKE ${"%" + s + "%"} OR
+            CAST(${billingSchedules.startDate} AS TEXT) LIKE ${"%" + s + "%"} OR
+            CAST(${billingSchedules.endDate} AS TEXT) LIKE ${"%" + s + "%"}
+          )`
+        );
+      }
+
+      const where = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+      let orderColumn: any = billingSchedules.createdAt;
+      switch (String(sortBy)) {
+        case "startDate": orderColumn = billingSchedules.startDate; break;
+        case "endDate": orderColumn = billingSchedules.endDate; break;
+        case "version": orderColumn = billingSchedules.version; break;
+        case "status": orderColumn = billingSchedules.status; break;
+        case "frequency": orderColumn = billingSchedules.frequency; break;
+        case "billingType": orderColumn = billingSchedules.billingType; break;
+        case "contractNumber": orderColumn = contracts.number; break;
+      }
+
+      const rows = await db
+        .select({
+          id: billingSchedules.id,
+          contractId: billingSchedules.contractId,
+          startDate: billingSchedules.startDate,
+          endDate: billingSchedules.endDate,
+          frequency: billingSchedules.frequency,
+          billingType: billingSchedules.billingType,
+          version: billingSchedules.version,
+          status: billingSchedules.status,
+          createdAt: billingSchedules.createdAt,
+          updatedAt: billingSchedules.updatedAt,
+          contractNumber: contracts.number,
+          clientName: contracts.clientName,
+        })
+        .from(billingSchedules)
+        .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+        .where(where as any)
+        .orderBy(parsedSortOrder === "asc" ? asc(orderColumn) : desc(orderColumn))
+        .limit(parsedLimit)
+        .offset(parsedOffset);
+
+      const scheduleIds = rows.map(r => r.id);
+      const allLines = scheduleIds.length
+        ? await db.select().from(billingLines).where(inArray(billingLines.scheduleId, scheduleIds))
+        : [];
+
+      const rowsWithLines = rows.map(row => ({
+        ...row,
+        lines: allLines.filter(line => line.scheduleId === row.id),
+      }));
+
+      const [{ count: total }] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(billingSchedules)
+        .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+        .where(where as any);
+
+      return res.status(200).json({
+        rows: rowsWithLines,
+        total: Number(total),
+      });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message || "Server error" });
     }
-  );
+  });
 
   /**
    * @openapi

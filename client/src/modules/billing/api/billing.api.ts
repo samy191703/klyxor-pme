@@ -8,18 +8,81 @@ import type {
   BillingLineCreateDto,
   BillingLineUpdateDto,
   BillingScheduleGenerateDto,
+  BillingScheduleWithLines,
 } from "../domain/types";
 import { BILLING_QK } from "../domain/constants";
 
-/** ================== Schedules ================== **/
-export async function fetchBillingSchedules(): Promise<BillingSchedule[]> {
-  const res = await apiRequest("GET", "/api/billing-schedules");
+/** ================== Billing Summary KPIs ================== **/
+export async function fetchBillingSummaryKpis(params?: {
+  from?: string;
+  to?: string;
+  customer?: string;
+}) {
+  const query = new URLSearchParams();
+
+  if (params?.from) query.append("from", params.from);
+  if (params?.to) query.append("to", params.to);
+  if (params?.customer) query.append("customer", params.customer);
+
+  const url = `/api/billing-schedules/summary/_issam${
+    query.toString() ? `?${query.toString()}` : ""
+  }`;
+
+  const res = await apiRequest("GET", url);
   return res.json();
 }
+
+/** ================== Schedules ================== **/
+export type BillingSchedulesQuery = {
+  search?: string;
+  status?: string;
+  customer?: string,
+  type?: string;
+  frequency?: string;
+  contractNumber?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+};
+
+export async function fetchBillingSchedules(params: BillingSchedulesQuery = {}): Promise<BillingSchedule[]> {
+  const query = new URLSearchParams();
+
+  if (params.search) query.append("search", params.search);
+  if (params.status) query.append("status", params.status);
+  if (params.type) query.append("type", params.type);
+  if (params.frequency) query.append("frequency", params.frequency);
+  if (params.contractNumber) query.append("contractNumber", params.contractNumber);
+
+  if (params.from) query.append("from", params.from);
+  if (params.to) query.append("to", params.to);
+
+  query.append("limit", String(params.limit ?? 50));
+  query.append("offset", String(params.offset ?? 0));
+
+  if (params.sortBy) query.append("sortBy", params.sortBy);
+  if (params.sortOrder) query.append("sortOrder", params.sortOrder);
+
+  const url = `/api/billing-schedules?${query.toString()}`;
+
+  const res = await apiRequest("GET", url);
+  return res.json();
+}
+
 
 export async function fetchBillingSchedule(
   id: string
 ): Promise<BillingSchedule> {
+  const res = await apiRequest("GET", `/api/billing-schedules/${id}`);
+  return res.json();
+}
+
+export async function fetchBillingScheduleWithLines(
+  id: string
+): Promise<BillingScheduleWithLines> {
   const res = await apiRequest("GET", `/api/billing-schedules/${id}`);
   return res.json();
 }

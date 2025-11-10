@@ -38,3 +38,34 @@ export const BillingLineStatus = {
 } as const;
 export type BillingLineStatus =
   (typeof BillingLineStatus)[keyof typeof BillingLineStatus];
+
+export interface KpiFiltersDto {
+  from?: string;  
+  to?: string;    
+  customer?: string;
+}
+
+export interface BillingSchedulesQueryDto {
+  contractNumber?: string;
+  customer?: string;
+  search?: string;
+  status?: string;
+  type?: string;
+  from?: string; 
+  to?: string;   
+  frequency?: string;
+
+  limit?: number;
+  offset?: number;
+
+  sortBy?:
+    | "createdAt"
+    | "startDate"
+    | "endDate"
+    | "version"
+    | "frequency"
+    | "billingType"
+    | "contractNumber";
+
+  sortOrder?: "asc" | "desc";
+}

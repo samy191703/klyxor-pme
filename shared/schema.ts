@@ -586,7 +586,7 @@ export const billingSchedules = pgTable(
 
 /* -------------------------------- BILLING LINES ------------------------------ */
 
-export const billingLines = pgTable(
+export const billingLines = pgTable( 
   "billing_lines",
   {
     id: varchar("id")
