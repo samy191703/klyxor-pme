@@ -382,7 +382,7 @@ export default function ContractsTable({
                 <TableCell>{fmtDate(c.lastTierChangeDate as any)}</TableCell>
                 <TableCell>{fmtNum(c.lastTierChangeYear as any)}</TableCell>
 
-                <TableCell>{c.tvaRate?.toFixed(0) as any}%</TableCell>  
+                <TableCell>{c.tvaRate as any}%</TableCell>  
                 {/* Audit */}
                 <TableCell title={c.createdBy ?? undefined}>
                   {short(c.createdBy)}
