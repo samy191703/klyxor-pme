@@ -27,12 +27,15 @@ export const BILLING_QK = {
     all: ["billing-lines"] as const,
     listBySchedule: (scheduleId: string) =>
       [...BILLING_QK.lines.all, "by-schedule", scheduleId] as const,
-    detail: (id: string) => [...BILLING_QK.lines.all, "detail", id] as const,
+
+    detail: (id: string) =>
+      [...BILLING_QK.lines.all, "detail", id] as const,
   },
 
   kpis: (params?: { from?: string; to?: string; customer?: string }) =>
     ["billing-schedules", "kpis", params] as const,
   // 🔹 Same style as TERMINATIONS_QK.contracts
+
   contracts: ["/api/contracts"] as const,
 };
 
@@ -102,7 +105,7 @@ export const DEFAULT_FILTERS: BillingSchedulesQuery = {
   from: "",
   to: "",
   contractNumber: "",
-  limit: 5,
+  limit: 25,
   offset: 0,
   sortBy: "createdAt",
   sortOrder: "desc",

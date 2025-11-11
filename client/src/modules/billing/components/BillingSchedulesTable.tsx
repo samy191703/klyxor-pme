@@ -34,6 +34,10 @@ import { formatDateFR } from "../utils/formatters";
 
 type Props = {
   rows: BillingSchedule[];
+  total: number; 
+  limit: number;  
+  offset: number;  
+  onChangePage: (newLimit: number, newOffset: number) => void; // callback pour fetch
   onView: (row: BillingSchedule) => void;
   onEdit: (row: BillingSchedule) => void;
   onDelete: (row: BillingSchedule) => void;
@@ -96,6 +100,10 @@ function StatusChipBilling({ status }: { status: BillingSchedule["status"] }) {
 
 export function BillingSchedulesTable({
   rows,
+  total,
+  limit,
+  offset,
+  onChangePage,
   onView,
   onEdit,
   onDelete,
@@ -105,14 +113,8 @@ export function BillingSchedulesTable({
   exportingId,
   height = 400,
 }: Props) {
-  const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(25);
 
-  const displayedRows = React.useMemo(() => {
-    const start = page * rowsPerPage;
-    return rows.slice(start, start + rowsPerPage);
-  }, [rows, page, rowsPerPage]);
-
+  const displayedRows = rows;
   const headerCellSx = {
     fontWeight: 600,
     fontSize: 13,
@@ -307,22 +309,23 @@ export function BillingSchedulesTable({
 
       {/* Pagination locale, même style que TerminationsTable */}
       <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-        <TablePagination
-          component="div"
-          count={rows.length}
-          page={page}
-          onPageChange={(_, newPage) => setPage(newPage)}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
-            setPage(0);
-          }}
-          rowsPerPageOptions={[5, 10, 25, 50, 100]}
-          labelRowsPerPage="Lignes par page"
-          labelDisplayedRows={({ from, to, count }) =>
-            `${from}–${to} sur ${count}`
-          }
-        />
+       <TablePagination
+        component="div"
+        count={total} 
+        page={Math.floor(offset / limit)}  
+        rowsPerPage={limit}   
+        onPageChange={(_, newPage) => 
+          onChangePage(limit, newPage * limit)  
+        }
+        onRowsPerPageChange={(e) => {
+          const newLimit = parseInt(e.target.value, 10);
+          onChangePage(newLimit, 0); 
+        }}
+        rowsPerPageOptions={[5, 10, 25, 50, 100]}
+        labelRowsPerPage="Lignes par page"
+        labelDisplayedRows={({ from, to, count }) => `${from}–${to} sur ${count}`}
+      />
+
       </Box>
     </Paper>
   );

@@ -50,7 +50,7 @@ export const KpiCharts: React.FC<KpiChartsProps> = ({
               <Line
                 type="monotone"
                 dataKey="totalAmount"
-                stroke="#8884d8"
+                stroke={COLORS[0]}
                 strokeWidth={2}
               />
             </LineChart>
@@ -83,8 +83,12 @@ export const KpiCharts: React.FC<KpiChartsProps> = ({
                 paddingAngle={3}
               >
                 {donutData.map((_entry, index) => (
-                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                  <Cell
+                    key={index}
+                    fill={COLORS[index % COLORS.length]}
+                  />
                 ))}
+
               </Pie>
               <Legend />
             </PieChart>
