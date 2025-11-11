@@ -83,12 +83,28 @@ export const KpiCharts: React.FC<KpiChartsProps> = ({
 
               <Tooltip content={<CustomTooltip />} />
 
-              <Line
-                type="monotone"
-                dataKey="totalAmount"
-                stroke={COLORS[0]}
-                strokeWidth={2}
-              />
+             <Line
+              type="monotone"
+              dataKey="totalAmount"
+              stroke={COLORS[0]}
+              strokeWidth={2}
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                const today = new Date().toISOString().slice(0, 10); 
+                const isToday = payload.date === today;
+
+                return (
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={isToday ? 6 : 4} 
+                    fill={isToday ? "green" : COLORS[0]}
+                    stroke={isToday ? "darkgreen" : "none"}
+                    strokeWidth={isToday ? 2 : 0}
+                  />
+                );
+              }}
+            />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
