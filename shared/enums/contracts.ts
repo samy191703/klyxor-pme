@@ -118,6 +118,21 @@ export const BILLING_PERIODS = [
   { value: BillingPeriods.ANNUAL, label: "Annuelle" },
 ];
 
+// ================================
+// TVA Rates
+// ===============================
+export enum tvaRates {
+  RATE_20 = 0.2,
+  RATE_10 = 0.1,
+  RATE_7 = 0.07,
+}
+
+export const TVA_RATE_VALUES = [
+  { value: tvaRates.RATE_20, label: "20%" },
+  { value: tvaRates.RATE_10, label: "10%" },
+  { value: tvaRates.RATE_7, label: "7%" },
+];
+
 // ===============================
 // Payment types
 // ===============================
@@ -199,3 +214,4 @@ export const contractTypeDefinitions: Array<{
     hasMaintainer: true,
   },
 ];
+

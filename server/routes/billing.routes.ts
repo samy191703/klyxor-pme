@@ -348,6 +348,7 @@ export function registerBillingRoutes(app: Express) {
           updatedAt: billingSchedules.updatedAt,
           contractNumber: contracts.number,
           clientName: contracts.clientName,
+          tvaRate: contracts.tvaRate,
         })
         .from(billingSchedules)
         .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
@@ -427,6 +428,7 @@ export function registerBillingRoutes(app: Express) {
             createdAt: billingSchedules.createdAt,
             updatedAt: billingSchedules.updatedAt,
             contractNumber: contracts.number,
+            tvaRate: contracts.tvaRate,
           })
           .from(billingSchedules)
           .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
@@ -635,6 +637,7 @@ export function registerBillingRoutes(app: Express) {
             createdAt: billingSchedules.createdAt,
             updatedAt: billingSchedules.updatedAt,
             contractNumber: contracts.number,
+            tvaRate: contracts.tvaRate,
           })
           .from(billingSchedules)
           .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
@@ -705,6 +708,7 @@ export function registerBillingRoutes(app: Express) {
             status: schedule.status,
             createdAt: schedule.createdAt,
             updatedAt: schedule.updatedAt,
+            tvaRate: schedule.tvaRate,
           },
           linesForPdf,
           { logoDataUrl }

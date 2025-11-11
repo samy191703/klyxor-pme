@@ -128,6 +128,7 @@ export function ViewBillingScheduleDialog({
   const {
     contractId,
     contractNumber,
+    tvaRate,
     startDate,
     endDate,
     frequency,
@@ -190,7 +191,7 @@ export function ViewBillingScheduleDialog({
       }
 
       // 2) Pour chaque ligne, construire un payload dédié avec P0 = montant de l'échéance
-      const promises = lines.map(async (ln) => {
+      const promises = lines.map(async (ln: BillingLine) => {
         const rawAmount = Number(ln.amountHt || 0);
         const dto = buildCalculateFromContract(contract, {
           baseAmountOverride: rawAmount,
@@ -274,6 +275,61 @@ export function ViewBillingScheduleDialog({
               <Label className="text-gray-600">Version</Label>
               <p className="font-medium text-gray-900">{version}</p>
             </div>
+            <div>
+              <Label className="text-gray-600">Total HT</Label>
+              <p className="font-medium text-gray-900">{
+                formatMoneyEUR(lines.reduce((sum: number, ln: BillingLine) => sum + Number(ln.amountHt || 0), 0))
+                }</p>
+            </div>
+            <div>
+              <Label className="text-gray-600">Progression</Label>
+              <p className="font-medium text-gray-900">{
+                (() => {
+                  // Calcul basé sur le temps écoulé (dates)
+                  if (!startDate || !endDate) return "0.0";
+                  
+                  const start = new Date(startDate);
+                  const end = new Date(endDate);
+                  const now = new Date();
+                  
+                  // Vérifier que les dates sont valides
+                  if (isNaN(start.getTime()) || isNaN(end.getTime())) return "0.0";
+                  
+                  // Si la date actuelle est avant le début, progression = 0%
+                  if (now < start) return "0.0";
+                  
+                  // Si la date actuelle est après la fin, progression = 100%
+                  if (now > end) return "100.0";
+                  
+                  // Calculer la progression
+                  const totalDuration = end.getTime() - start.getTime();
+                  const elapsedDuration = now.getTime() - start.getTime();
+                  
+                  if (totalDuration === 0) return "0.0";
+                  
+                  const progression = (elapsedDuration / totalDuration) * 100;
+                  return Math.min(100, Math.max(0, progression)).toFixed(1);
+                })()
+                }%</p>
+            </div>
+            <div>
+              <Label className="text-gray-600">Prochaine échéance</Label>
+              <p className="font-medium text-gray-900">{
+                (() => {
+                  if (!lines || lines.length === 0) return "—";
+                  
+                  const now = new Date();
+                  const futureDates = lines
+                    .map((ln: BillingLine) => new Date(ln.dueDate))
+                    .filter((date: Date) => !isNaN(date.getTime()) && date > now)
+                    .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+                  
+                  if (futureDates.length === 0) return "—";
+                  
+                  return formatDateFR(futureDates[0]);
+                })()
+                }</p>
+            </div>
           </div>
 
           {/* Résumé indexation global basé sur la première ligne indexée */}
@@ -328,12 +384,14 @@ export function ViewBillingScheduleDialog({
                         <th className="px-3 py-2 w-[80px]">#</th>
                         <th className="px-3 py-2 w-[140px]">Échéance</th>
                         <th className="px-3 py-2 w-[140px]">Montant HT</th>
+                        <th className="px-3 py-2 w-[140px]">Montant TTC</th>
+                        <th className="px-3 py-2 w-[140px]">Montant TVA</th>
                         <th className="px-3 py-2 w-[160px]">Montant indexé</th>
                         <th className="px-3 py-2">Statut</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {lines.map((ln) => {
+                      {lines.map((ln: BillingLine) => {
                         const rawAmount = Number(ln.amountHt || 0);
                         const res = lineResults[ln.id];
                         const indexedAmount =
@@ -342,7 +400,12 @@ export function ViewBillingScheduleDialog({
                             : null;
 
                         const lineStatusLabel =
-                          BILLING_LINE_STATUS_LABELS[ln.status] ?? ln.status;
+                          (BILLING_LINE_STATUS_LABELS[ln.status as keyof typeof BILLING_LINE_STATUS_LABELS] ?? ln.status) as string;
+
+                        // Calculate TVA and TTC
+                        const tvaRateValue = Number(tvaRate ?? 0);
+                        const tvaAmount = rawAmount * tvaRateValue;
+                        const ttcAmount = rawAmount + tvaAmount;
 
                         return (
                           <tr key={ln.id} className="border-b last:border-0">
@@ -352,6 +415,12 @@ export function ViewBillingScheduleDialog({
                             </td>
                             <td className="px-3 py-2">
                               {formatMoneyEUR(rawAmount)}
+                            </td>
+                            <td className="px-3 py-2">
+                              {formatMoneyEUR(ttcAmount)}
+                            </td>
+                            <td className="px-3 py-2">
+                              {formatMoneyEUR(tvaAmount)}
                             </td>
                             <td className="px-3 py-2">
                               {indexedAmount != null

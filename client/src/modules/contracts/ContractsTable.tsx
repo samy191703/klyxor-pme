@@ -54,7 +54,6 @@ import {
   Technologies,
   TECHNOLOGY_LABELS,
 } from "@shared/enums/contracts";
-
 // ───────────────────────────── helpers ─────────────────────────────
 function fmtAmount(
   amount: number | string | null | undefined,
@@ -238,6 +237,7 @@ export default function ContractsTable({
               <TableHead>Niveaux tarifaires</TableHead>
               <TableHead>Dernier chgt palier</TableHead>
               <TableHead>Année chgt palier</TableHead>
+              <TableHead>Taux TVA</TableHead>
 
               {/* Audit */}
               <TableHead>Créé par</TableHead>
@@ -382,6 +382,7 @@ export default function ContractsTable({
                 <TableCell>{fmtDate(c.lastTierChangeDate as any)}</TableCell>
                 <TableCell>{fmtNum(c.lastTierChangeYear as any)}</TableCell>
 
+                <TableCell>{(Number(c.tvaRate) * 100).toFixed(0)}%</TableCell>  
                 {/* Audit */}
                 <TableCell title={c.createdBy ?? undefined}>
                   {short(c.createdBy)}
