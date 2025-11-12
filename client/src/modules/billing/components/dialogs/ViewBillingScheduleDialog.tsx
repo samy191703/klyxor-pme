@@ -404,7 +404,8 @@ export function ViewBillingScheduleDialog({
 
                         // Calculate TVA and TTC
                         const tvaRateValue = Number(tvaRate ?? 0);
-                        const tvaAmount = rawAmount * tvaRateValue;
+                        const tvaRateDecimal = tvaRateValue / 100;
+                        const tvaAmount = rawAmount * tvaRateDecimal;
                         const ttcAmount = rawAmount + tvaAmount;
 
                         return (

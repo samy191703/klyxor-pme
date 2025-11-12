@@ -123,12 +123,14 @@ export const BILLING_PERIODS = [
 // ===============================
 export enum tvaRates {
   RATE_20 = 0.2,
+  RATE_14 = 0.14,
   RATE_10 = 0.1,
   RATE_7 = 0.07,
 }
 
 export const TVA_RATE_VALUES = [
   { value: tvaRates.RATE_20, label: "20%" },
+  { value: tvaRates.RATE_14, label: "14%" },
   { value: tvaRates.RATE_10, label: "10%" },
   { value: tvaRates.RATE_7, label: "7%" },
 ];
