@@ -47,6 +47,50 @@ function toNum(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** 📈 Calculer la progression basée sur les dates (début/fin) */
+function calculateProgression(
+  startDate?: string | Date | null,
+  endDate?: string | Date | null
+): string {
+  // Calcul basé sur le temps écoulé (dates)
+  if (!startDate || !endDate) return "0.0";
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const now = new Date();
+
+  // Vérifier que les dates sont valides
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return "0.0";
+
+  // Si la date actuelle est avant le début, progression = 0%
+  if (now < start) return "0.0";
+
+  // Si la date actuelle est après la fin, progression = 100%
+  if (now > end) return "100.0";
+
+  // Calculer la progression
+  const totalDuration = end.getTime() - start.getTime();
+  const elapsedDuration = now.getTime() - start.getTime();
+
+  if (totalDuration === 0) return "0.0";
+
+  const progression = (elapsedDuration / totalDuration) * 100;
+  return Math.min(100, Math.max(0, progression)).toFixed(1);
+}
+
+/** 📅 Retourne la prochaine échéance à venir (ou null s’il n’y en a pas) */
+function getNextDueDate(lines?: BillingLine[]): Date | null {
+  if (!lines || lines.length === 0) return null;
+
+  const now = new Date();
+  const futureDates = lines
+    .map((ln: BillingLine) => new Date(ln.dueDate))
+    .filter((date: Date) => !isNaN(date.getTime()) && date > now)
+    .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+
+  return futureDates.length > 0 ? futureDates[0] : null;
+}
+
 /**
  * Construit CalculateDto à partir d'un contrat
  * Possibilité d'overrider P0 (montant de base) pour une ligne donnée.
@@ -277,58 +321,31 @@ export function ViewBillingScheduleDialog({
             </div>
             <div>
               <Label className="text-gray-600">Total HT</Label>
-              <p className="font-medium text-gray-900">{
-                formatMoneyEUR(lines.reduce((sum: number, ln: BillingLine) => sum + Number(ln.amountHt || 0), 0))
-                }</p>
+              <p className="font-medium text-gray-900">
+                {formatMoneyEUR(
+                  lines.reduce(
+                    (sum: number, ln: BillingLine) =>
+                      sum + Number(ln.amountHt || 0),
+                    0
+                  )
+                )}
+              </p>
             </div>
             <div>
               <Label className="text-gray-600">Progression</Label>
-              <p className="font-medium text-gray-900">{
-                (() => {
-                  // Calcul basé sur le temps écoulé (dates)
-                  if (!startDate || !endDate) return "0.0";
-                  
-                  const start = new Date(startDate);
-                  const end = new Date(endDate);
-                  const now = new Date();
-                  
-                  // Vérifier que les dates sont valides
-                  if (isNaN(start.getTime()) || isNaN(end.getTime())) return "0.0";
-                  
-                  // Si la date actuelle est avant le début, progression = 0%
-                  if (now < start) return "0.0";
-                  
-                  // Si la date actuelle est après la fin, progression = 100%
-                  if (now > end) return "100.0";
-                  
-                  // Calculer la progression
-                  const totalDuration = end.getTime() - start.getTime();
-                  const elapsedDuration = now.getTime() - start.getTime();
-                  
-                  if (totalDuration === 0) return "0.0";
-                  
-                  const progression = (elapsedDuration / totalDuration) * 100;
-                  return Math.min(100, Math.max(0, progression)).toFixed(1);
-                })()
-                }%</p>
+              <p className="font-medium text-gray-900">
+                {calculateProgression(startDate, endDate)}%
+              </p>
             </div>
+
             <div>
               <Label className="text-gray-600">Prochaine échéance</Label>
-              <p className="font-medium text-gray-900">{
-                (() => {
-                  if (!lines || lines.length === 0) return "—";
-                  
-                  const now = new Date();
-                  const futureDates = lines
-                    .map((ln: BillingLine) => new Date(ln.dueDate))
-                    .filter((date: Date) => !isNaN(date.getTime()) && date > now)
-                    .sort((a: Date, b: Date) => a.getTime() - b.getTime());
-                  
-                  if (futureDates.length === 0) return "—";
-                  
-                  return formatDateFR(futureDates[0]);
-                })()
-                }</p>
+              <p className="font-medium text-gray-900">
+                {(() => {
+                  const next = getNextDueDate(lines);
+                  return next ? formatDateFR(next.toISOString()) : "—";
+                })()}
+              </p>
             </div>
           </div>
 
@@ -399,14 +416,14 @@ export function ViewBillingScheduleDialog({
                             ? res.price
                             : null;
 
-                        const lineStatusLabel =
-                          (BILLING_LINE_STATUS_LABELS[ln.status as keyof typeof BILLING_LINE_STATUS_LABELS] ?? ln.status) as string;
+                        const lineStatusLabel = (BILLING_LINE_STATUS_LABELS[
+                          ln.status as keyof typeof BILLING_LINE_STATUS_LABELS
+                        ] ?? ln.status) as string;
 
-                        // Calculate TVA and TTC
-                        const tvaRateValue = Number(tvaRate ?? 0);
-                        const tvaRateDecimal = tvaRateValue / 100;
-                        const tvaAmount = rawAmount * tvaRateDecimal;
-                        const ttcAmount = rawAmount + tvaAmount;
+                        // ✅ Calculate TVA and TTC
+                        const tvaRateValue = Number(tvaRate ?? 0); 
+                        const tvaAmount = rawAmount * tvaRateValue; 
+                        const ttcAmount = rawAmount + tvaAmount; 
 
                         return (
                           <tr key={ln.id} className="border-b last:border-0">
