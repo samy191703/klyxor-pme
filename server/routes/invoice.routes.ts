@@ -9,7 +9,7 @@ import { isAuthenticated } from "server/auth";
 import { requirePermission } from "server/middlewares/authMiddleware";
 import { db } from "server/db";
 import { invoices, contracts, users, billingLines } from "@shared/schema";
-import { eq, desc, aliasedTable, inArray } from "drizzle-orm";
+import { eq, desc, aliasedTable, inArray, ilike, gte, and, lte, sql, asc } from "drizzle-orm";
 import { InvoiceNumberGenerator } from "server/services/references-generator/invoiceNumberGenerator";
 import { renderInvoiceHtml } from "server/templates/invoice-billing-schedule.template";
 
@@ -78,71 +78,322 @@ const invoiceUpdateSchema = z.object({
 
 // ---- Routes ----
 export function registerInvoiceRoutes(app: Express) {
-    // --- GET all invoices ---
-    /** 
-     * @openapi 
-     * /api/invoices: 
-     *   get: 
-     *     summary: Get all invoices with their billing line 
-     *     description: Returns a list of invoices including contract info, creator info, and their billing line. 
-     *     tags: [Invoices] 
-     *     security: 
-     *       - cookieAuth: [] 
-     *     responses: 
-     *       200: 
-     *         description: List of invoices with their billing line 
-     *       500: 
-     *         description: Server error 
-     */
-    app.get("/api/invoices",
+    // --- GET all for KPIS ---
+    /**
+ * @openapi
+ * /api/invoices/kpis/_issam2:
+ *   get:
+ *     summary: Get global KPI counters for invoices
+ *     description: Returns global counters without filters or pagination.
+ *     tags: [Invoices]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: KPI counters
+ *       500:
+ *         description: Server error
+ */
+    app.get(
+        "/api/invoices/kpis/_issam2",
         isAuthenticated,
         requirePermission("invoices", "read"),
-        async (_req, res) => {
+        async (req: Request, res: Response) => {
             try {
-                // 🔹 Récupérer toutes les invoices depuis le storage
-                const invoicesRows = await storage.getInvoices();
 
-                // 🔹 Récupérer les créateurs et les contrats en batch pour éviter N+1
-                const contractIds = [...new Set(invoicesRows.map(inv => inv.contractId))].filter(Boolean);
-                const userIds = [...new Set(
-                    invoicesRows
-                        .map(inv => inv.generatedBy)
-                        .filter((id): id is string => typeof id === "string") // <-- Type guard
+                // --- Fetch all invoices ---
+                const rows = await db
+                    .select({
+                        id: invoices.id,
+                        status: invoices.status,
+                        type: invoices.type,
+                        totalAmount: invoices.totalAmount,
+                    })
+                    .from(invoices);
+
+                // --- Compute KPIs ---
+                const kpis = {
+                    totalInvoices: rows.length,
+
+                    byStatus: {
+                        draft: rows.filter(i => i.status === "draft").length,
+                        inpaid: rows.filter(i => i.status === "inpaid").length,
+                        paid: rows.filter(i => i.status === "paid").length,
+                        cancelled: rows.filter(i => i.status === "cancelled").length,
+                        paid_parsely: rows.filter(i => i.status === "paid_parsely").length,
+                    },
+
+                    byType: {
+                        NORMAL: rows.filter(i => i.type === "NORMAL").length,
+                        ADJUSTEMENT: rows.filter(i => i.type === "ADJUSTEMENT").length,
+                        AVOIR: rows.filter(i => i.type === "AVOIR").length,
+                    }
+                };
+
+                return res.status(200).json(kpis);
+
+            } catch (error) {
+                console.error(error);
+                return res.status(500).json({ error: "Failed to fetch invoice KPIs" });
+            }
+        }
+    );
+
+    // --- GET all invoices with filters , pagination, sort ---
+    /**
+      * @openapi
+      * /api/invoices:
+      *   get:
+      *     summary: Get all invoices with filters
+      *     description: List invoices with filtering, search, sorting and pagination.
+      *     tags: [Invoices]
+      *     security:
+      *       - cookieAuth: []
+      *     parameters:
+      *       - in: query
+      *         name: contractNumber
+      *         schema:
+      *           type: string
+      *       - in: query
+      *         name: invoiceNumber
+      *         schema:
+      *           type: string
+      *       - in: query
+      *         name: status
+      *         schema:
+      *           type: string
+      *           enum: [draft, inpaid, paid, cancelled, paid_parsely]
+      *         required: false
+      *       - in: query
+      *         name: type
+      *         schema:
+      *           type: string
+      *           enum: [NORMAL, ADJUSTEMENT, AVOIR]
+      *         required: false
+      *       - in: query
+      *         name: generatedBy
+      *         schema:
+      *           type: string
+      *       - in: query
+      *         name: search
+      *         schema:
+      *           type: string
+      *       - in: query
+      *         name: from
+      *         schema:
+      *           type: string
+      *           format: date
+      *       - in: query
+      *         name: to
+      *         schema:
+      *           type: string
+      *           format: date
+      *       - in: query
+      *         name: limit
+      *         schema:
+      *           type: integer
+      *           minimum: 1
+      *           maximum: 200
+      *       - in: query
+      *         name: offset
+      *         schema:
+      *           type: integer
+      *           minimum: 0
+      *       - in: query
+      *         name: sortBy
+      *         schema:
+      *           type: string
+      *       - in: query
+      *         name: sortOrder
+      *         schema:
+      *           type: string
+      *           enum: [asc, desc]
+      *     responses:
+      *       200:
+      *         description: List of filtered invoices
+      *       500:
+      *         description: Server error
+      */
+    app.get(
+        "/api/invoices",
+        isAuthenticated,
+        requirePermission("invoices", "read"),
+        async (req: Request, res: Response) => {
+            try {
+                const {
+                    contractNumber,
+                    invoiceNumber,
+                    status,
+                    type,
+                    generatedBy,
+                    search,
+                    from,
+                    to,
+                    limit = 25,
+                    offset = 0,
+                    sortBy = "createdAt",
+                    sortOrder = "desc",
+                } = req.query;
+
+                const parsedLimit = Math.min(Number(limit) || 25, 200);
+                const parsedOffset = Number(offset) || 0;
+                const parsedSortOrder = sortOrder === "asc" ? "asc" : "desc";
+
+                const parsedFrom = from ? new Date(from as string) : undefined;
+                const parsedTo = to ? new Date(to as string) : undefined;
+
+                const whereConditions: any[] = [];
+
+                // Filter by contract number
+                if (contractNumber) {
+                    whereConditions.push(
+                        ilike(contracts.number, `%${contractNumber.toString().trim()}%`)
+                    );
+                }
+
+                // Filter by invoice number
+                if (invoiceNumber) {
+                    whereConditions.push(
+                        ilike(invoices.invoiceNumber, `%${invoiceNumber.toString().trim()}%`)
+                    );
+                }
+
+                // Filter by status
+                if (status) {
+                    whereConditions.push(eq(invoices.status, String(status)));
+                }
+
+                // Filter by type
+                if (type) {
+                    whereConditions.push(eq(invoices.type, String(type)));
+                }
+
+                // Filter by generatedBy
+                if (generatedBy) {
+                    whereConditions.push(eq(invoices.generatedBy, String(generatedBy)));
+                }
+
+                // Filter by date range
+                if (parsedFrom && parsedTo) {
+                    whereConditions.push(
+                        and(
+                            gte(invoices.createdAt, parsedFrom),
+                            lte(invoices.createdAt, parsedTo)
+                        )
+                    );
+                } else if (parsedFrom) {
+                    whereConditions.push(gte(invoices.createdAt, parsedFrom));
+                } else if (parsedTo) {
+                    whereConditions.push(lte(invoices.createdAt, parsedTo));
+                }
+
+                // Search
+                if (search?.toString().trim()) {
+                    const s = search.toString().trim().toLowerCase();
+                    whereConditions.push(
+                        sql`(
+            LOWER(${invoices.invoiceNumber}) LIKE ${"%" + s + "%"} OR
+            LOWER(${contracts.number}) LIKE ${"%" + s + "%"} OR
+            LOWER(${invoices.status}) LIKE ${"%" + s + "%"} OR
+            LOWER(${invoices.type}) LIKE ${"%" + s + "%"} OR
+            CAST(${invoices.totalAmount} AS TEXT) LIKE ${"%" + s + "%"}
+          )`
+                    );
+                }
+
+                const where = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+                // Sorting
+                let orderColumn: any = invoices.createdAt;
+                switch (String(sortBy)) {
+                    case "invoiceNumber": orderColumn = invoices.invoiceNumber; break;
+                    case "status": orderColumn = invoices.status; break;
+                    case "amount": orderColumn = invoices.totalAmount; break;
+                    case "contractNumber": orderColumn = contracts.number; break;
+                }
+
+                // Query invoices
+                const rows = await db
+                    .select({
+                        id: invoices.id,
+                        contractId: invoices.contractId,
+                        invoiceNumber: invoices.invoiceNumber,
+                        type: invoices.type,
+                        billingLineId: invoices.billingLineId,
+                        description: invoices.description,
+                        baseAmount: invoices.baseAmount,
+                        amount: invoices.amount,
+                        vatRate: invoices.vatRate,
+                        vatAmount: invoices.vatAmount,
+                        redactionAmount: invoices.redactionAmount,
+                        totalAmount: invoices.totalAmount,
+                        status: invoices.status,
+                        dueDate: invoices.dueDate,
+                        generatedAt: invoices.generatedAt,
+                        generatedBy: invoices.generatedBy,
+                        createdAt: invoices.createdAt,
+                        updatedAt: invoices.updatedAt,
+
+                        // enrichissements
+                        contractNumber: contracts.number,
+                        clientName: contracts.clientName,
+                    })
+                    .from(invoices)
+                    .leftJoin(contracts, eq(invoices.contractId, contracts.id))
+                    .where(where as any)
+                    .orderBy(parsedSortOrder === "asc" ? asc(orderColumn) : desc(orderColumn))
+                    .limit(parsedLimit)
+                    .offset(parsedOffset);
+
+
+                // Fetch billing lines
+                const billingLineIds = rows.map(r => r.billingLineId).filter(Boolean);
+                const billingLinesMap = Object.fromEntries(
+                    (await db
+                        .select()
+                        .from(billingLines)
+                        .where(inArray(billingLines.id, billingLineIds)))
+                        .map(bl => [bl.id, bl])
+                );
+
+                // Fetch users
+                // Récupérer les userIds depuis rows
+                const userIdsClean = [...new Set(
+                    rows
+                        .map(r => r.generatedBy)
+                        .filter((id): id is string => typeof id === "string")
                 )];
 
+                const usersRows = userIdsClean.length
+                    ? await db
+                        .select()
+                        .from(users)
+                        .where(inArray(users.id, userIdsClean))
+                    : [];
+
                 const usersMap = Object.fromEntries(
-                    (await db.select().from(users).where(inArray(users.id, userIds)))
-                        .map(u => [u.id, { id: u.id, name: u.name, email: u.email }])
+                    usersRows.map(u => [u.id, u])
                 );
 
 
-                const contractsMap = Object.fromEntries(
-                    (await db.select().from(contracts).where(inArray(contracts.id, contractIds)))
-                        .map(c => [c.id, { number: c.number }])
-                );
-
-                // 🔹 Récupérer toutes les billing lines en batch
-                const billingLineIds = invoicesRows.map(inv => inv.billingLineId).filter(Boolean);
-                const billingLinesMap = Object.fromEntries(
-                    (await db.select().from(billingLines).where(inArray(billingLines.id, billingLineIds)))
-                        .map(bl => [bl.id, { id: bl.id, amount: bl.amountHt, dueDate: bl.dueDate, status: bl.status }])
-                );
-
-                // 🔹 Enrichir les invoices
-                const enriched = invoicesRows.map(inv => ({
+                // Enrich invoices
+                const enriched = rows.map(inv => ({
                     ...inv,
-                    generatedByUser: inv.generatedBy ? usersMap[inv.generatedBy] || null : null,
-                    contract: inv.contractId ? contractsMap[inv.contractId] || null : null,
                     line: inv.billingLineId ? billingLinesMap[inv.billingLineId] || null : null,
+                    generatedByUser: inv.generatedBy ? usersMap[inv.generatedBy] || null : null,
                 }));
 
-                return res.status(200).json(enriched);
+                return res.status(200).json({
+                    rows: enriched,
+                    total: enriched.length,
+                });
 
             } catch (error) {
                 console.error(error);
                 return res.status(500).json({ error: "Failed to fetch invoices" });
             }
-        });
+        }
+    );
 
     // --- GET invoice by ID ---
     /**
@@ -640,5 +891,3 @@ export function registerInvoiceRoutes(app: Express) {
   => and the table of invoice with the action : see more and genarte pdf like billing juste changing his title and the Edite if  it's drafd (the defaut status value)
 
  */
-// in the get all i must add the filtration and pagination
-// add the kpis route
