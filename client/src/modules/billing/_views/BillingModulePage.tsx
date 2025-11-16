@@ -52,6 +52,9 @@ import {
   format,
   parseISO,
   addMonths,
+  startOfDay, 
+  isBefore, 
+  isAfter
 } from "date-fns";
 import { useBillingKpis } from "../queries/useBillingKpis";
 import { BillingFrequency } from "@shared/enums/billing.enum";
@@ -221,78 +224,56 @@ export default function BillingModulePage() {
   }, [summaryKpis]);
 
   // useMemo Graphe
-  const paymentsByDay = useMemo(() => {
-    if (!schedules || schedules.length === 0) return [];
+const paymentsByDayProRata = useMemo(() => {
+  if (!schedules || schedules.length === 0) return [];
 
-    const now = new Date();
-    const start = startOfMonth(now);
-    const end = endOfMonth(now);
-    const daysInMonth = eachDayOfInterval({ start, end });
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
+  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-    const data = daysInMonth.map((day) => ({
-      date: format(day, "yyyy-MM-dd"),
-      totalAmount: 0,
-    }));
+  const data = days.map((d) => ({ date: format(d, "yyyy-MM-dd"), totalAmount: 0 }));
 
-    schedules.forEach((schedule) => {
-      if (!schedule.lines || schedule.lines.length === 0) return;
+  schedules.forEach((schedule) => {
+    if (!schedule.lines || schedule.lines.length === 0) return;
 
-      const totalScheduleAmount = (schedule.lines as BillingLine[]).reduce(
-        (sum: number, line: BillingLine) => sum + (Number(line.amountHt) || 0),
-        0
-      );
+    const totalScheduleAmount = (schedule.lines as BillingLine[]).reduce(
+      (s: number, line: BillingLine) => s + (Number(line.amountHt) || 0),
+      0
+    );
 
-      let numPayments = 1;
-      switch (schedule.frequency) {
-        case BillingFrequency.MONTHLY:
-          numPayments = 12;
-          break;
-        case BillingFrequency.QUARTERLY:
-          numPayments = 4;
-          break;
-        case BillingFrequency.SEMIANNUAL:
-          numPayments = 2;
-          break;
-        case BillingFrequency.ANNUAL:
-          numPayments = 1;
-          break;
+    let monthlyEquivalent = 0;
+    switch (schedule.frequency) {
+      case BillingFrequency.MONTHLY: monthlyEquivalent = totalScheduleAmount; break;
+      case BillingFrequency.QUARTERLY: monthlyEquivalent = totalScheduleAmount / 3; break;
+      case BillingFrequency.SEMIANNUAL: monthlyEquivalent = totalScheduleAmount / 6; break;
+      case BillingFrequency.ANNUAL: monthlyEquivalent = totalScheduleAmount / 12; break;
+      default: monthlyEquivalent = 0;
+    }
+
+    const startDate = startOfDay(parseISO(schedule.startDate));
+    const effectiveStart = isBefore(startDate, monthStart) ? monthStart : startDate;
+
+    const endDate = schedule.endDate ? startOfDay(parseISO(schedule.endDate)) : null;
+    const effectiveEnd = endDate && isBefore(endDate, monthEnd) ? endDate : monthEnd;
+
+    if (isAfter(effectiveStart, effectiveEnd)) return;
+
+    const activeDaysCount = eachDayOfInterval({ start: effectiveStart, end: effectiveEnd }).length;
+    if (activeDaysCount <= 0) return;
+
+    const dailyAmount = monthlyEquivalent / activeDaysCount;
+
+    data.forEach((d) => {
+      const dDate = parseISO(d.date);
+      if (!isBefore(dDate, effectiveStart) && !isAfter(dDate, effectiveEnd)) {
+        d.totalAmount += dailyAmount;
       }
-
-      const paymentAmount = totalScheduleAmount / numPayments;
-
-      let paymentDates: Date[] = [];
-      const startDate = parseISO(schedule.startDate);
-      for (let i = 0; i < numPayments; i++) {
-        let payDate: Date;
-        switch (schedule.frequency) {
-          case BillingFrequency.MONTHLY:
-            payDate = addMonths(startDate, i);
-            break;
-          case BillingFrequency.QUARTERLY:
-            payDate = addMonths(startDate, i * 3);
-            break;
-          case BillingFrequency.SEMIANNUAL:
-            payDate = addMonths(startDate, i * 6);
-            break;
-          case BillingFrequency.ANNUAL:
-            payDate = addMonths(startDate, i * 12);
-            break;
-          default:
-            payDate = startDate;
-        }
-        paymentDates.push(payDate);
-      }
-
-      paymentDates.forEach((pd) => {
-        if (pd >= start && pd <= end) {
-          const dayData = data.find((d) => d.date === format(pd, "yyyy-MM-dd"));
-          if (dayData) dayData.totalAmount += paymentAmount;
-        }
-      });
     });
+  });
 
-    return data;
-  }, [schedules]);
+  return data;
+}, [schedules]);
 
   const donutData = useMemo(() => {
     if (!summaryKpis || !summaryKpis.status) return [];
@@ -518,7 +499,7 @@ export default function BillingModulePage() {
                     (c): c is string => c !== undefined
                   )}
                   kpi={kpi}
-                  paymentsByDay={paymentsByDay}
+                  paymentsByDay={paymentsByDayProRata}
                   donutData={donutData}
                   COLORS={COLORS}
                 />
@@ -529,7 +510,7 @@ export default function BillingModulePage() {
 
               {/* KpiCharts */}
               <KpiCharts
-                paymentsByDay={paymentsByDay}
+                paymentsByDay={paymentsByDayProRata}
                 donutData={donutData}
                 COLORS={COLORS}
               />

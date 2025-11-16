@@ -642,37 +642,20 @@ export const invoices = pgTable(
       .references(() => contracts.id, { onDelete: "cascade" }),
     invoiceNumber: text("invoice_number").notNull().unique(),
     type: text("type").notNull(),
-    period: text("period"),
+    billingLineId: varchar("billing_line_id")
+      .notNull()
+      .references(() => billingLines.id, { onDelete: "cascade" }),
     description: text("description"),
     baseAmount: decimal("base_amount", { precision: 15, scale: 2 }),
     amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
     vatRate: decimal("vat_rate", { precision: 5, scale: 2 }).default(sql`20`),
     vatAmount: decimal("vat_amount", { precision: 15, scale: 2 }),
+    redactionAmount: decimal("redaction_amount", { precision: 15, scale: 2 }), // montant de réduction par defaut 0
     totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
-    status: text("status").notNull().default("draft"),
-    dueDate: timestamp("due_date"),
-    paidDate: timestamp("paid_date"),
-    paidAmount: decimal("paid_amount", { precision: 15, scale: 2 }),
-    paymentMethod: text("payment_method"),
-    paymentReference: text("payment_reference"),
-    indexationApplied: boolean("indexation_applied").default(false),
-    indexationType: text("indexation_type"),
-    indexationRate: decimal("indexation_rate", { precision: 10, scale: 6 }),
-    adjustmentAmount: decimal("adjustment_amount", { precision: 15, scale: 2 }),
-    penaltyAmount: decimal("penalty_amount", { precision: 15, scale: 2 }),
-    depositReturn: decimal("deposit_return", { precision: 15, scale: 2 }),
-    consumptionEstimated: decimal("consumption_estimated", {
-      precision: 15,
-      scale: 2,
-    }),
-    consumptionActual: decimal("consumption_actual", {
-      precision: 15,
-      scale: 2,
-    }),
-    unitPrice: decimal("unit_price", { precision: 10, scale: 4 }),
-    isFinal: boolean("is_final").default(false),
-    generatedAt: timestamp("generated_at"),
-    generatedBy: varchar("generated_by").references(() => users.id, {
+    status: text("status").notNull().default("draft"), // draft, inpaid , paid, cancelled, paid parselly
+    dueDate: timestamp("due_date"), // in the validator we must test if the due date > created at 
+    generatedAt: timestamp("generated_at").default(sql`now()`),
+    generatedBy: varchar("generated_by").references(() => users.id, { // user Id
       onDelete: "set null",
     }),
     createdAt: timestamp("created_at")
@@ -684,6 +667,7 @@ export const invoices = pgTable(
   },
   (t) => ({
     byContract: index("idx_invoices_contract").on(t.contractId),
+    byBillingLine: index("idx_invoices_billing_line").on(t.billingLineId),
     byStatus: index("idx_invoices_status").on(t.status),
     byDueDate: index("idx_invoices_due").on(t.dueDate),
   })

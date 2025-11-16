@@ -50,6 +50,7 @@ import { GEDPage } from "./modules/ged";
 import { ValidationRequestsView } from "./modules/validation-requests";
 import ValidationRequestsPage from "./modules/validation-requests/components/ValidationRequestsPage";
 import BillingModulePage from "./modules/billing/_views/BillingModulePage";
+import InvoiceModulePage from "./modules/invoices/_views/InvoiceModulePage";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -168,6 +169,11 @@ function Router() {
           <Route path="/billing-schedules">
             <ProtectedRoute route="/billing-schedules">
               <BillingModulePage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/invoices">
+            <ProtectedRoute route="/invoices">
+              <InvoiceModulePage />
             </ProtectedRoute>
           </Route>
           <Route path="/payment-flows">
