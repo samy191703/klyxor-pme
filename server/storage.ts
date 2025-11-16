@@ -88,9 +88,12 @@ import {
   type InsertValidationRequestsRule,
   type ValidationRequestsRule,
   validationRequestsRules,
+  Invoice,
+  InsertInvoice,
+  invoices,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, lte, gt, sql } from "drizzle-orm";
+import { eq, desc, and, lte, gt, sql, asc } from "drizzle-orm";
 
 /**
  * Interface de stockage principale
@@ -578,6 +581,71 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(amendments).where(eq(amendments.id, id));
     return true;
   }
+  /** 
+   * Get all invoices 
+   */
+  async getInvoices(): Promise<Invoice[]> {
+    return await db
+      .select()
+      .from(invoices)
+      .orderBy(desc(invoices.createdAt));
+  }
+  
+
+  /** 
+   * Get a single invoice by ID 
+   */
+  async getInvoice(id: string): Promise<Invoice | undefined> {
+    const [invoice] = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, id));
+    return invoice || undefined;
+  }
+
+  /** 
+   * Create a new invoice 
+   */
+  async createInvoice(insertInvoice: InsertInvoice): Promise<Invoice> {
+    const [invoice] = await db
+      .insert(invoices)
+      .values({
+        ...insertInvoice,
+        updatedAt: new Date(),
+      })
+      .returning();
+    return invoice;
+  }
+
+  /** 
+   * Update an invoice 
+   */
+  async updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice | undefined> {
+    const [invoice] = await db
+      .update(invoices)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(invoices.id, id))
+      .returning();
+    return invoice || undefined;
+  }
+
+  /** 
+   * Delete an invoice 
+   */
+  async deleteInvoice(id: string): Promise<boolean> {
+    const result = await db
+      .delete(invoices)
+      .where(eq(invoices.id, id))
+      .returning(); // récupère les lignes supprimées
+
+    // result est maintenant un tableau des lignes supprimées
+    return result.length > 0;
+  }
+
+
 
   async getTerminations(): Promise<Termination[]> {
     return await db

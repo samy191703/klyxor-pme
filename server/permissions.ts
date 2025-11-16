@@ -20,6 +20,7 @@ export const rolePermissions = {
     contracts: ["create", "read", "update", "delete", "export"], // PAS de validate
     indexations: ["create", "read", "update", "delete", "export", "execute"], // PAS de validate
     amendments: ["create", "read", "update", "delete"], // PAS de validate
+    invoices: ["create", "read", "update", "delete"],
     billing: ["create", "read", "update", "delete", "approve"],
     users: ["create", "read", "update", "delete", "manage_roles"],
     security: ["read", "manage", "audit"],
