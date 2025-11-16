@@ -17,13 +17,16 @@ import {
   BILLING_FREQUENCY_LABELS,
   BILLING_LINE_STATUS_LABELS,
 } from "../../domain/constants";
-import { BILLING_TYPE_LABELS } from "@shared/enums/billing.enum";
+import { BILLING_TYPE_LABELS, BillingLineStatus } from "@shared/enums/billing.enum";
 
 import type { Contract } from "@shared/schema";
 import type { CalculateDto } from "@/_dtos/calculate-indexation.dto";
 import type { CalculationResult } from "@/_dtos/calculate-results.dto";
 import { getContract } from "@/services/contracts.api";
 import { postIndexationPreview } from "@/services/indexation.api";
+import { AlertTriangle, FilePlus } from "lucide-react";
+import { createInvoice } from "@/modules/invoices/api/invoice.api";
+import { useToast } from "@/hooks/use-toast";
 
 type Props = {
   open: boolean;
@@ -163,8 +166,8 @@ export function ViewBillingScheduleDialog({
     summaryResult && typeof summaryResult.factor === "number"
       ? summaryResult.factor
       : summaryResult && typeof summaryResult.rawFactor === "number"
-      ? summaryResult.rawFactor
-      : null;
+        ? summaryResult.rawFactor
+        : null;
 
   const handlePrecalculateIndexation = async () => {
     if (!contractId) {
@@ -223,233 +226,358 @@ export function ViewBillingScheduleDialog({
     }
   };
 
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [selectedLine, setSelectedLine] = useState<BillingLine | null>(null);
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+
+  const handleOpenInvoiceModal = (line: BillingLine) => {
+    setSelectedLine(line);
+    setDueDate(line.dueDate);
+    setDescription("");
+    setInvoiceModalOpen(true);
+  }
+
+  const formatForDateInput = (date: string | Date) => {
+    const d = new Date(date);
+    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  };
+
+  const { toast } = useToast();
+
+  const handleGenerateInvoice = async () => {
+    if (!selectedLine || !contractId) return;
+
+    try {
+      const dueDateParts = dueDate.split("-");
+      const dueDateISO = new Date(
+        Number(dueDateParts[0]),
+        Number(dueDateParts[1]) - 1,
+        Number(dueDateParts[2]),
+        12, 0, 0, 0
+      ).toISOString();
+
+      const payload = {
+        contractId,
+        billingLineId: selectedLine.id,
+        description,
+        dueDate: dueDateISO,
+      };
+
+      console.log("Création de la facture avec le payload :", payload);
+
+      const res = await createInvoice(payload);
+
+      toast({
+        title: "Facture générée",
+        description: "La facture a été générée avec succès.",
+      });
+
+      setInvoiceModalOpen(false);
+    } catch (err: any) {
+      console.error("Erreur lors de createInvoice :", err);
+
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Erreur lors de la génération de la facture";
+
+      toast({
+        title: "Erreur",
+        description: msg,
+      });
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader className="flex flex-row items-center justify-between">
-          <div>
-            <DialogTitle className="text-lg font-semibold">
-              Détails du Plan de facturation
-            </DialogTitle>
-            <DialogDescription className="font-bold text-sm text-gray-700">
-              {contractNumber ?? "—"}
-            </DialogDescription>
-          </div>
-          <div className="text-sm text-gray-500">
-            Créé le {formatDateFR(createdAt)}
-          </div>
-        </DialogHeader>
-
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-3 gap-4">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader className="flex flex-row items-center justify-between">
             <div>
-              <Label className="text-gray-600">Contrat</Label>
-              <p className="font-medium text-gray-900">
+              <DialogTitle className="text-lg font-semibold">
+                Détails du Plan de facturation
+              </DialogTitle>
+              <DialogDescription className="font-bold text-sm text-gray-700">
                 {contractNumber ?? "—"}
-              </p>
+              </DialogDescription>
             </div>
-            <div>
-              <Label className="text-gray-600">Période</Label>
-              <p className="font-medium text-gray-900">
-                {formatDateFR(startDate)} — {formatDateFR(endDate)}
-              </p>
+            <div className="text-sm text-gray-500">
+              Créé le {formatDateFR(createdAt)}
             </div>
-            <div className="flex flex-col justify-start items-start gap-2">
-              <Label className="text-gray-600">Statut</Label>
-              <p className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                {statusLabel}
-              </p>
-            </div>
-          </div>
+          </DialogHeader>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label className="text-gray-600">Fréquence</Label>
-              <p className="font-medium text-gray-900">{frequencyLabel}</p>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label className="text-gray-600">Contrat</Label>
+                <p className="font-medium text-gray-900">
+                  {contractNumber ?? "—"}
+                </p>
+              </div>
+              <div>
+                <Label className="text-gray-600">Période</Label>
+                <p className="font-medium text-gray-900">
+                  {formatDateFR(startDate)} — {formatDateFR(endDate)}
+                </p>
+              </div>
+              <div className="flex flex-col justify-start items-start gap-2">
+                <Label className="text-gray-600">Statut</Label>
+                <p className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                  {statusLabel}
+                </p>
+              </div>
             </div>
-            <div>
-              <Label className="text-gray-600">Type</Label>
-              <p className="font-medium text-gray-900">{billingTypeLabel}</p>
-            </div>
-            <div>
-              <Label className="text-gray-600">Version</Label>
-              <p className="font-medium text-gray-900">{version}</p>
-            </div>
-            <div>
-              <Label className="text-gray-600">Total HT</Label>
-              <p className="font-medium text-gray-900">{
-                formatMoneyEUR(lines.reduce((sum: number, ln: BillingLine) => sum + Number(ln.amountHt || 0), 0))
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label className="text-gray-600">Fréquence</Label>
+                <p className="font-medium text-gray-900">{frequencyLabel}</p>
+              </div>
+              <div>
+                <Label className="text-gray-600">Type</Label>
+                <p className="font-medium text-gray-900">{billingTypeLabel}</p>
+              </div>
+              <div>
+                <Label className="text-gray-600">Version</Label>
+                <p className="font-medium text-gray-900">{version}</p>
+              </div>
+              <div>
+                <Label className="text-gray-600">Total HT</Label>
+                <p className="font-medium text-gray-900">{
+                  formatMoneyEUR(lines.reduce((sum: number, ln: BillingLine) => sum + Number(ln.amountHt || 0), 0))
                 }</p>
-            </div>
-            <div>
-              <Label className="text-gray-600">Progression</Label>
-              <p className="font-medium text-gray-900">{
-                (() => {
-                  // Calcul basé sur le temps écoulé (dates)
-                  if (!startDate || !endDate) return "0.0";
-                  
-                  const start = new Date(startDate);
-                  const end = new Date(endDate);
-                  const now = new Date();
-                  
-                  // Vérifier que les dates sont valides
-                  if (isNaN(start.getTime()) || isNaN(end.getTime())) return "0.0";
-                  
-                  // Si la date actuelle est avant le début, progression = 0%
-                  if (now < start) return "0.0";
-                  
-                  // Si la date actuelle est après la fin, progression = 100%
-                  if (now > end) return "100.0";
-                  
-                  // Calculer la progression
-                  const totalDuration = end.getTime() - start.getTime();
-                  const elapsedDuration = now.getTime() - start.getTime();
-                  
-                  if (totalDuration === 0) return "0.0";
-                  
-                  const progression = (elapsedDuration / totalDuration) * 100;
-                  return Math.min(100, Math.max(0, progression)).toFixed(1);
-                })()
+              </div>
+              <div>
+                <Label className="text-gray-600">Progression</Label>
+                <p className="font-medium text-gray-900">{
+                  (() => {
+                    // Calcul basé sur le temps écoulé (dates)
+                    if (!startDate || !endDate) return "0.0";
+
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    const now = new Date();
+
+                    // Vérifier que les dates sont valides
+                    if (isNaN(start.getTime()) || isNaN(end.getTime())) return "0.0";
+
+                    // Si la date actuelle est avant le début, progression = 0%
+                    if (now < start) return "0.0";
+
+                    // Si la date actuelle est après la fin, progression = 100%
+                    if (now > end) return "100.0";
+
+                    // Calculer la progression
+                    const totalDuration = end.getTime() - start.getTime();
+                    const elapsedDuration = now.getTime() - start.getTime();
+
+                    if (totalDuration === 0) return "0.0";
+
+                    const progression = (elapsedDuration / totalDuration) * 100;
+                    return Math.min(100, Math.max(0, progression)).toFixed(1);
+                  })()
                 }%</p>
-            </div>
-            <div>
-              <Label className="text-gray-600">Prochaine échéance</Label>
-              <p className="font-medium text-gray-900">{
-                (() => {
-                  if (!lines || lines.length === 0) return "—";
-                  
-                  const now = new Date();
-                  const futureDates = lines
-                    .map((ln: BillingLine) => new Date(ln.dueDate))
-                    .filter((date: Date) => !isNaN(date.getTime()) && date > now)
-                    .sort((a: Date, b: Date) => a.getTime() - b.getTime());
-                  
-                  if (futureDates.length === 0) return "—";
-                  
-                  return formatDateFR(futureDates[0]);
-                })()
+              </div>
+              <div>
+                <Label className="text-gray-600">Prochaine échéance</Label>
+                <p className="font-medium text-gray-900">{
+                  (() => {
+                    if (!lines || lines.length === 0) return "—";
+
+                    const now = new Date();
+                    const futureDates = lines
+                      .map((ln: BillingLine) => new Date(ln.dueDate))
+                      .filter((date: Date) => !isNaN(date.getTime()) && date > now)
+                      .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+
+                    if (futureDates.length === 0) return "—";
+
+                    return formatDateFR(futureDates[0]);
+                  })()
                 }</p>
-            </div>
-          </div>
-
-          {/* Résumé indexation global basé sur la première ligne indexée */}
-          {summaryResult && (
-            <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 space-y-1">
-              <div className="font-medium text-sm">
-                Pré-calcul d’indexation appliqué (prévisualisation)
-              </div>
-              <div>
-                Facteur&nbsp;
-                <b>{factor != null ? factor.toFixed(4) : "—"}</b>
-              </div>
-              <div>
-                Effectif le&nbsp;
-                <b>
-                  {summaryResult.effectiveFrom
-                    ? formatDateFR(summaryResult.effectiveFrom as any)
-                    : "—"}
-                </b>
-              </div>
-              <div className="text-[11px] text-gray-500">
-                Les montants indexés par ligne sont calculés à partir de ce
-                contrat. Aucune modification n’est encore enregistrée.
               </div>
             </div>
-          )}
 
-          {idxError && <div className="text-xs text-red-600">{idxError}</div>}
-
-          {lines.length > 0 && (
-            <div className="mt-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-gray-600">Échéances</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrecalculateIndexation}
-                  disabled={idxLoading}
-                >
-                  {idxLoading
-                    ? "Calcul…"
-                    : "Pré-calculer l’indexation des lignes"}
-                </Button>
-              </div>
-
-              <div className="mt-2 rounded-md border">
-                <div className="max-h-[320px] overflow-auto">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-white border-b">
-                      <tr className="text-left">
-                        <th className="px-3 py-2 w-[80px]">#</th>
-                        <th className="px-3 py-2 w-[140px]">Échéance</th>
-                        <th className="px-3 py-2 w-[140px]">Montant HT</th>
-                        <th className="px-3 py-2 w-[140px]">Montant TTC</th>
-                        <th className="px-3 py-2 w-[140px]">Montant TVA</th>
-                        <th className="px-3 py-2 w-[160px]">Montant indexé</th>
-                        <th className="px-3 py-2">Statut</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lines.map((ln: BillingLine) => {
-                        const rawAmount = Number(ln.amountHt || 0);
-                        const res = lineResults[ln.id];
-                        const indexedAmount =
-                          res && typeof res.price === "number"
-                            ? res.price
-                            : null;
-
-                        const lineStatusLabel =
-                          (BILLING_LINE_STATUS_LABELS[ln.status as keyof typeof BILLING_LINE_STATUS_LABELS] ?? ln.status) as string;
-
-                        // Calculate TVA and TTC
-                        const tvaRateValue = Number(tvaRate ?? 0);
-                        const tvaAmount = rawAmount * tvaRateValue;
-                        const ttcAmount = rawAmount + tvaAmount;
-
-                        return (
-                          <tr key={ln.id} className="border-b last:border-0">
-                            <td className="px-3 py-2">{ln.sequenceNo}</td>
-                            <td className="px-3 py-2">
-                              {formatDateFR(ln.dueDate)}
-                            </td>
-                            <td className="px-3 py-2">
-                              {formatMoneyEUR(rawAmount)}
-                            </td>
-                            <td className="px-3 py-2">
-                              {formatMoneyEUR(ttcAmount)}
-                            </td>
-                            <td className="px-3 py-2">
-                              {formatMoneyEUR(tvaAmount)}
-                            </td>
-                            <td className="px-3 py-2">
-                              {indexedAmount != null
-                                ? formatMoneyEUR(indexedAmount)
-                                : "—"}
-                            </td>
-                            <td className="px-3 py-2">
-                              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-                                {lineStatusLabel}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+            {/* Résumé indexation global basé sur la première ligne indexée */}
+            {summaryResult && (
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 space-y-1">
+                <div className="font-medium text-sm">
+                  Pré-calcul d’indexation appliqué (prévisualisation)
+                </div>
+                <div>
+                  Facteur&nbsp;
+                  <b>{factor != null ? factor.toFixed(4) : "—"}</b>
+                </div>
+                <div>
+                  Effectif le&nbsp;
+                  <b>
+                    {summaryResult.effectiveFrom
+                      ? formatDateFR(summaryResult.effectiveFrom as any)
+                      : "—"}
+                  </b>
+                </div>
+                <div className="text-[11px] text-gray-500">
+                  Les montants indexés par ligne sont calculés à partir de ce
+                  contrat. Aucune modification n’est encore enregistrée.
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fermer
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {idxError && <div className="text-xs text-red-600">{idxError}</div>}
+
+            {lines.length > 0 && (
+              <div className="mt-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-gray-600">Échéances</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrecalculateIndexation}
+                    disabled={idxLoading}
+                  >
+                    {idxLoading
+                      ? "Calcul…"
+                      : "Pré-calculer l’indexation des lignes"}
+                  </Button>
+                </div>
+
+                <div className="mt-2 rounded-md border">
+                  <div className="max-h-[320px] overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-white border-b">
+                        <tr className="text-left">
+                          <th className="px-3 py-2 w-[80px]">#</th>
+                          <th className="px-3 py-2 w-[140px]">Échéance</th>
+                          <th className="px-3 py-2 w-[140px]">Montant HT</th>
+                          <th className="px-3 py-2 w-[140px]">Montant TTC</th>
+                          <th className="px-3 py-2 w-[140px]">Montant TVA</th>
+                          <th className="px-3 py-2 w-[160px]">Montant indexé</th>
+                          <th className="px-3 py-2">Statut</th>
+                          <th className="px-3 py-2">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lines.map((ln: BillingLine) => {
+                          const rawAmount = Number(ln.amountHt || 0);
+                          const res = lineResults[ln.id];
+                          const indexedAmount =
+                            res && typeof res.price === "number"
+                              ? res.price
+                              : null;
+
+                          const lineStatusLabel =
+                            (BILLING_LINE_STATUS_LABELS[ln.status as keyof typeof BILLING_LINE_STATUS_LABELS] ?? ln.status) as string;
+
+                          // Calculate TVA and TTC
+                          const tvaRateValue = Number(tvaRate ?? 0);
+                          const tvaAmount = rawAmount * tvaRateValue;
+                          const ttcAmount = rawAmount + tvaAmount;
+
+                          return (
+                            <tr key={ln.id} className="border-b last:border-0">
+                              <td className="px-3 py-2">{ln.sequenceNo}</td>
+                              <td className="px-3 py-2">
+                                {formatDateFR(ln.dueDate)}
+                              </td>
+                              <td className="px-3 py-2">
+                                {formatMoneyEUR(rawAmount)}
+                              </td>
+                              <td className="px-3 py-2">
+                                {formatMoneyEUR(ttcAmount)}
+                              </td>
+                              <td className="px-3 py-2">
+                                {formatMoneyEUR(tvaAmount)}
+                              </td>
+                              <td className="px-3 py-2">
+                                {indexedAmount != null
+                                  ? formatMoneyEUR(indexedAmount)
+                                  : "—"}
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                                  {lineStatusLabel}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                {ln.status === BillingLineStatus.FACTUREE ? (
+                                  <button
+                                    className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs text-green-700 gap-1"
+                                    onClick={() => handleOpenInvoiceModal(ln)}
+                                  >
+                                    <FilePlus className="w-4 h-4" />
+                                  </button>
+                                ) : (
+                                  <span title="Besoin de confirmation">
+                                      <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de génération de facture */}
+      {invoiceModalOpen && selectedLine && (
+        <Dialog open={invoiceModalOpen} onOpenChange={setInvoiceModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Générer une facture</DialogTitle>
+            </DialogHeader>
+
+            <div className="grid gap-2 mt-2">
+              <p><strong>Contract ID:</strong> {contractId}</p>
+              <p><strong>Billing Schedule ID:</strong> {schedule.id}</p>
+
+              <label className="block">
+                Description
+                <input
+                  type="text"
+                  className="mt-1 w-full border rounded px-2 py-1"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </label>
+
+              <label className="block">
+                Due Date
+                <input
+                  type="date"
+                  className="mt-1 w-full border rounded px-2 py-1"
+                  value={formatForDateInput(dueDate)}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+
+              </label>
+            </div>
+
+            <DialogFooter className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setInvoiceModalOpen(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleGenerateInvoice}>Générer</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
 

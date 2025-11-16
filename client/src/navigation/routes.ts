@@ -88,6 +88,11 @@ export const menuItems: MenuItem[] = [
         icon: FileCheck,
       },
       {
+        label: "Factures",
+        href: "/invoices",
+        icon: FileText,
+      },
+      {
         label: "Plans de facturation ancien",
         href: "/billing-plans",
         icon: FileCheck,

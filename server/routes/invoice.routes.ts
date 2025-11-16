@@ -533,22 +533,29 @@ export function registerInvoiceRoutes(app: Express) {
                     invoiceNumber = `INV-${Date.now()}`;
                 }
 
-                // 5️⃣ Préparer l'objet facture
+                const formatNumber = (num: number) => Number(num.toFixed(2));  
+
                 const amount = existingContract.amount ?? 0;
                 const vatRate = existingContract.tvaRate ?? 0;
+
+                const formatDecimal = (num: string | number | null | undefined): string => {
+                    const n = Number(num) || 0;  
+                    return n.toFixed(2);      
+                };
+
 
                 const invoiceData = {
                     contractId: d.contractId,
                     billingLineId: d.billingLineId,
                     description: d.description || null,
                     dueDate: new Date(d.dueDate),
-                    amount: amount.toString(),
-                    vatRate: vatRate.toString(),
-                    vatAmount: (amount * vatRate).toString(),
-                    baseAmount: amount.toString(),
-                    redactionAmount: "0",
+                    amount: formatDecimal(amount),
+                    vatRate: formatDecimal(vatRate),
+                    vatAmount: formatDecimal(Number(amount) * Number(vatRate)),
+                    baseAmount: formatDecimal(amount),
+                    redactionAmount: formatDecimal(0),
                     type: TypeInvoice.NORMAL,
-                    totalAmount: (amount + amount * vatRate).toString(),
+                    totalAmount: formatDecimal(Number(amount) + Number(amount) * Number(vatRate)),
                     status: InvoiceStatus.Draft,
                     invoiceNumber,
                     generatedBy: safeUserId(req),
@@ -556,10 +563,9 @@ export function registerInvoiceRoutes(app: Express) {
                     updatedAt: new Date(),
                 };
 
-                // 6️⃣ Insérer la facture
+
                 const invoice = await storage.createInvoice(invoiceData);
 
-                // 7️⃣ Audit log
                 try {
                     await storage.createAuditLog?.({
                         userId: safeUserId(req) || "system",
@@ -579,9 +585,7 @@ export function registerInvoiceRoutes(app: Express) {
 
                 // 8️⃣ Succès
                 return res.json(invoice);
-
             } catch (error: any) {
-
                 // Conflit (invoice_number déjà utilisé)
                 const detail = String(error?.detail || "");
                 if (error?.code === "23505" && detail.includes("(invoice_number)")) {
