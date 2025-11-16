@@ -24,7 +24,6 @@ import type { CalculateDto } from "@/_dtos/calculate-indexation.dto";
 import type { CalculationResult } from "@/_dtos/calculate-results.dto";
 import { getContract } from "@/services/contracts.api";
 import { postIndexationPreview } from "@/services/indexation.api";
-
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -269,7 +268,7 @@ export function ViewBillingScheduleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between">
           <div>
             <DialogTitle className="text-lg font-semibold">
@@ -316,8 +315,34 @@ export function ViewBillingScheduleDialog({
               <p className="font-medium text-gray-900">{billingTypeLabel}</p>
             </div>
             <div>
-              <Label className="text-gray-600">Version</Label>
-              <p className="font-medium text-gray-900">{version}</p>
+              <Label className="text-gray-600 text-sm">Version & Progression</Label>
+              <div className="flex items-center gap-2 mt-1">
+                {/* Version Badge */}
+                <span className="inline-flex items-center justify-center rounded-md bg-[#0F2A43] text-white font-semibold text-xs px-2 py-0.5 min-w-[24px]">
+                  {version}
+                </span>
+                
+                {/* Separator */}
+                <div className="w-px h-4 bg-gray-300"></div>
+                
+                {/* Progression */}
+                <div className="flex-1 flex flex-col gap-0.5">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[#0F2A43] font-bold text-sm leading-none">
+                      {calculateProgression(startDate, endDate)}%
+                    </span>
+                    <span className="text-xs text-gray-500">of completion</span>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="w-28 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-[#0F2A43] rounded-full transition-all"
+                      style={{ width: `${Math.min(100, Math.max(0, parseFloat(calculateProgression(startDate, endDate))))}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div>
               <Label className="text-gray-600">Total HT</Label>
@@ -332,9 +357,11 @@ export function ViewBillingScheduleDialog({
               </p>
             </div>
             <div>
-              <Label className="text-gray-600">Progression</Label>
+              <Label className="text-gray-600">Taux de TVA applicable</Label>
               <p className="font-medium text-gray-900">
-                {calculateProgression(startDate, endDate)}%
+                {tvaRate != null
+                  ? `${(Number(tvaRate) * 100).toFixed(2)}%`
+                  : "—"}
               </p>
             </div>
 
