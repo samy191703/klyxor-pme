@@ -3,11 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Header from "@/components/layout/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  RefreshCw,
-  EyeIcon,
-  EyeOffIcon,
-} from "lucide-react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -21,19 +17,14 @@ import InvoiceFiltersCard from "../components/InvoiceFiltersCard";
 import InvoiceKpi from "../components/InvoiceKpi";
 import ViewInvoiceDialog from "../components/dialogs/ViewInvoiceDialog";
 import EditInvoiceDialog from "../components/dialogs/EditInvoiceDialog";
+import { ConfirmDeleteDialog } from "../components/dialogs/ConfirmDeleteDialog";
 
 export default function InvoiceModulePage() {
-  const { canCreateContract, canModifyContract, canDeleteContract } =
-    usePermissions();
+  const { canCreateContract, canModifyContract, canDeleteContract } = usePermissions();
   const { toast } = useToast();
 
   const [filters, setFilters] = useState(DEFAULT_INVOICE_FILTERS);
-  const {
-    data: invoicesData,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
+  const { data: invoicesData, isLoading, error, refetch } = useQuery({
     queryKey: INVOICE_QK.invoices.list(filters),
     queryFn: () => fetchInvoices(filters),
   });
@@ -46,9 +37,7 @@ export default function InvoiceModulePage() {
 
   const customerOptions = useMemo(() => {
     if (!invoices) return [];
-    return Array.from(
-      new Set(invoices.map((inv) => inv.clientName).filter(Boolean))
-    );
+    return Array.from(new Set(invoices.map((inv) => inv.clientName).filter(Boolean)));
   }, [invoices]);
 
   const [customerSearch, setCustomerSearch] = useState("");
@@ -63,23 +52,19 @@ export default function InvoiceModulePage() {
   const [showKpis, setShowKpis] = useState(false);
   const [expanded, setExpanded] = useState(true);
 
-  // ID de la facture en cours de téléchargement
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-
-  // ID de la facture à afficher dans le dialog
   const [viewingInvoiceId, setViewingInvoiceId] = useState<string | null>(null);
-
-  // ID de la facture à modifier
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
 
-  const handleDeleteInvoice = async (invoice: Invoice) => {
-    if (
-      !canDeleteContract() ||
-      !confirm("Êtes-vous sûr de vouloir supprimer cette facture ?")
-    )
-      return;
+  // ✅ Nouveau state pour le dialog de suppression
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+
+  const handleDeleteInvoice = async () => {
+    if (!invoiceToDelete) return;
+
     try {
-      await deleteInvoice(invoice.id);
+      await deleteInvoice(invoiceToDelete.id);
       toast({
         title: "Facture supprimée",
         description: "La facture a été supprimée avec succès",
@@ -91,6 +76,8 @@ export default function InvoiceModulePage() {
         description: err?.message || "Impossible de supprimer la facture",
         variant: "destructive",
       });
+    } finally {
+      setInvoiceToDelete(null);
     }
   };
 
@@ -110,13 +97,8 @@ export default function InvoiceModulePage() {
     setCustomerSearch("");
   };
 
-  const handleViewInvoice = (invoice: Invoice) => {
-    setViewingInvoiceId(invoice.id);
-  };
-
-  const handleEditInvoice = (invoice: Invoice) => {
-    setEditingInvoiceId(invoice.id);
-  };
+  const handleViewInvoice = (invoice: Invoice) => setViewingInvoiceId(invoice.id);
+  const handleEditInvoice = (invoice: Invoice) => setEditingInvoiceId(invoice.id);
 
   const handleDownloadInvoice = async (invoice: Invoice) => {
     try {
@@ -127,11 +109,9 @@ export default function InvoiceModulePage() {
         description: "La facture a été téléchargée avec succès",
       });
     } catch (e: any) {
-      console.error("[handleDownloadInvoice] Error:", e);
-      const errorMessage = e?.message || "Impossible de télécharger la facture en PDF";
       toast({
         title: "Erreur",
-        description: errorMessage,
+        description: e?.message || "Impossible de télécharger la facture en PDF",
         variant: "destructive",
       });
     } finally {
@@ -146,7 +126,7 @@ export default function InvoiceModulePage() {
   if (error)
     return (
       <div className="flex items-center justify-center h-full text-red-500">
-        Erreur lors du Chargement{(error as Error).message}
+        Erreur lors du Chargement {(error as Error).message}
       </div>
     );
 
@@ -155,16 +135,11 @@ export default function InvoiceModulePage() {
       <Header />
       <main className="h-[calc(100vh-64px)] px-4 py-2 lg:px-6 lg:py-1">
         <div className="w-full">
-          {/* En-tête de page + actions */}
           <div className="mb-3">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Gestion des Factures
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Gérer les factures et leurs lignes
-                </p>
+                <h1 className="text-2xl font-bold text-gray-900">Gestion des Factures</h1>
+                <p className="text-gray-600 mt-1">Gérer les factures et leurs lignes</p>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -172,11 +147,7 @@ export default function InvoiceModulePage() {
                   onClick={toggleExpand}
                   title={expanded ? "Réduire" : "Agrandir le tableau"}
                 >
-                  {expanded ? (
-                    <EyeIcon className="w-4 h-4 mr-2" />
-                  ) : (
-                    <EyeOffIcon className="w-4 h-4 mr-2" />
-                  )}
+                  {expanded ? <EyeIcon className="w-4 h-4 mr-2" /> : <EyeOffIcon className="w-4 h-4 mr-2" />}
                   Statistiques
                 </Button>
               </div>
@@ -189,7 +160,6 @@ export default function InvoiceModulePage() {
             </div>
           )}
 
-          {/* Filtres */}
           <InvoiceFiltersCard
             filters={filters}
             setFilters={setFilters}
@@ -201,7 +171,6 @@ export default function InvoiceModulePage() {
             setCustomerSearch={setCustomerSearch}
           />
 
-          {/* Table */}
           <Card>
             <CardContent className="p-0">
               {isLoading ? (
@@ -214,44 +183,46 @@ export default function InvoiceModulePage() {
                   total={totalInvoices}
                   limit={limit}
                   offset={offset}
-                  onChangePage={(newLimit, newOffset) => {
-                    setFilters((prev) => ({
-                      ...prev,
-                      limit: newLimit,
-                      offset: newOffset,
-                    }));
-                  }}
+                  onChangePage={(newLimit, newOffset) =>
+                    setFilters((prev) => ({ ...prev, limit: newLimit, offset: newOffset }))
+                  }
                   onView={handleViewInvoice}
                   onEdit={handleEditInvoice}
-                  onDelete={handleDeleteInvoice}
+                  onDelete={(inv) => {
+                    if (!canDeleteContract()) return;
+                    setInvoiceToDelete(inv);
+                    setDeleteDialogOpen(true);
+                  }}
                   onDownload={handleDownloadInvoice}
                   downloadingId={downloadingId}
-                  refresh={refetch}     // <— AJOUT ICI
+                  refresh={refetch}
                 />
-
               )}
             </CardContent>
           </Card>
         </div>
       </main>
 
-      {/* Dialog pour voir les détails de la facture */}
+      {/* Dialogs */}
       <ViewInvoiceDialog
         open={!!viewingInvoiceId}
-        onOpenChange={(open) => {
-          if (!open) setViewingInvoiceId(null);
-        }}
+        onOpenChange={(open) => { if (!open) setViewingInvoiceId(null); }}
         invoiceId={viewingInvoiceId}
       />
-
-      {/* Dialog pour modifier la facture */}
       <EditInvoiceDialog
         open={!!editingInvoiceId}
-        onOpenChange={(open) => {
-          if (!open) setEditingInvoiceId(null);
-        }}
+        onOpenChange={(open) => { if (!open) setEditingInvoiceId(null); }}
         invoiceId={editingInvoiceId}
-        refresh={() => refetch()}
+        refresh={refetch}
+      />
+
+      {/* ✅ Dialog confirmation suppression */}
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteInvoice}
+        title="Supprimer la facture"
+        description="Êtes-vous sûr de vouloir supprimer cette facture ?"
       />
     </div>
   );
