@@ -821,15 +821,19 @@ export function registerInvoiceRoutes(app: Express) {
                     generatedAt: invoice.generatedAt ?? new Date(),
                     status: invoice.status,
                     baseAmount: Number(invoice.baseAmount ?? 0),
+                    amount: Number(invoice.amount ?? invoice.baseAmount ?? 0),
                     vatRate: Number(invoice.vatRate ?? 0),
                     vatAmount: Number(invoice.vatAmount ?? 0),
                     redactionAmount: Number(invoice.redactionAmount ?? 0),
                     totalAmount: Number(invoice.totalAmount ?? 0),
                     createdAt: invoice.createdAt ?? new Date(),
                     updatedAt: invoice.updatedAt ?? new Date(),
+                    clientName: contract?.clientName ?? "Client",
+                    clientAddress: "", // You can add client address if available in contract
                 };
 
-                const line = invoice.billingLineId
+                // Get billing lines for invoice items
+                const invoiceLines = invoice.billingLineId
                     ? await db
                         .select()
                         .from(billingLines)
@@ -838,11 +842,20 @@ export function registerInvoiceRoutes(app: Express) {
                         .then((rows) => {
                             const ln = rows[0];
                             if (!ln) return undefined;
-                            return {
-                                ...ln,
-                                amountHt: Number(ln.amountHt ?? 0),
+                            const amountHt = Number(ln.amountHt ?? 0);
+                            const vatRate = Number(invoice.vatRate ?? 0);
+                            const vatAmount = amountHt * vatRate;
+                            const totalAmount = amountHt + vatAmount;
+                            
+                            return [{
+                                sequenceNo: ln.sequenceNo,
+                                description: invoice.description || `Service - Sequence ${ln.sequenceNo}`,
+                                amountHt: amountHt,
+                                vatAmount: vatAmount,
+                                totalAmount: totalAmount,
                                 dueDate: ln.dueDate ?? new Date(),
-                            };
+                                status: ln.status,
+                            }];
                         })
                     : undefined;
 
@@ -851,7 +864,11 @@ export function registerInvoiceRoutes(app: Express) {
 
 
                 // ensuite tu peux appeler
-                const html = renderInvoiceHtml(invoiceForPdf, line, { logoDataUrl });
+                const html = renderInvoiceHtml(invoiceForPdf, invoiceLines, { 
+                    logoDataUrl,
+                    companyName: "Ellington Wood Decor",
+                    companyAddress: "36 Terrick Rd, Ellington PE18 2NT, United Kingdom"
+                });
 
 
                 // 6️⃣ Puppeteer pour générer le PDF
@@ -866,9 +883,14 @@ export function registerInvoiceRoutes(app: Express) {
                 await browser.close();
 
                 // 7️⃣ Envoyer le PDF
-                const filename = `invoice_${invoice.invoiceNumber}.pdf`;
+                // Format: FAC-{invoiceNumber}.pdf (ex: FAC-2025-0123.pdf)
+                // Remplacer les EN DASH (—) par des tirets normaux (-) pour éviter les erreurs HTTP
+                const cleanInvoiceNumber = invoice.invoiceNumber.replace(/[\u2013\u2014]/g, "-");
+                const filename = `FAC-${cleanInvoiceNumber}.pdf`;
+                
                 res.setHeader("Content-Type", "application/pdf");
-                res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+                // Mettre le nom de fichier entre guillemets pour éviter les erreurs avec les caractères spéciaux
+                res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
                 res.end(pdfBuffer);
             } catch (err: any) {
                 console.error("[PDF] Error generating invoice PDF:", err);

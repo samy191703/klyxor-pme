@@ -107,9 +107,21 @@ export async function downloadInvoicePdf(id: string, invoiceNumber?: string): Pr
 
     const url = URL.createObjectURL(blob);
 
+    // Extract filename from Content-Disposition header if available
+    const contentDisposition = res.headers.get("Content-Disposition");
+    let filename = `FAC-${invoiceNumber ?? id}.pdf`;
+    
+    if (contentDisposition) {
+      // Extract filename from Content-Disposition header (supports both quoted and unquoted)
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch) {
+        filename = filenameMatch[1].trim().replace(/^["']|["']$/g, "");
+      }
+    }
+
     const link = document.createElement("a");
     link.href = url;
-    link.download = `invoice-${invoiceNumber ?? id}.pdf`;
+    link.download = filename;
 
     document.body.appendChild(link);
     link.click();
