@@ -1,6 +1,6 @@
 import {
-  BILLING_STATUS_LABELS,
-  BILLING_TYPE_LABELS,
+  INVOICE_STATUS_LABELS,
+  INVOICE_TYPE_LABELS,
 } from "../domain/constants";
 
 /** 🇫🇷 Format date to French locale (e.g., 15/04/2025) */
@@ -16,10 +16,10 @@ export const formatMoneyEUR = (v?: string | number | null) =>
       }).format(typeof v === "string" ? parseFloat(v) : v)
     : "-";
 
-/** 🏷️ Human-readable label for billing status */
-export const statusLabel = (s: keyof typeof BILLING_STATUS_LABELS | string) =>
-  (BILLING_STATUS_LABELS as any)[s] ?? s;
+/** 🏷️ Human-readable label for invoice status */
+export const statusLabel = (s: keyof typeof INVOICE_STATUS_LABELS | string) =>
+  (INVOICE_STATUS_LABELS as any)[s] ?? s;
 
-/** 🧾 Human-readable label for billing type */
-export const typeLabel = (t: keyof typeof BILLING_TYPE_LABELS | string) =>
-  (BILLING_TYPE_LABELS as any)[t] ?? t;
+/** 🧾 Human-readable label for invoice type */
+export const typeLabel = (t: keyof typeof INVOICE_TYPE_LABELS | string) =>
+  (INVOICE_TYPE_LABELS as any)[t] ?? t;

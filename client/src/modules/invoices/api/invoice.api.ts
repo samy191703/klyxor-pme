@@ -80,19 +80,43 @@ export async function deleteInvoice(id: string): Promise<{ message: string }> {
 
 /** ================== Download PDF ================== **/
 export async function downloadInvoicePdf(id: string, invoiceNumber?: string): Promise<void> {
-  const res = await apiRequest("GET", `/api/invoices/${id}/pdf`);
+  try {
+    const res = await fetch(`/api/invoices/${id}/pdf`, {
+      method: "GET",
+      credentials: "include",
+    });
 
-  if (!res.ok) throw new Error("Erreur lors du téléchargement du PDF");
+    if (!res.ok) {
+      const errorText = await res.text();
+      let errorMessage = "Erreur lors du téléchargement du PDF";
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
 
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+    const blob = await res.blob();
+    
+    // Vérifier que c'est bien un PDF
+    if (blob.type !== "application/pdf" && blob.size === 0) {
+      throw new Error("Le fichier PDF est vide ou invalide");
+    }
 
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `invoice-${invoiceNumber ?? id}.pdf`;
+    const url = URL.createObjectURL(blob);
 
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `invoice-${invoiceNumber ?? id}.pdf`;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error: any) {
+    console.error("[downloadInvoicePdf] Error:", error);
+    throw error;
+  }
 }
