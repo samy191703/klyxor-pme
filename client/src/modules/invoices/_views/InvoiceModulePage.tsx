@@ -20,6 +20,7 @@ import { InvoiceTable } from "../components/InvoiceTable";
 import InvoiceFiltersCard from "../components/InvoiceFiltersCard";
 import InvoiceKpi from "../components/InvoiceKpi";
 import ViewInvoiceDialog from "../components/dialogs/ViewInvoiceDialog";
+import EditInvoiceDialog from "../components/dialogs/EditInvoiceDialog";
 
 export default function InvoiceModulePage() {
   const { canCreateContract, canModifyContract, canDeleteContract } =
@@ -67,6 +68,9 @@ export default function InvoiceModulePage() {
 
   // ID de la facture à afficher dans le dialog
   const [viewingInvoiceId, setViewingInvoiceId] = useState<string | null>(null);
+  
+  // ID de la facture à modifier
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
 
   const handleDeleteInvoice = async (invoice: Invoice) => {
     if (
@@ -108,6 +112,10 @@ export default function InvoiceModulePage() {
 
   const handleViewInvoice = (invoice: Invoice) => {
     setViewingInvoiceId(invoice.id);
+  };
+
+  const handleEditInvoice = (invoice: Invoice) => {
+    setEditingInvoiceId(invoice.id);
   };
 
   const handleDownloadInvoice = async (invoice: Invoice) => {
@@ -169,7 +177,7 @@ export default function InvoiceModulePage() {
                   ) : (
                     <EyeOffIcon className="w-4 h-4 mr-2" />
                   )}
-                  Statistiques
+                  KPIs
                 </Button>
               </div>
             </div>
@@ -214,6 +222,7 @@ export default function InvoiceModulePage() {
                     }));
                   }}
                   onView={handleViewInvoice}
+                  onEdit={handleEditInvoice}
                   onDelete={handleDeleteInvoice}
                   onDownload={handleDownloadInvoice}
                   downloadingId={downloadingId}
@@ -231,6 +240,15 @@ export default function InvoiceModulePage() {
           if (!open) setViewingInvoiceId(null);
         }}
         invoiceId={viewingInvoiceId}
+      />
+
+      {/* Dialog pour modifier la facture */}
+      <EditInvoiceDialog
+        open={!!editingInvoiceId}
+        onOpenChange={(open) => {
+          if (!open) setEditingInvoiceId(null);
+        }}
+        invoiceId={editingInvoiceId}
       />
     </div>
   );
