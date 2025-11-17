@@ -557,16 +557,32 @@ export function registerInvoiceRoutes(app: Express) {
                     invoiceNumber = `INV-${Date.now()}`;
                 }
 
-                const formatNumber = (num: number) => Number(num.toFixed(2));
-
-                const amount = existingContract.amount ?? 0;
-                const vatRate = existingContract.tvaRate ?? 0;
+                // ✅ FIX: Use billing line's amountHt instead of contract amount
+                // BUG FIX: Previously used existingContract.amount which could be null/undefined,
+                // causing "amount: Required" validation error. Invoices should use the billing
+                // line's amountHt which represents the actual amount to invoice.
+                const amountHt = Number(billingLineRow.amountHt ?? 0);
+                
+                // Get VAT rate from contract (stored as decimal, e.g., 0.20 for 20%)
+                // Invoice schema stores vatRate as percentage (e.g., 20 for 20%)
+                const contractVatRate = Number(existingContract.tvaRate ?? 0.20);
+                // Convert to percentage format for invoice (0.20 -> 20)
+                const vatRatePercent = contractVatRate * 100;
 
                 const formatDecimal = (num: string | number | null | undefined): string => {
                     const n = Number(num) || 0;
                     return n.toFixed(2);
                 };
 
+                // Calculate amounts: HT (amountHt), TVA, TTC (totalAmount)
+                // - baseAmount: Base amount before VAT (same as amountHt)
+                // - amount: HT amount (before VAT) - required by database schema
+                // - vatAmount: VAT amount = HT * rate (e.g., 100 * 0.20 = 20)
+                // - totalAmount: TTC (all taxes included) = HT + VAT
+                const baseAmount = amountHt;
+                const amount = amountHt; // HT amount (same as baseAmount)
+                const vatAmount = amountHt * contractVatRate; // VAT = HT * rate (e.g., 100 * 0.20 = 20)
+                const totalAmount = amountHt + vatAmount; // TTC = HT + VAT
 
                 const invoiceData = {
                     contractId: d.contractId,
@@ -574,12 +590,12 @@ export function registerInvoiceRoutes(app: Express) {
                     description: d.description || null,
                     dueDate: new Date(d.dueDate),
                     amount: formatDecimal(amount),
-                    vatRate: formatDecimal(vatRate),
-                    vatAmount: formatDecimal(Number(amount) * Number(vatRate)),
-                    baseAmount: formatDecimal(amount),
+                    vatRate: formatDecimal(vatRatePercent),
+                    vatAmount: formatDecimal(vatAmount),
+                    baseAmount: formatDecimal(baseAmount),
                     redactionAmount: formatDecimal(0),
                     type: TypeInvoice.NORMAL,
-                    totalAmount: formatDecimal(Number(amount) + Number(amount) * Number(vatRate)),
+                    totalAmount: formatDecimal(totalAmount),
                     status: InvoiceStatus.Draft,
                     invoiceNumber,
                     generatedBy: safeUserId(req),
