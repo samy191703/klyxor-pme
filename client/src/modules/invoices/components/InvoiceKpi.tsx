@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchInvoiceKpis } from "../api/invoice.api";
 import { Card, CardContent } from "@mui/material";
+import { INVOICE_STATUS_LABELS, INVOICE_TYPE_LABELS } from "@/modules/invoices/domain/constants";
 
 interface InvoiceKpis {
   totalInvoices: number;
@@ -39,7 +40,6 @@ export default function InvoiceKpi() {
     <div className="flex flex-col gap-4 w-full">
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 w-full">
-
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-blue-600">
@@ -53,8 +53,8 @@ export default function InvoiceKpi() {
           <Card key={status}>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold">{count}</div>
-              <div className="text-sm capitalize">
-                {status.replace("_", " ")}
+              <div className="text-sm">
+                {INVOICE_STATUS_LABELS[status as keyof typeof INVOICE_STATUS_LABELS]}
               </div>
             </CardContent>
           </Card>
@@ -66,7 +66,9 @@ export default function InvoiceKpi() {
           <Card key={type}>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold">{count}</div>
-              <div className="text-sm capitalize">{type}</div>
+              <div className="text-sm">
+                {INVOICE_TYPE_LABELS[type as keyof typeof INVOICE_TYPE_LABELS]}
+              </div>
             </CardContent>
           </Card>
         ))}

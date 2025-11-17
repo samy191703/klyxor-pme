@@ -96,69 +96,7 @@ export const InvoiceFiltersCard: React.FC<InvoiceFiltersCardProps> = ({
               }}
             />
           </div>
-          <div className="flex-1 min-w-[150px] relative">
-            <TextField
-              label="Client"
-              size="small"
-              fullWidth
-              value={customerSearch}
-              inputRef={inputRef}
-              onChange={(e) => {
-                setCustomerSearch(e.target.value);
-                setShowCustomerList(true);
-              }}
-              onFocus={() => setShowCustomerList(true)}
-              onKeyDown={handleKeyDown}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <User size={18} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            {showCustomerList &&
-              filteredCustomers.length > 0 &&
-              inputRef.current &&
-              createPortal(
-                <div
-                  style={{
-                    position: "absolute",
-                    top: inputRef.current.getBoundingClientRect().bottom + window.scrollY,
-                    left: inputRef.current.getBoundingClientRect().left + window.scrollX,
-                    width: inputRef.current.offsetWidth,
-                    maxHeight: 200,
-                    overflowY: "auto",
-                    background: "white",
-                    border: "1px solid #ccc",
-                    borderRadius: 4,
-                    zIndex: 9999,
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                  }}
-                >
-                  {filteredCustomers.map((c, i) => (
-                    <div
-                      key={c}
-                      style={{
-                        padding: "4px 8px",
-                        cursor: "pointer",
-                        backgroundColor: i === highlightIndex ? "#e0f2ff" : "transparent",
-                      }}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setFilters((f) => ({ ...f, search: c }));
-                        setCustomerSearch(c);
-                        setShowCustomerList(false);
-                        setHighlightIndex(-1);
-                      }}
-                    >
-                      {c}
-                    </div>
-                  ))}
-                </div>,
-                document.body
-              )}
-          </div>
+          
           <div className="flex-1 min-w-[120px]">
             <TextField
               label="N° Contrat"
