@@ -18,11 +18,22 @@ import InvoiceKpi from "../components/InvoiceKpi";
 import ViewInvoiceDialog from "../components/dialogs/ViewInvoiceDialog";
 import EditInvoiceDialog from "../components/dialogs/EditInvoiceDialog";
 import { ConfirmDeleteDialog } from "../components/dialogs/ConfirmDeleteDialog";
+import { useLocation } from "wouter";
+
 
 export default function InvoiceModulePage() {
   const { canCreateContract, canModifyContract, canDeleteContract } = usePermissions();
   const { toast } = useToast();
 
+  const [location] = useLocation();
+
+  let highlightLn: string | null = null;
+
+  if (location.includes("?")) {
+    const queryString = location.split("?")[1];
+    const params = new URLSearchParams(queryString);
+    highlightLn = params.get("ln");
+  }
   const [filters, setFilters] = useState(DEFAULT_INVOICE_FILTERS);
   const { data: invoicesData, isLoading, error, refetch } = useQuery({
     queryKey: INVOICE_QK.invoices.list(filters),
@@ -179,6 +190,7 @@ export default function InvoiceModulePage() {
                 </div>
               ) : (
                 <InvoiceTable
+                  highlightLn={highlightLn}
                   rows={invoices}
                   total={totalInvoices}
                   limit={limit}
@@ -190,8 +202,8 @@ export default function InvoiceModulePage() {
                   onEdit={handleEditInvoice}
                   onDelete={(invoice) => {
                     if (!canDeleteContract()) return;
-                    setInvoiceToDelete(invoice);   
-                    setDeleteDialogOpen(true);    
+                    setInvoiceToDelete(invoice);
+                    setDeleteDialogOpen(true);
                   }}
                   onDownload={handleDownloadInvoice}
                   downloadingId={downloadingId}

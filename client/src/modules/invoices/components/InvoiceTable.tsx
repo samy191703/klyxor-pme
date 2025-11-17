@@ -32,6 +32,7 @@ import { formatDateFR, formatMoneyEUR } from "../utils/formatters";
 
 type Props = {
   rows: Invoice[];
+  highlightLn?: string | null;
   total: number;
   limit: number;
   offset: number;
@@ -117,6 +118,7 @@ function StatusChipInvoice({ status }: { status: Invoice["status"] }) {
 
 export function InvoiceTable({
   rows,
+  highlightLn,
   total,
   limit,
   offset,
@@ -205,9 +207,13 @@ export function InvoiceTable({
             ) : (
               displayedRows.map((r) => {
                 const isDownloading = downloadingId === r.id;
+                const isHighlighted = r.billingLineId
 
                 return (
-                  <TableRow key={r.id} hover>
+                  <TableRow key={r.id} hover
+                    sx={{
+                      backgroundColor: isHighlighted ? "rgba(92, 18, 18, 0.08)" : "inherit",
+                    }}>
                     {/* N° Facture */}
                     <TableCell sx={bodyCellSx}>
                       <Box

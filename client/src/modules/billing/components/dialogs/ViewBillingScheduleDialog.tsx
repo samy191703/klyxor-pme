@@ -24,9 +24,10 @@ import type { CalculateDto } from "@/_dtos/calculate-indexation.dto";
 import type { CalculationResult } from "@/_dtos/calculate-results.dto";
 import { getContract } from "@/services/contracts.api";
 import { postIndexationPreview } from "@/services/indexation.api";
-import { AlertTriangle, FilePlus } from "lucide-react";
+import { AlertTriangle, EyeIcon, FilePlus, FileText } from "lucide-react";
 import { createInvoice } from "@/modules/invoices/api/invoice.api";
 import { useToast } from "@/hooks/use-toast";
+import { IconButton, Tooltip } from "@mui/material";
 
 type Props = {
   open: boolean;
@@ -546,7 +547,7 @@ export function ViewBillingScheduleDialog({
                                 </span>
                               </td>
                               <td className="px-3 py-2 text-center">
-                                {ln.status === BillingLineStatus.FACTUREE ? (
+                                {ln.status === BillingLineStatus.A_FACTURER ? (
                                   <button
                                     className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs text-green-700 gap-1"
                                     onClick={() => handleOpenInvoiceModal(ln)}
@@ -554,9 +555,18 @@ export function ViewBillingScheduleDialog({
                                     <FilePlus className="w-4 h-4" />
                                   </button>
                                 ) : (
-                                  <span title="Besoin de confirmation">
-                                      <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                                  </span>
+                                  <Tooltip title="Voir les détails">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => {
+                                        const baseUrl = window.location.origin;
+                                        window.location.href = `${baseUrl}/invoices?ln=${ln.id}`;
+                                      }}
+                                    >
+                                      <EyeIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+
                                 )}
                               </td>
                             </tr>

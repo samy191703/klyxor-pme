@@ -468,15 +468,15 @@ export class AlertNotificationService extends EventEmitter {
           .returning();
         
         // Enregistrer dans l'audit log
-        await db.insert(auditLogs)
-          .values({
-            user: 'system',
-            action: 'alert_created',
-            traceId: dbAlert.id,
-            eventType: 'system',
-            eventName: 'alert_creation',
-            details: data.message
-          });
+        // await db.insert(auditLogs)
+        //   .values({
+        //     user: 'system',
+        //     action: 'alert_created',
+        //     traceId: dbAlert.id,
+        //     eventType: 'system',
+        //     eventName: 'alert_creation',
+        //     details: data.message
+        //   });
         
         // Distribuer l'alerte selon les préférences
         await this.distributeAlert(dbAlert, data);
