@@ -32,6 +32,24 @@ export enum InvoiceStatus {
     PaidPartially = "paid_parsely" // paiement partiel
 }
 
+type InvoiceForPdf = {
+    invoiceNumber: string;
+    contractNumber: string;
+    description: string;
+    dueDate: Date | string;
+    generatedAt: Date | string;
+    status: string;
+    baseAmount: number;
+    vatRate: number;
+    amount?: number;
+    vatAmount: number;
+    redactionAmount: number;
+    totalAmount: number;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    clientName?: string;
+    clientAddress?: string;
+};
 
 // ---- Zod schema ----
 const invoiceCreateSchema = z.object({
@@ -795,31 +813,31 @@ export function registerInvoiceRoutes(app: Express) {
             console.log("[PDF] Request for invoice", invoiceId);
 
             try {
-                // 1️⃣ Récupérer la facture
                 const invoice = await storage.getInvoice(invoiceId);
-                if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+                if (!invoice) return res.status(404).json({ error: "Facture introuvable" });
 
-                // 2️⃣ Récupérer le contrat associé
                 const contract = await db
                     .select()
                     .from(contracts)
                     .where(eq(contracts.id, invoice.contractId))
                     .limit(1)
-                    .then((rows) => rows[0]);
+                    .then(rows => rows[0]);
 
-
-
-                // 4️⃣ Logo (optionnel)
                 let logoDataUrl: string | undefined;
                 try {
                     const logoPath = path.join(process.cwd(), "server", "assets", "logo.jpeg");
                     const logoBuffer = fs.readFileSync(logoPath);
                     logoDataUrl = `data:image/jpeg;base64,${logoBuffer.toString("base64")}`;
                 } catch (err) {
-                    console.warn("[PDF] Logo not found:", err);
+                    console.warn("[PDF] Logo introuvable:", err);
                 }
 
-                const invoiceForPdf = {
+                const invoiceForPdf: InvoiceForPdf & {
+                    maxAnnualProduction?: string;
+                    numberOfTurbines?: string;
+                    pricePerMWh?: string;
+                    currency?: string;
+                } = {
                     invoiceNumber: invoice.invoiceNumber,
                     contractNumber: contract?.number ?? "—",
                     description: invoice.description ?? "",
@@ -835,49 +853,67 @@ export function registerInvoiceRoutes(app: Express) {
                     createdAt: invoice.createdAt ?? new Date(),
                     updatedAt: invoice.updatedAt ?? new Date(),
                     clientName: contract?.clientName ?? "Client",
-                    clientAddress: "", // You can add client address if available in contract
+                    clientAddress: [
+                        contract?.type,
+                        contract?.technology,
+                        contract?.businessUnit,
+                        contract?.parkCode,
+                    ].filter(Boolean).join(", "),
+                    maxAnnualProduction: contract?.maxAnnualProduction ?? undefined,
+                    numberOfTurbines: contract?.numberOfTurbines ?? undefined,
+                    pricePerMWh: contract?.pricePerMWh ?? undefined,
+                    currency: contract?.currency ?? "EUR",
                 };
 
-                // Get billing lines for invoice items
-                const invoiceLines = invoice.billingLineId
-                    ? await db
+                let invoiceLines: {
+                    sequenceNo?: number;
+                    description?: string;
+                    quantity?: number;
+                    unitPrice?: number;
+                    amount?: number;
+                    amountHt?: number;
+                    vatAmount?: number;
+                    totalAmount?: number;
+                    dueDate?: Date | string;
+                    status?: string;
+                }[] = [];
+
+                if (invoice.billingLineId) {
+                    invoiceLines = await db
                         .select()
                         .from(billingLines)
                         .where(eq(billingLines.id, invoice.billingLineId))
-                        .limit(1)
-                        .then((rows) => {
-                            const ln = rows[0];
-                            if (!ln) return undefined;
-                            const amountHt = Number(ln.amountHt ?? 0);
-                            const vatRate = Number(invoice.vatRate ?? 0);
-                            const vatAmount = amountHt * vatRate;
-                            const totalAmount = amountHt + vatAmount;
+                        .then(rows =>
+                            rows.map((ln, idx) => {
+                                const amountHt = Number(ln.amountHt ?? 0);
+                                const vatRate = Number(invoice.vatRate ?? 0);
+                                const vatAmount = amountHt * (vatRate / 100);
+                                const totalAmount = amountHt + vatAmount;
 
-                            return [{
-                                sequenceNo: ln.sequenceNo,
-                                description: invoice.description || `Service - Sequence ${ln.sequenceNo}`,
-                                amountHt: amountHt,
-                                vatAmount: vatAmount,
-                                totalAmount: totalAmount,
-                                dueDate: ln.dueDate ?? new Date(),
-                                status: ln.status,
-                            }];
-                        })
-                    : undefined;
+                                return {
+                                    sequenceNo: ln.sequenceNo ?? idx + 1,
+                                    description: invoice.description || `Service - Seq ${ln.sequenceNo ?? idx + 1}`,
+                                    quantity: 1,
+                                    unitPrice: amountHt,
+                                    amount: totalAmount,
+                                    amountHt,
+                                    vatAmount,
+                                    totalAmount,
+                                    dueDate: ln.dueDate ?? new Date(),
+                                    status: ln.status ?? undefined,
+                                };
+                            })
+                        );
+                }
 
+                invoiceForPdf.totalAmount = invoiceLines.reduce((sum, l) => sum + (l.amount ?? 0), 0);
 
-
-
-
-                // ensuite tu peux appeler
                 const html = renderInvoiceHtml(invoiceForPdf, invoiceLines, {
                     logoDataUrl,
                     companyName: "Ellington Wood Decor",
-                    companyAddress: "36 Terrick Rd, Ellington PE18 2NT, United Kingdom"
+                    companyAddress: "36 Terrick Rd, Ellington PE18 2NT, United Kingdom",
                 });
 
-
-                // 6️⃣ Puppeteer pour générer le PDF
                 const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
                 const page = await browser.newPage();
                 await page.setContent(html, { waitUntil: "domcontentloaded" });
@@ -888,38 +924,18 @@ export function registerInvoiceRoutes(app: Express) {
                 });
                 await browser.close();
 
-                // 7️⃣ Envoyer le PDF
-                // Format: FAC-{invoiceNumber}.pdf (ex: FAC-2025-0123.pdf)
-                // Remplacer les EN DASH (—) par des tirets normaux (-) pour éviter les erreurs HTTP
                 const cleanInvoiceNumber = invoice.invoiceNumber.replace(/[\u2013\u2014]/g, "-");
-                const filename = `FAC-${cleanInvoiceNumber}.pdf`;
+                const filename = `FACTURE-${cleanInvoiceNumber}.pdf`;
 
                 res.setHeader("Content-Type", "application/pdf");
-                // Mettre le nom de fichier entre guillemets pour éviter les erreurs avec les caractères spéciaux
                 res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
                 res.end(pdfBuffer);
             } catch (err: any) {
-                console.error("[PDF] Error generating invoice PDF:", err);
-                res.status(500).json({ error: err.message || "PDF generation failed" });
+                console.error("[PDF] Erreur lors de la génération de la facture PDF:", err);
+                res.status(500).json({ error: err.message || "Échec de génération du PDF" });
             }
         }
     );
 
 }
 
-
-/*
-
-=> in the front => Détails du Plan de facturation => billing lines :
- add a button of genarate invoice
-
- with contract Id + billing line Id + a pop that includ due date + description
- NORMAL(facturation echiance) + ADJUSTEMENT + D'AVOIRE; NORMAL as default value
-
-
-
- sur les route ajuter le module Facture (invoice in client/src/moduls like billing in the strecture) en bas de plans de facturation
-  => KPIS
-  => and the table of invoice with the action : see more and genarte pdf like billing juste changing his title and the Edite if  it's drafd (the defaut status value)
-
- */
