@@ -49,7 +49,7 @@ type Props = {
 const COLS = [
   200, // N° Facture
   180, // Contrat
-  200, // Client
+  160, // Client
   140, // Montant HT
   140, // Montant TVA
   140, // Montant TTC

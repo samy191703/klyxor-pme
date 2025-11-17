@@ -5,7 +5,7 @@ import { INVOICE_QK } from "../domain/constants";
 
 /** ================== KPI ================== **/
 export async function fetchInvoiceKpis() {
-  const res = await apiRequest("GET", `/api/invoices/kpis/_issam2`);
+  const res = await apiRequest("GET", `/api/invoices/kpis/_invoices`);
   return res.json();
 }
 

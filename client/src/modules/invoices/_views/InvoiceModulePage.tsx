@@ -188,10 +188,10 @@ export default function InvoiceModulePage() {
                   }
                   onView={handleViewInvoice}
                   onEdit={handleEditInvoice}
-                  onDelete={(inv) => {
+                  onDelete={(invoice) => {
                     if (!canDeleteContract()) return;
-                    setInvoiceToDelete(inv);
-                    setDeleteDialogOpen(true);
+                    setInvoiceToDelete(invoice);   
+                    setDeleteDialogOpen(true);    
                   }}
                   onDownload={handleDownloadInvoice}
                   downloadingId={downloadingId}

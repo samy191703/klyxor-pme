@@ -81,7 +81,7 @@ export function registerInvoiceRoutes(app: Express) {
     // --- GET all for KPIS ---
     /**
  * @openapi
- * /api/invoices/kpis/_issam2:
+ * /api/invoices/kpis/_invoices:
  *   get:
  *     summary: Get global KPI counters for invoices
  *     description: Returns global counters without filters or pagination.
@@ -95,7 +95,7 @@ export function registerInvoiceRoutes(app: Express) {
  *         description: Server error
  */
     app.get(
-        "/api/invoices/kpis/_issam2",
+        "/api/invoices/kpis/_invoices",
         isAuthenticated,
         requirePermission("invoices", "read"),
         async (req: Request, res: Response) => {
@@ -382,10 +382,16 @@ export function registerInvoiceRoutes(app: Express) {
                     line: inv.billingLineId ? billingLinesMap[inv.billingLineId] || null : null,
                     generatedByUser: inv.generatedBy ? usersMap[inv.generatedBy] || null : null,
                 }));
+                const total = await db
+                    .select({ count: sql`COUNT(*)` })
+                    .from(invoices)
+                    .leftJoin(contracts, eq(invoices.contractId, contracts.id))
+                    .where(where as any)
+                    .then(r => Number(r[0]?.count ?? 0));
 
                 return res.status(200).json({
                     rows: enriched,
-                    total: enriched.length,
+                    total,
                 });
 
             } catch (error) {
@@ -533,14 +539,14 @@ export function registerInvoiceRoutes(app: Express) {
                     invoiceNumber = `INV-${Date.now()}`;
                 }
 
-                const formatNumber = (num: number) => Number(num.toFixed(2));  
+                const formatNumber = (num: number) => Number(num.toFixed(2));
 
                 const amount = existingContract.amount ?? 0;
                 const vatRate = existingContract.tvaRate ?? 0;
 
                 const formatDecimal = (num: string | number | null | undefined): string => {
-                    const n = Number(num) || 0;  
-                    return n.toFixed(2);      
+                    const n = Number(num) || 0;
+                    return n.toFixed(2);
                 };
 
 
@@ -846,7 +852,7 @@ export function registerInvoiceRoutes(app: Express) {
                             const vatRate = Number(invoice.vatRate ?? 0);
                             const vatAmount = amountHt * vatRate;
                             const totalAmount = amountHt + vatAmount;
-                            
+
                             return [{
                                 sequenceNo: ln.sequenceNo,
                                 description: invoice.description || `Service - Sequence ${ln.sequenceNo}`,
@@ -864,7 +870,7 @@ export function registerInvoiceRoutes(app: Express) {
 
 
                 // ensuite tu peux appeler
-                const html = renderInvoiceHtml(invoiceForPdf, invoiceLines, { 
+                const html = renderInvoiceHtml(invoiceForPdf, invoiceLines, {
                     logoDataUrl,
                     companyName: "Ellington Wood Decor",
                     companyAddress: "36 Terrick Rd, Ellington PE18 2NT, United Kingdom"
@@ -887,7 +893,7 @@ export function registerInvoiceRoutes(app: Express) {
                 // Remplacer les EN DASH (—) par des tirets normaux (-) pour éviter les erreurs HTTP
                 const cleanInvoiceNumber = invoice.invoiceNumber.replace(/[\u2013\u2014]/g, "-");
                 const filename = `FAC-${cleanInvoiceNumber}.pdf`;
-                
+
                 res.setHeader("Content-Type", "application/pdf");
                 // Mettre le nom de fichier entre guillemets pour éviter les erreurs avec les caractères spéciaux
                 res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

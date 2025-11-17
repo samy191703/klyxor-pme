@@ -50,17 +50,26 @@ export class InvoiceNumberGenerator {
 
     const { typeCode, entityCode, year, sequence } = parsed;
 
-    // 2) Compter les factures existantes pour ce contrat
-    const cnt = await db
-      .select({ total: count() })
+    // 2) Récupérer tous les numéros existants pour ce contrat
+    const existingInvoices = await db
+      .select({ invoiceNumber: invoices.invoiceNumber })
       .from(invoices)
       .where(eq(invoices.contractId, contractId));
 
-    const existing = Number(cnt?.[0]?.total ?? 0);
-    const nextIndex = existing + 1;
+    // 3) Extraire le suffixe numérique et calculer le max
+    let maxSuffix = 0;
+    existingInvoices.forEach(({ invoiceNumber }) => {
+      const match = invoiceNumber.match(/-(\d{2})$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxSuffix) maxSuffix = num;
+      }
+    });
+
+    const nextIndex = maxSuffix + 1;
     const invoiceSeq = String(nextIndex).padStart(2, "0");
 
-    // 3) Retourner le numéro canonique
+    // 4) Retourner le numéro unique
     return `INV-${typeCode}${SEP}${entityCode}${SEP}${year}${SEP}${sequence}-${invoiceSeq}`;
   }
 
