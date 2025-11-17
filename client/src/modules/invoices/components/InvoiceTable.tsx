@@ -42,6 +42,7 @@ type Props = {
   onDownload?: (row: Invoice) => void;
   downloadingId?: string | null;
   height?: string | number;
+  refresh?: () => void;
 };
 
 // Fixed column widths

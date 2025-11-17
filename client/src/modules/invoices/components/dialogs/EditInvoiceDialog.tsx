@@ -31,12 +31,14 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   invoiceId: string | null;
+  refresh?: () => void;
 };
 
 export function EditInvoiceDialog({
   open,
   onOpenChange,
   invoiceId,
+  refresh
 }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -87,30 +89,25 @@ export function EditInvoiceDialog({
     try {
       setIsSubmitting(true);
 
-      // Convertir tous les champs numériques en nombres et la date en ISO string
       const payload: InvoiceUpdateDto = {
         type: form.type,
         status: form.status,
         description: form.description || undefined,
         dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
-        // Convertir explicitement tous les montants en nombres
-        baseAmount: typeof form.baseAmount === 'number' ? form.baseAmount : Number(form.baseAmount) || 0,
-        amount: typeof form.amount === 'number' ? form.amount : Number(form.amount) || 0,
-        vatRate: typeof form.vatRate === 'number' ? form.vatRate : Number(form.vatRate) || 0,
-        vatAmount: typeof form.vatAmount === 'number' ? form.vatAmount : Number(form.vatAmount) || 0,
-        redactionAmount: typeof form.redactionAmount === 'number' ? form.redactionAmount : Number(form.redactionAmount) || 0,
-        totalAmount: typeof form.totalAmount === 'number' ? form.totalAmount : Number(form.totalAmount) || 0,
+        baseAmount: Number(form.baseAmount) || 0,
+        amount: Number(form.amount) || 0,
+        vatRate: Number(form.vatRate) || 0,
+        vatAmount: Number(form.vatAmount) || 0,
+        redactionAmount: Number(form.redactionAmount) || 0,
+        totalAmount: Number(form.totalAmount) || 0,
       };
 
       await updateInvoice(invoiceId, payload);
 
-      // Invalider les queries pour rafraîchir les données
-      await queryClient.invalidateQueries({
-        queryKey: INVOICE_QK.invoices.detail(invoiceId),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: INVOICE_QK.invoices.list(),
-      });
+      await queryClient.invalidateQueries({ queryKey: INVOICE_QK.invoices.list() });
+      await queryClient.invalidateQueries({ queryKey: INVOICE_QK.invoices.detail(invoiceId) });
+
+      refresh?.();
 
       toast({
         title: "Facture modifiée",
@@ -122,14 +119,14 @@ export function EditInvoiceDialog({
       console.error("Erreur lors de la modification:", error);
       toast({
         title: "Erreur",
-        description:
-          error?.message || "Impossible de modifier la facture",
+        description: error?.message || "Impossible de modifier la facture",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   if (!invoiceId) return null;
 

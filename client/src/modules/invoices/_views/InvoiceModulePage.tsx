@@ -68,7 +68,7 @@ export default function InvoiceModulePage() {
 
   // ID de la facture à afficher dans le dialog
   const [viewingInvoiceId, setViewingInvoiceId] = useState<string | null>(null);
-  
+
   // ID de la facture à modifier
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
 
@@ -177,7 +177,7 @@ export default function InvoiceModulePage() {
                   ) : (
                     <EyeOffIcon className="w-4 h-4 mr-2" />
                   )}
-                  KPIs
+                  Statistiques
                 </Button>
               </div>
             </div>
@@ -226,7 +226,9 @@ export default function InvoiceModulePage() {
                   onDelete={handleDeleteInvoice}
                   onDownload={handleDownloadInvoice}
                   downloadingId={downloadingId}
+                  refresh={refetch}     // <— AJOUT ICI
                 />
+
               )}
             </CardContent>
           </Card>
@@ -249,6 +251,7 @@ export default function InvoiceModulePage() {
           if (!open) setEditingInvoiceId(null);
         }}
         invoiceId={editingInvoiceId}
+        refresh={() => refetch()}
       />
     </div>
   );

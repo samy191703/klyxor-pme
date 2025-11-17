@@ -35,54 +35,41 @@ export default function InvoiceKpi() {
       </div>
     );
 
-  const statusColors: Record<string, string> = {
-    draft: "bg-blue-100 text-blue-700",
-    inpaid: "bg-red-100 text-red-700",
-    paid: "bg-green-100 text-green-700",
-    cancelled: "bg-gray-100 text-gray-700",
-    paid_parsely: "bg-purple-100 text-purple-700",
-  };
-
-  const typeColors: Record<string, string> = {
-    NORMAL: "bg-yellow-100 text-yellow-700",
-    ADJUSTEMENT: "bg-orange-100 text-orange-700",
-    AVOIR: "bg-pink-100 text-pink-700",
-  };
-
   return (
-    <div className="space-y-4 mb-6">
-      {/* Ligne 1: Total Invoices */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="flex flex-col gap-4 w-full">
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 w-full">
+
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">{data?.totalInvoices}</div>
-            <div className="text-gray-700">Total Factures</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {data?.totalInvoices}
+            </div>
+            <div className="text-sm text-gray-600">Total</div>
           </CardContent>
         </Card>
 
-        {data &&
-          Object.entries(data.byStatus).map(([status, count]) => (
-            <Card key={status}>
-              <CardContent
-                className={`p-4 text-center ${statusColors[status] ?? ""}`}
-              >
-                <div className="text-2xl font-bold">{count}</div>
-                <div className="capitalize">{status.replace("_", " ")}</div>
-              </CardContent>
-            </Card>
-          ))}
+        {Object.entries(data!.byStatus).map(([status, count]) => (
+          <Card key={status}>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold">{count}</div>
+              <div className="text-sm capitalize">
+                {status.replace("_", " ")}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-        {data &&
-          Object.entries(data.byType).map(([type, count]) => (
-            <Card key={type}>
-              <CardContent
-                className={`p-4 text-center ${typeColors[type] ?? ""}`}
-              >
-                <div className="text-2xl font-bold">{count}</div>
-                <div className="capitalize">{type}</div>
-              </CardContent>
-            </Card>
-          ))}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+        {Object.entries(data!.byType).map(([type, count]) => (
+          <Card key={type}>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold">{count}</div>
+              <div className="text-sm capitalize">{type}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );
