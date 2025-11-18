@@ -926,9 +926,33 @@ export function registerInvoiceRoutes(app: Express) {
 
                 const html = renderInvoiceHtml(invoiceForPdf, invoiceLines, {
                     logoDataUrl,
-                    companyName: "Ellington Wood Decor",
-                    companyAddress: "36 Terrick Rd, Ellington PE18 2NT, United Kingdom",
-                });
+                    companyName: "KLYXOR Solutionssss",
+                    companyAddress: "123 Rue de la Paix, 75000 Paris, France",
+                    companyPhone: "01 23 45 67 89",
+                    companyEmail: "contact@klyxor.com",
+                    companyWebsite: "https://www.klyxor.com",
+                    customerCode: "1234567890",
+                    bank: {
+                        bankName: "Banque de France",
+                        accountNumber: "1234567890",
+                        iban: "FR7612345678901234567890123",
+                        swift: "BNPAFRPP761",
+                        owner: "KLYXOR Solutions",
+                        address: "123 Rue de la Paix, 75000 Paris, France", 
+                    },
+                    companyFooter: {
+                        capital: "1000000",
+                        rc: "1234567890",
+                        patente: "1234567890",
+                        if: "1234567890",
+                        cnss: "1234567890",
+                        ice: "1234567890",
+                    },
+                    paymentConditions: "À réception",
+                    currency: "EUR",
+                    });
+
+
 
                 const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
                 const page = await browser.newPage();
