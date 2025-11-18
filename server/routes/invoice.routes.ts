@@ -524,7 +524,6 @@ export function registerInvoiceRoutes(app: Express) {
             try {
                 // 1️⃣ Validation Zod
                 const parsed = invoiceCreateSchema.safeParse(req.body);
-
                 if (!parsed.success) {
                     return res.status(400).json({
                         error: "Invalid data",
@@ -534,7 +533,6 @@ export function registerInvoiceRoutes(app: Express) {
                         })),
                     });
                 }
-
                 const d = parsed.data;
 
                 // 2️⃣ Vérifier que le contrat existe
@@ -544,7 +542,6 @@ export function registerInvoiceRoutes(app: Express) {
                     .where(eq(contracts.id, d.contractId))
                     .limit(1)
                     .then((rows) => rows[0]);
-
                 if (!existingContract)
                     return res.status(404).json({ error: "Contract not found" });
 
@@ -555,7 +552,6 @@ export function registerInvoiceRoutes(app: Express) {
                     .where(eq(billingLines.id, d.billingLineId))
                     .limit(1)
                     .then((rows) => rows[0]);
-
                 if (!billingLineRow)
                     return res.status(404).json({ error: "Billing line not found" });
 
@@ -565,12 +561,20 @@ export function registerInvoiceRoutes(app: Express) {
                     .from(invoices)
                     .then((r) => Number(r[0]?.count ?? 0));
 
-                // 5️⃣ Générer le numéro de facture basé sur tableLength + type
+                // 5️⃣ Générer un numéro unique en respectant tableLength + type
                 let invoiceNumber: string;
                 try {
-                    invoiceNumber = InvoiceNumberGenerator.generateInvoiceNumber({
+                    invoiceNumber = await InvoiceNumberGenerator.generateInvoiceNumber({
                         tableLength: totalInvoices,
-                        type: "INV"
+                        type: "INV",
+                        checkExists: async (num: string) => {
+                            const exists = await db
+                                .select()
+                                .from(invoices)
+                                .where(eq(invoices.invoiceNumber, num))
+                                .limit(1);
+                            return exists.length > 0;
+                        },
                     });
                 } catch {
                     invoiceNumber = `INV-${Date.now()}`; // fallback
@@ -580,10 +584,7 @@ export function registerInvoiceRoutes(app: Express) {
                 const amountHt = Number(billingLineRow.amountHt ?? 0);
                 const contractVatRate = Number(existingContract.tvaRate ?? 0.20);
                 const vatRatePercent = contractVatRate * 100;
-
-                const formatDecimal = (num: any) =>
-                    (Number(num) || 0).toFixed(2);
-
+                const formatDecimal = (num: any) => (Number(num) || 0).toFixed(2);
                 const baseAmount = amountHt;
                 const vatAmount = amountHt * contractVatRate;
                 const totalAmount = amountHt + vatAmount;
@@ -647,6 +648,7 @@ export function registerInvoiceRoutes(app: Express) {
             }
         }
     );
+
 
 
     // ---- PUT update invoice ----
@@ -809,7 +811,6 @@ export function registerInvoiceRoutes(app: Express) {
         }
     );
 
-
     // ---- DELETE invoice ----
     /**
      * @openapi
@@ -837,10 +838,32 @@ export function registerInvoiceRoutes(app: Express) {
      */
     app.delete("/api/invoices/:id",
         isAuthenticated,
-        requirePermission("invoices", "delete"), async (req, res) => {
+        requirePermission("invoices", "delete"),
+        async (req, res) => {
             try {
+                const invoice = await db
+                    .select()
+                    .from(invoices)
+                    .where(eq(invoices.id, req.params.id))
+                    .limit(1)
+                    .then(rows => rows[0]);
+
+                if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+
+                if (invoice.status !== InvoiceStatus.Draft) {
+                    return res.status(400).json({
+                        error: "Seules les factures au statut Brouillon peuvent être supprimées"
+                    });
+                }
+
                 const deleted = await storage.deleteInvoice(req.params.id);
                 if (!deleted) return res.status(404).json({ error: "Invoice not found" });
+
+                if (invoice.billingLineId) {
+                    await db.update(billingLines)
+                        .set({ status: BillingLineStatus.A_FACTURER, updatedAt: new Date() })
+                        .where(eq(billingLines.id, invoice.billingLineId));
+                }
 
                 res.json({ message: "Invoice deleted successfully" });
             } catch (error) {
@@ -1062,35 +1085,51 @@ export function registerInvoiceRoutes(app: Express) {
                 const originalInvoiceId = req.params.id;
                 const { description, dueDate } = req.body;
 
+                // 1️⃣ Récupérer la facture originale
                 const original = await storage.getInvoice(originalInvoiceId);
                 if (!original) return res.status(404).json({ error: "Invoice not found" });
 
-                let avoir;
+                let avoir: any;
                 let attempts = 0;
-                const maxAttempts = 5;
+                const maxAttempts = 10;
 
                 while (!avoir && attempts < maxAttempts) {
                     attempts++;
 
+                    // 2️⃣ Récupérer le nombre total de factures pour la séquence
                     const totalInvoices = await db
                         .select({ count: sql`COUNT(*)` })
                         .from(invoices)
                         .then((r) => Number(r[0]?.count ?? 0));
+
+                    // 3️⃣ Générer un numéro unique pour l'avoir
                     let invoiceNumber: string;
                     try {
-                        invoiceNumber = InvoiceNumberGenerator.generateInvoiceNumber({
+                        invoiceNumber = await InvoiceNumberGenerator.generateInvoiceNumber({
                             tableLength: totalInvoices,
-                            type: "AV"
+                            type: "AV",
+                            checkExists: async (num: string) => {
+                                const exists = await db
+                                    .select()
+                                    .from(invoices)
+                                    .where(eq(invoices.invoiceNumber, num))
+                                    .limit(1);
+                                return exists.length > 0;
+                            },
                         });
                     } catch {
-                        invoiceNumber = `AV-${Date.now()}`;  
+                        invoiceNumber = `AV-${Date.now()}`; // fallback
                     }
 
                     const avoirData = {
                         contractId: original.contractId,
                         billingLineId: original.billingLineId,
                         description: description || `Avoir de ${original.invoiceNumber}`,
-                        dueDate: dueDate ? new Date(dueDate) : (original.dueDate ? new Date(original.dueDate) : new Date()),
+                        dueDate: dueDate
+                            ? new Date(dueDate)
+                            : original.dueDate
+                                ? new Date(original.dueDate)
+                                : new Date(),
                         amount: original.amount,
                         baseAmount: original.baseAmount,
                         vatRate: original.vatRate,
@@ -1102,6 +1141,11 @@ export function registerInvoiceRoutes(app: Express) {
                         invoiceNumber,
                         generatedBy: safeUserId(req),
                         refundedInvoiceId: original.id,
+                        generatedAt: dueDate
+                            ? new Date(dueDate)
+                            : original.dueDate
+                                ? new Date(original.dueDate)
+                                : new Date(),
                         createdAt: new Date(),
                         updatedAt: new Date(),
                     };
@@ -1109,22 +1153,29 @@ export function registerInvoiceRoutes(app: Express) {
                     try {
                         avoir = await storage.createInvoice(avoirData);
                     } catch (error: any) {
-                        if (error?.code === "23505" && String(error?.detail || "").includes("(invoice_number)")) {
+                        if (
+                            error?.code === "23505" &&
+                            String(error?.detail || "").includes("(invoice_number)")
+                        ) {
                             console.warn("Duplicate invoice number, retrying...");
-                            continue;
+                            continue; // retry avec un nouveau numéro
                         }
                         throw error;
                     }
                 }
 
                 if (!avoir) {
-                    return res.status(500).json({ error: "Failed to create credit note after multiple attempts" });
+                    return res
+                        .status(500)
+                        .json({ error: "Failed to create credit note after multiple attempts" });
                 }
 
                 return res.json(avoir);
-
             } catch (error: any) {
-                if (error?.code === "23505" && String(error?.detail || "").includes("(invoice_number)")) {
+                if (
+                    error?.code === "23505" &&
+                    String(error?.detail || "").includes("(invoice_number)")
+                ) {
                     return res.status(409).json({
                         error: "Duplicate",
                         field: "invoiceNumber",
@@ -1136,5 +1187,4 @@ export function registerInvoiceRoutes(app: Express) {
             }
         }
     );
-
 }
