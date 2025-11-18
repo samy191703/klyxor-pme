@@ -657,6 +657,7 @@ export const invoices = pgTable(
     generatedAt: timestamp("generated_at").default(sql`now()`),
     generatedBy: varchar("generated_by").references(() => users.id, { onDelete: "set null" }),
     refundedInvoiceId: varchar("refunded_invoice_id"), 
+    paymentTerms: text("payment_terms"),
     createdAt: timestamp("created_at").notNull().default(sql`now()`),
     updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
   },

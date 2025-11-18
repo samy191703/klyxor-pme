@@ -19,6 +19,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { fetchInvoice } from "../../api/invoice.api";
 import { INVOICE_QK } from "../../domain/constants";
+import { formatPaymentTerms } from "@/utils/formatters";
 
 type Props = {
   open: boolean;
@@ -114,9 +115,9 @@ export function ViewInvoiceDialog({
               </p>
             </div>
             <div>
-              <Label className="text-gray-600 text-sm">Client</Label>
+              <Label className="text-gray-600 text-sm">Condition de paiement</Label>
               <p className="font-medium text-gray-900">
-                {invoice.clientName ?? "—"}
+                {formatPaymentTerms(invoice.paymentTerms as any)}
               </p>
             </div>
           </div>

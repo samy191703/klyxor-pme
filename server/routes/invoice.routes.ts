@@ -57,6 +57,13 @@ export enum InvoiceAction {
     RevertToDraft = "revertToDraft",
 }
 
+export enum PaymentTermsEnum {
+  "30J" = "30j",
+  "60J" = "60j",
+  "A_COMMANDE" = "a_commande",
+  "A_LIVRAISON" = "a_livraison",
+  "50_50" = "50/50",
+}
 
 // ---- Zod schema ----
 const invoiceCreateSchema = z.object({
@@ -64,6 +71,7 @@ const invoiceCreateSchema = z.object({
     billingLineId: z.string().uuid(),
     dueDate: z.string(),
     description: z.string().optional().default(""),
+    paymentTerms: z.nativeEnum(PaymentTermsEnum).optional().nullable(),
 })
     .refine((data) => {
         const due = new Date(data.dueDate);
@@ -95,6 +103,7 @@ const invoiceUpdateSchema = z.object({
     vatAmount: z.number().nonnegative().optional(),
     redactionAmount: z.number().nonnegative().optional(),
     totalAmount: z.number().positive().optional(),
+    paymentTerms: z.nativeEnum(PaymentTermsEnum).optional().nullable(),
     status: z.enum(["draft", "inpaid", "paid", "cancelled", "paid_parsely"]).optional(),
     dueDate: z.string().optional(), // date-time au format ISO
     generatedAt: z.string().optional(), // date-time
@@ -470,52 +479,63 @@ export function registerInvoiceRoutes(app: Express) {
 
     // --- POST create invoice --- 
     /**
- * @openapi
- * /api/invoices:
- *   post:
- *     summary: Create a new invoice
- *     description: Create an invoice for a given contract and billing line.
- *     tags:
- *       - Invoices
- *     security:
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               contractId:
- *                 type: string
- *               billingLineId:
- *                 type: string
- *               description:
- *                 type: string
- *                 nullable: true
- *               dueDate:
- *                 type: string
- *                 format: date-time
- *             required:
- *               - contractId
- *               - billingLineId
- *               - dueDate
- *     responses:
- *       200:
- *         description: The created invoice
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *       400:
- *         description: Invalid data
- *       404:
- *         description: Contract or billing line not found
- *       409:
- *         description: Duplicate invoice number
- *       500:
- *         description: Failed to create invoice
- */
+     * @openapi
+     * /api/invoices:
+     *   post:
+     *     summary: Create a new invoice
+     *     description: Create an invoice for a given contract and billing line.
+     *     tags:
+     *       - Invoices
+     *     security:
+     *       - cookieAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               contractId:
+     *                 type: string
+     *               billingLineId:
+     *                 type: string
+     *               description:
+     *                 type: string
+     *                 nullable: true
+     *               dueDate:
+     *                 type: string
+     *                 format: date-time
+     *               paymentTerms:
+     *                 type: string
+     *                 nullable: true
+     *                 description: Conditions de paiement
+     *                 enum:
+     *                   - 30j
+     *                   - 60j
+     *                   - à commande
+     *                   - à livraison
+     *                   - 50/50
+     *             required:
+     *               - contractId
+     *               - paymentTerms
+     *               - billingLineId
+     *               - dueDate
+     *     responses:
+     *       200:
+     *         description: The created invoice
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *       400:
+     *         description: Invalid data
+     *       404:
+     *         description: Contract or billing line not found
+     *       409:
+     *         description: Duplicate invoice number
+     *       500:
+     *         description: Failed to create invoice
+     */
     app.post(
         "/api/invoices",
         isAuthenticated,
@@ -600,6 +620,7 @@ export function registerInvoiceRoutes(app: Express) {
                     baseAmount: formatDecimal(baseAmount),
                     redactionAmount: "0.00",
                     type: TypeInvoice.NORMAL,
+                    paymentTerms: d.paymentTerms ?? null,
                     totalAmount: formatDecimal(totalAmount),
                     status: InvoiceStatus.Draft,
                     invoiceNumber,
@@ -791,7 +812,8 @@ export function registerInvoiceRoutes(app: Express) {
                     "vatRate",
                     "vatAmount",
                     "redactionAmount",
-                    "totalAmount"
+                    "totalAmount",
+                    "paymentTerms",
                 ].forEach((field) => {
                     if (updates[field] !== undefined && updates[field] !== null) {
                         updates[field] = String(updates[field]);
@@ -1138,6 +1160,7 @@ export function registerInvoiceRoutes(app: Express) {
                         type: TypeInvoice.AVOIR,
                         totalAmount: original.totalAmount,
                         status: InvoiceStatus.Draft,
+                        paymentTerms: original.paymentTerms,
                         invoiceNumber,
                         generatedBy: safeUserId(req),
                         refundedInvoiceId: original.id,

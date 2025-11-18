@@ -16,6 +16,7 @@ export enum InvoiceAction {
 }
 
 export interface Invoice {
+  paymentTerms: string;
   id: string;
   invoiceNumber: string;
 
@@ -48,6 +49,14 @@ export interface Invoice {
   generatedByUser?: User | null;
 }
 
+export enum PaymentTermsEnum {
+  "30J" = "30j", 
+  "60J" = "60j",
+  "A_COMMANDE" = "a_commande",
+  "A_LIVRAISON" = "a_livraison",
+  "50_50" = "50/50",
+}
+
 /** =========================
  *  INVOICE CREATE / UPDATE DTOs
  *  ========================= */
@@ -55,6 +64,7 @@ export interface InvoiceCreateDto {
   contractId: string;
   billingLineId: string;
   dueDate: string;
+  paymentTerms?:PaymentTermsEnum | null;
   description?: string;
 }
 
@@ -63,6 +73,7 @@ export interface InvoiceUpdateDto {
   contractId?: string;
   billingLineId?: string;
   description?: string;
+  paymentTerms?:PaymentTermsEnum | null;
   baseAmount?: number;
   amount?: number;
   vatRate?: number;

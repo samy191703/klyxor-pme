@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { BillingSchedule, BillingLine } from "../../domain/types";
+import { BillingSchedule, BillingLine } from "../../domain/types";
 import { formatDateFR, formatMoneyEUR } from "../../utils/formatters";
 import {
   BILLING_STATUS_LABELS,
@@ -29,6 +29,7 @@ import { createInvoice } from "@/modules/invoices/api/invoice.api";
 import { useToast } from "@/hooks/use-toast";
 import { IconButton, Tooltip } from "@mui/material";
 import { fetchBillingLinesBySchedule, fetchBillingSchedules } from "../../api/billing.api";
+import { PaymentTermsEnum } from "@/modules/invoices/domain/types";
 
 type Props = {
   open: boolean;
@@ -276,6 +277,7 @@ export function ViewBillingScheduleDialog({
   const [selectedLine, setSelectedLine] = useState<BillingLine | null>(null);
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermsEnum | null>(null);
 
   const handleOpenInvoiceModal = (line: BillingLine) => {
     setSelectedLine(line);
@@ -311,6 +313,7 @@ export function ViewBillingScheduleDialog({
         contractId,
         billingLineId: selectedLine.id,
         description,
+        paymentTerms,
         dueDate: dueDateISO,
       };
 
@@ -628,6 +631,21 @@ export function ViewBillingScheduleDialog({
                 />
               </div>
 
+              <div>
+                  <Label className="text-gray-700">Conditions de paiement</Label>
+                  <select
+                    className="mt-1 w-full border rounded px-2 py-2"
+                    value={paymentTerms ?? ""}
+                    onChange={(e) => setPaymentTerms(e.target.value as PaymentTermsEnum)}
+                  >
+                    <option value="">-- Sélectionner --</option>
+                    {Object.values(PaymentTermsEnum).map((pt) => (
+                      <option key={pt} value={pt}>
+                        {pt.replace("_", " ")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
             </div>
 
             <DialogFooter className="flex justify-end gap-2 mt-4">

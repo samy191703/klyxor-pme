@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Invoice, InvoiceUpdateDto } from "../../domain/types";
+import { Invoice, InvoiceUpdateDto, PaymentTermsEnum } from "../../domain/types";
 import { useQuery } from "@tanstack/react-query";
 import { fetchInvoice, updateInvoice } from "../../api/invoice.api";
 import { INVOICE_QK } from "../../domain/constants";
@@ -60,6 +60,7 @@ export function EditInvoiceDialog({
     vatAmount: 0,
     redactionAmount: 0,
     totalAmount: 0,
+    paymentTerms: undefined,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,6 +79,7 @@ export function EditInvoiceDialog({
         vatAmount: invoice.vatAmount,
         redactionAmount: invoice.redactionAmount,
         totalAmount: invoice.totalAmount,
+        paymentTerms: invoice.paymentTerms ?? undefined,
       });
     }
   }, [invoice]);
@@ -100,6 +102,7 @@ export function EditInvoiceDialog({
         vatAmount: Number(form.vatAmount) || 0,
         redactionAmount: Number(form.redactionAmount) || 0,
         totalAmount: Number(form.totalAmount) || 0,
+        paymentTerms: form.paymentTerms,
       };
 
       await updateInvoice(invoiceId, payload);
@@ -192,6 +195,28 @@ export function EditInvoiceDialog({
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="paymentTerms">Conditions de paiement</Label>
+            <Select
+              value={form.paymentTerms ?? ""}
+              onValueChange={(val) =>
+                setForm({ ...form, paymentTerms: val as PaymentTermsEnum })
+              }
+            >
+              <SelectTrigger id="paymentTerms">
+                <SelectValue placeholder="Sélectionner une condition" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.values(PaymentTermsEnum).map((pt) => (
+                  <SelectItem key={pt} value={pt}>
+                    {pt.replace("_", " ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
 
           {/* Description */}
           <div className="space-y-2">
