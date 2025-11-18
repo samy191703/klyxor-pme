@@ -296,6 +296,18 @@ export function ViewBillingScheduleDialog({
   const [dueDate, setDueDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState<PaymentTermsEnum | null>(null);
 
+  const progressionPercent = calculateProgression(startDate, endDate);
+
+  const totalHT = lines.reduce(
+    (sum: number, ln: BillingLine) => sum + Number(ln.amountHt || 0),
+    0
+  );
+
+  const tvaRateValue = Number(tvaRate ?? 0);
+  const totalTVA = totalHT * tvaRateValue;
+  const totalTTC = totalHT + totalTVA;
+
+
   const handleOpenInvoiceModal = (line: BillingLine) => {
     setSelectedLine(line);
     setDueDate(line.dueDate);
@@ -403,114 +415,141 @@ export function ViewBillingScheduleDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl h-[100vh]">
           <DialogHeader className="flex flex-row items-center justify-between">
-            <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center rounded-md bg-[#0F2A43] text-white font-semibold text-xs px-2 py-0.5 min-w-[24px]">
+                V {version}
+              </span>
               <DialogTitle className="text-lg font-semibold">
-                Détails du Plan de facturation
+                Détails du Plan de facturation {contractNumber ?? ""}
               </DialogTitle>
-              <DialogDescription className="font-bold text-sm text-gray-700">
-                {contractNumber ?? "—"}
-              </DialogDescription>
             </div>
             <div className="text-sm text-gray-500">
               Créé le {formatDateFR(createdAt)}
             </div>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label className="text-gray-600">Contrat</Label>
-                <p className="font-medium text-gray-900">
-                  {contractNumber ?? "—"}
-                </p>
+          <div className="grid gap-4 py-0">
+            <div className="grid gap-3">
+              {/* First Row: 3 cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-gray-50 rounded-lg border-l-4 border-[#C9A646] p-1 shadow-sm">
+
+                  <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    PÉRIODE
+                  </Label>
+                  <p className="mt-1 font-bold text-gray-900 text-xs leading-tight">
+                    {formatDateFR(startDate)} — {formatDateFR(endDate)}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg border-l-4 border-[#C9A646] p-1 shadow-sm">
+
+                  <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    FRÉQUENCE
+                  </Label>
+                  <p className="mt-1 font-bold text-gray-900 text-xs">
+                    {frequencyLabel}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg border-l-4 border-[#C9A646] p-1 shadow-sm">
+
+                  <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    PROGRESSION
+                  </Label>
+                  <div className="mt-1 flex flex-col gap-1">
+                    <p className="font-bold text-gray-900 text-xs">
+                      {progressionPercent} % of completion
+                    </p>
+                    <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#C9A646] rounded-full transition-all"
+                        style={{ width: `${Math.min(100, Math.max(0, parseFloat(progressionPercent)))}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label className="text-gray-600">Période</Label>
-                <p className="font-medium text-gray-900">
-                  {formatDateFR(startDate)} — {formatDateFR(endDate)}
-                </p>
+
+              {/* Second Row: 3 cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-gray-50 rounded-lg border-l-4 border-[#C9A646] p-1 shadow-sm">
+
+                  <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    TYPE
+                  </Label>
+                  <p className="mt-1 font-bold text-gray-900 text-xs">
+                    {billingTypeLabel}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg border-l-4 border-[#C9A646] p-1 shadow-sm">
+
+                  <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    STATUT
+                  </Label>
+                  <div className="mt-1">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white ${status === "active"
+                      ? "bg-green-600"
+                      : status === "draft"
+                        ? "bg-gray-500"
+                        : "bg-gray-400"
+                      }`}>
+                      <span className="w-1 h-1 bg-white rounded-full"></span>
+                      {statusLabel}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg border-l-4 border-[#C9A646] p-1 shadow-sm">
+
+                  <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    PROCHAINE ÉCHÉANCE
+                  </Label>
+                  <p className="mt-1 font-bold text-gray-900 text-xs">
+                    {(() => {
+                      const next = getNextDueDate(lines);
+                      return next ? formatDateFR(next.toISOString()) : "—";
+                    })()}
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col justify-start items-start gap-2">
-                <Label className="text-gray-600">Statut</Label>
-                <p className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                  {statusLabel}
-                </p>
+
+              {/* Third Row: Financial summary - single card with 3 columns */}
+              <div className="bg-gray-50 rounded-lg border-l-4 border-[#C9A646] p-1 shadow-sm">
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                      TOTAL HT
+                    </Label>
+                    <p className="mt-1 font-bold text-gray-900 text-xs">
+                      {formatMoneyEUR(totalHT)}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                      TAUX DE TVA APPLICABLE
+                    </Label>
+                    <p className="mt-1 font-bold text-gray-900 text-xs">
+                      {tvaRate != null
+                        ? `${(Number(tvaRate) * 100).toFixed(2)}%`
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                      MONTANT TTC
+                    </Label>
+                    <p className="mt-1 font-bold text-gray-900 text-xs">
+                      {formatMoneyEUR(totalTTC)}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label className="text-gray-600">Fréquence</Label>
-                <p className="font-medium text-gray-900">{frequencyLabel}</p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Type</Label>
-                <p className="font-medium text-gray-900">{billingTypeLabel}</p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Version</Label>
-                <p className="font-medium text-gray-900">{version}</p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Total HT</Label>
-                <p className="font-medium text-gray-900">{
-                  formatMoneyEUR(localLines.reduce((sum: number, ln: BillingLine) => sum + Number(ln.amountHt || 0), 0))
-                }</p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Progression</Label>
-                <p className="font-medium text-gray-900">{
-                  (() => {
-                    // Calcul basé sur le temps écoulé (dates)
-                    if (!startDate || !endDate) return "0.0";
-
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
-                    const now = new Date();
-
-                    // Vérifier que les dates sont valides
-                    if (isNaN(start.getTime()) || isNaN(end.getTime())) return "0.0";
-
-                    // Si la date actuelle est avant le début, progression = 0%
-                    if (now < start) return "0.0";
-
-                    // Si la date actuelle est après la fin, progression = 100%
-                    if (now > end) return "100.0";
-
-                    // Calculer la progression
-                    const totalDuration = end.getTime() - start.getTime();
-                    const elapsedDuration = now.getTime() - start.getTime();
-
-                    if (totalDuration === 0) return "0.0";
-
-                    const progression = (elapsedDuration / totalDuration) * 100;
-                    return Math.min(100, Math.max(0, progression)).toFixed(1);
-                  })()
-                }%</p>
-              </div>
-              <div>
-                <Label className="text-gray-600">Prochaine échéance</Label>
-                <p className="font-medium text-gray-900">{
-                  (() => {
-                    if (!localLines || localLines.length === 0) return "—";
-
-                    const now = new Date();
-                    const futureDates = localLines
-                      .map((ln: BillingLine) => new Date(ln.dueDate))
-                      .filter((date: Date) => !isNaN(date.getTime()) && date > now)
-                      .sort((a: Date, b: Date) => a.getTime() - b.getTime());
-
-                    if (futureDates.length === 0) return "—";
-
-                    const nextDate = futureDates[0];
-                    return formatDateFR(nextDate.toISOString());
-                  })()
-                }</p>
-              </div>
-            </div>
-
             {/* Résumé indexation global basé sur la première ligne indexée */}
             {summaryResult && (
               <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 space-y-1">
@@ -558,7 +597,7 @@ export function ViewBillingScheduleDialog({
                 <div className="mt-2 rounded-md border">
                   <div className="max-h-[320px] overflow-auto">
                     <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-white border-b">
+                      <thead className="sticky top-0 bg-white border-b z-10">
                         <tr className="text-left">
                           <th className="px-3 py-2 w-[80px]">#</th>
                           <th className="px-3 py-2 w-[140px]">Échéance</th>
@@ -588,7 +627,7 @@ export function ViewBillingScheduleDialog({
                           const ttcAmount = rawAmount + tvaAmount;
 
                           return (
-                            <tr key={ln.id} className="border-b last:border-0">
+                            <tr key={ln.id} className="border-b last:border-0 z-0">
                               <td className="px-3 py-2">{ln.sequenceNo}</td>
                               <td className="px-3 py-2">
                                 {formatDateFR(ln.dueDate)}
@@ -630,12 +669,12 @@ export function ViewBillingScheduleDialog({
                                     <IconButton
                                       size="small"
                                       onClick={() => (window.location.href = `/invoices?ln=${ln.id}`)}
+                                      className="relative z-0" 
+                                      style={{ position: 'sticky', right: 0 }} 
                                     >
                                       <EyeIcon className="w-4 h-4 mr-2" />
                                     </IconButton>
-
                                   </Tooltip>
-
                                 )}
                               </td>
                             </tr>
