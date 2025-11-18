@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { Invoice } from "../../domain/types";
-import { formatDateFR, formatMoneyEUR } from "../../utils/formatters";
+import { formatDateFR, formatMoneyEUR, formatInvoiceNumber } from "../../utils/formatters";
 import {
   INVOICE_STATUS_LABELS,
   INVOICE_TYPE_LABELS,
@@ -93,7 +93,7 @@ export function ViewInvoiceDialog({
               Détails de la facture
             </DialogTitle>
             <DialogDescription className="font-bold text-sm text-gray-700">
-              {invoice.invoiceNumber}
+              {formatInvoiceNumber(invoice.invoiceNumber)}
             </DialogDescription>
           </div>
           <div className="text-sm text-gray-500">
@@ -106,7 +106,7 @@ export function ViewInvoiceDialog({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label className="text-gray-600 text-sm">N° Facture</Label>
-              <p className="font-medium text-gray-900">{invoice.invoiceNumber}</p>
+              <p className="font-medium text-gray-900">{formatInvoiceNumber(invoice.invoiceNumber)}</p>
             </div>
             <div>
               <Label className="text-gray-600 text-sm">Contrat</Label>
@@ -162,7 +162,13 @@ export function ViewInvoiceDialog({
               <div>
                 <Label className="text-gray-600 text-sm">Taux TVA</Label>
                 <p className="font-medium text-gray-900">
-                  {(invoice.vatRate * 100).toFixed(2)}%
+                  {/* vatRate is stored as percentage (20 for 20%), convert to number first */}
+                  {(() => {
+                    const rate = Number(invoice.vatRate) || 0;
+                    return rate > 1 
+                      ? rate.toFixed(2) 
+                      : (rate * 100).toFixed(2);
+                  })()}%
                 </p>
               </div>
               <div>

@@ -8,7 +8,7 @@ type InvoiceForPdf = {
   generatedAt: Date | string;
   status: string;
   baseAmount: number;
-  vatRate: number;
+  tvaRate: number;
   vatAmount: number;
   redactionAmount: number;
   totalAmount: number;
@@ -35,6 +35,28 @@ type RenderOptions = {
   logoDataUrl?: string;
   companyName?: string;
   companyAddress?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  companyWebsite?: string;
+  customerCode?: string;
+  bank?: {
+    bankName?: string;
+    accountNumber?: string;
+    iban?: string;
+    swift?: string;
+    owner?: string;
+    address?: string;
+  };
+  companyFooter?: {
+    capital?: string;
+    rc?: string;
+    patente?: string;
+    if?: string;
+    cnss?: string;
+    ice?: string;
+  };
+  paymentConditions?: string;
+  currency?: string;
 };
 
 // Format helpers
@@ -44,11 +66,11 @@ function formatDateFR(value?: Date | string | null): string {
   return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function formatMoney(value?: number | null): string {
+function formatMoney(value?: number | null, currency: string = "EUR"): string {
   if (value == null) return "0,00";
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
-    currency: "EUR",
+    currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
@@ -68,145 +90,410 @@ export function renderInvoiceHtml(
   lines?: InvoiceLineForPdf[],
   opts: RenderOptions = {}
 ): string {
-  const companyName = opts.companyName || "KLYXOR Solutions";
+  const companyName = opts.companyName || "KLYXOR Solutionssss";
   const companyAddress = opts.companyAddress || "";
 
   const clientName = invoice.clientName || "Client";
   const clientAddress = invoice.clientAddress || "";
 
   const amountHT = invoice.baseAmount ?? 0;
-  const vatRate = invoice.vatRate ?? 0;
-  const vatAmount = invoice.vatAmount ?? (amountHT * (vatRate / 100));
+  const rawTvaRate = invoice.tvaRate ?? 0;
+  // Normalize tvaRate: 
+  // - if < 1, it's a decimal (0.2 = 20%), multiply by 100
+  // - if >= 1 and <= 100, it's already a percentage (20 = 20%)
+  // - if > 100, it might be incorrectly stored (700 might mean 7%), divide by 10
+  let tvaRatePercent: number;
+  let tvaRateDecimal: number;
+  
+  if (rawTvaRate < 1) {
+    // Decimal format: 0.2 -> 20%
+    tvaRatePercent = rawTvaRate * 100;
+    tvaRateDecimal = rawTvaRate;
+  } else if (rawTvaRate > 100) {
+    // Likely incorrectly stored: 700 -> 7% (divide by 100)
+    tvaRatePercent = rawTvaRate / 100;
+    tvaRateDecimal = rawTvaRate / 10000;
+  } else {
+    // Already in percentage format: 20 -> 20%
+    tvaRatePercent = rawTvaRate;
+    tvaRateDecimal = rawTvaRate / 100;
+  }
+  const vatAmount = invoice.vatAmount ?? (amountHT * tvaRateDecimal);
   const totalAmount = invoice.totalAmount ?? (amountHT + vatAmount);
 
   const invoiceLines = lines && lines.length > 0
     ? lines.map((line, idx) => {
-        const lineHT = line.amountHt ?? line.unitPrice ?? 0;
-        const lineVat = line.vatAmount ?? (lineHT * (vatRate / 100));
-        const lineTotal = line.totalAmount ?? (lineHT + lineVat);
+      const lineTotal = line.totalAmount ?? (line.unitPrice ?? 0) * (line.quantity ?? 1);
+      const lineVatAmount = line.vatAmount ?? (lineTotal * tvaRateDecimal);
+      const lineTotalAmount = lineTotal + lineVatAmount;
+      const lineHT = line.unitPrice ?? 0;
 
-        return {
-          sequenceNo: line.sequenceNo ?? idx + 1,
-          description: line.description || invoice.description || "Service",
-          quantity: line.quantity ?? 1,
-          unitPrice: lineHT,
-          amount: lineTotal,
-          vatAmount: lineVat,
-          status: line.status,
-          dueDate: line.dueDate,
-        };
-      })
+      return {
+        sequenceNo: line.sequenceNo ?? idx + 1,
+        description: line.description || invoice.description || "Service",
+        quantity: line.quantity ?? 1,
+        unitPrice: lineHT,
+        amount: lineTotalAmount,
+        vatAmount: lineVatAmount,
+        status: line.status,
+        dueDate: line.dueDate,
+      };
+    })
     : [
-        {
-          sequenceNo: 1,
-          description: invoice.description || "Service",
-          quantity: 1,
-          unitPrice: amountHT,
-          amount: totalAmount,
-          vatAmount: vatAmount,
-          status: invoice.status,
-          dueDate: invoice.dueDate,
-        },
-      ];
+      {
+        sequenceNo: 1,
+        description: invoice.description || "Service",
+        quantity: 1,
+        unitPrice: amountHT,
+        amount: totalAmount,
+        vatAmount: vatAmount,
+        status: invoice.status,
+        dueDate: invoice.dueDate,
+      },
+    ];
 
-  const calculatedTotal = invoiceLines.reduce((sum, line) => sum + (line.amount ?? 0), 0);
+  const calculatedTotalHT = invoiceLines.reduce((sum, line) => sum + (line.unitPrice ?? 0) * (line.quantity ?? 1), 0);
+  const calculatedTotalVAT = invoiceLines.reduce((sum, line) => sum + (line.vatAmount ?? 0), 0);
+  const calculatedTotal = calculatedTotalHT + calculatedTotalVAT;
   const finalTotal = invoice.totalAmount ?? calculatedTotal;
+  const finalHT = invoice.baseAmount ?? calculatedTotalHT;
+  const finalVAT = invoice.vatAmount ?? calculatedTotalVAT;
+
+  const currency = opts.currency || invoice.currency || "EUR";
+  const currencySymbol = currency === "EUR" ? "€" : currency === "MAD" ? "MAD" : currency;
+
+  // Format money without currency symbol for table display
+  function formatMoneyPlain(value: number | null | undefined, currency: string = "EUR"): string {
+    if (value == null) return "0,00";
+    const formatted = new Intl.NumberFormat("fr-FR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+    return formatted;
+  }
 
   return `
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>Facture ${invoice.invoiceNumber}</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #333; }
-    .invoice-header { display: flex; align-items: center; padding: 20px; border-bottom: 2px solid #000; }
-    .logo { height: 60px; margin-right: 20px; }
-    .company-section { font-weight: bold; font-size: 18px; }
-    .details-section { display: flex; justify-content: space-between; padding: 20px; }
-    .client-section h3 { margin: 0 0 10px 0; }
-    .invoice-info { font-size: 14px; }
-    .invoice-info-grid .info-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-    .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-    .items-table th, .items-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    .totals-section { display: flex; justify-content: flex-end; padding: 0 20px 20px 0; }
-    .totals-container { width: 300px; }
-    .total-row, .total-due { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
-    .footer { padding: 20px; text-align: center; font-size: 12px; border-top: 1px solid #ccc; margin-top: 30px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      color: #000;
+      padding: 30px 40px;
+      line-height: 1.4;
+      background: #fff;
+    }
+
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 25px;
+    }
+
+    .logo-section {
+      width: 150px;
+      height: 50px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-section img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .logo-section.placeholder {
+      background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%);
+      color: white;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .invoice-meta {
+      text-align: right;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .invoice-meta .invoice-title {
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .two-column-info {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .info-box {
+      flex: 1;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .info-box-title {
+      font-weight: bold;
+      font-size: 10px;
+      margin-bottom: 8px;
+    }
+
+    .emetteur-box {
+      background-color: #f0f0f0;
+      padding: 12px 15px;
+      border: 1px solid #d0d0d0;
+    }
+
+    .adresse-box {
+      background-color: #fff;
+      padding: 12px 15px;
+      border: 1px solid #d0d0d0;
+    }
+
+    .info-box strong {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .currency-note {
+      font-size: 10px;
+      color: #666;
+      text-align: right;
+      margin-bottom: 5px;
+      font-style: italic;
+    }
+
+    table.items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+      font-size: 10px;
+    }
+
+    table.items-table th {
+      background-color: #f5f5f5;
+      border: 1px solid #ccc;
+      padding: 8px 10px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 10px;
+    }
+
+    table.items-table td {
+      border: 1px solid #ccc;
+      padding: 8px 10px;
+      text-align: center;
+      vertical-align: top;
+      height: 350px;
+    }
+
+    table.items-table td.designation-cell {
+      text-align: left;
+    }
+
+    .totals-section {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 20px;
+    }
+
+    table.totals-table {
+      width: 250px;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+
+    table.totals-table td {
+      border: 1px solid #ccc;
+      padding: 6px 10px;
+    }
+
+    table.totals-table td:first-child {
+      text-align: left;
+      font-weight: bold;
+    }
+
+    table.totals-table td:last-child {
+      text-align: right;
+      font-weight: bold;
+    }
+
+    .payment-conditions {
+      margin-bottom: 15px;
+    }
+
+    .payment-conditions-title {
+      font-weight: bold;
+      font-size: 10px;
+      margin-bottom: 5px;
+    }
+
+    .payment-conditions-content {
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .payment-method {
+      margin-bottom: 12px;
+    }
+
+    .payment-method-title {
+      font-weight: bold;
+      font-size: 10px;
+      margin-bottom: 5px;
+    }
+
+    .payment-method-content {
+      font-size: 10px;
+      line-height: 1.6;
+    }
+
+    .footer-legal {
+      margin-top: 30px;
+      font-size: 9px;
+      color: #555;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .page-number {
+     text-align: right;
+     font-size: 9px;
+     color: #666;
+     margin-top: 15px;
+     padding-top: 10px;
+     border-top: 1px solid #ccc;
+}
+    .total-ttc {
+      font-weight: bold;
+      background-color:rgb(179, 179, 179);
+    }
   </style>
 </head>
 <body>
+
+  <!-- Header: Logo + Invoice Meta -->
   <div class="invoice-header">
-    ${opts.logoDataUrl ? `<img src="${opts.logoDataUrl}" class="logo"/>` : ""}
-    <div class="company-section">
-      ${companyName}<br/>
-      ${companyAddress}
+    <div class="logo-section ${opts.logoDataUrl ? "" : "placeholder"}">
+      ${opts.logoDataUrl ? `<img src="${opts.logoDataUrl}" alt="${companyName}" />` : companyName}
+    </div>
+    <div class="invoice-meta">
+      <div class="invoice-title">Facture ${invoice.invoiceNumber}</div>
+      <div>Date facturation : ${formatDateFR(invoice.generatedAt)}</div>
+      <div>Date échéance : ${formatDateFR(invoice.dueDate)}</div>
+      ${opts.customerCode ? `<div>Code client : ${opts.customerCode}</div>` : ""}
     </div>
   </div>
 
-  <div class="details-section">
-    <div class="client-section">
-      <h3>Client</h3>
-      <div>${clientName}<br/>${clientAddress.split("\n").join("<br/>")}</div>
+  <!-- Two Column: Émetteur (grey) + Adressé à (white) -->
+  <div class="two-column-info">
+    <div class="info-box emetteur-box">
+      <div class="info-box-title">Émetteur</div>
+      <strong>${companyName}</strong>
+      <div>${companyAddress}</div>
+      ${opts.companyPhone ? `<div>Tél.: ${opts.companyPhone}</div>` : ""}
+      ${opts.companyEmail ? `<div>Email: ${opts.companyEmail}</div>` : ""}
+      ${opts.companyWebsite ? `<div>Web: ${opts.companyWebsite}</div>` : ""}
+    </div>
+
+    <div class="info-box adresse-box">
+      <div class="info-box-title">Adressé à</div>
+      <strong>${clientName}</strong>
+      ${clientAddress ? `<div>${clientAddress.split("\n").join("</div><div>")}</div>` : ""}
       ${invoice.maxAnnualProduction ? `<div>Production annuelle maximale: ${invoice.maxAnnualProduction}</div>` : ""}
       ${invoice.numberOfTurbines ? `<div>Nombre de turbines: ${invoice.numberOfTurbines}</div>` : ""}
-      ${invoice.pricePerMWh ? `<div>Prix par MWh: ${invoice.pricePerMWh} ${invoice.currency ?? "EUR"}</div>` : ""}
-    </div>
-
-    <div class="invoice-info">
-      <h3>Détails de la facture</h3>
-      <div class="invoice-info-grid">
-        <div class="info-row"><span>Numéro de facture:</span><span><strong>${invoice.invoiceNumber}</strong></span></div>
-        <div class="info-row"><span>Date d'émission:</span><span>${formatDateFR(invoice.generatedAt)}</span></div>
-        <div class="info-row"><span>Date d'échéance:</span><span>${formatDateFR(invoice.dueDate)}</span></div>
-        <div class="info-row"><span>Référence contrat:</span><span>${invoice.contractNumber}</span></div>
-        <div class="info-row"><span>Statut:</span><span>${labelOf(INVOICE_STATUS_LABELS, invoice.status)}</span></div>
-        <div class="info-row"><span>TVA (%):</span><span>${vatRate * 100}%</span></div>
-        <div class="info-row"><span>Montant HT:</span><span>${formatMoney(amountHT)}</span></div>
-        <div class="info-row"><span>Montant TVA:</span><span>${formatMoney(vatAmount)}</span></div>
-        <div class="info-row"><span>Total TTC:</span><span>${formatMoney(finalTotal)}</span></div>
-      </div>
+      ${invoice.pricePerMWh ? `<div>Prix par MWh: ${invoice.pricePerMWh} ${currency}</div>` : ""}
     </div>
   </div>
 
+  <!-- Currency Note -->
+  <div class="currency-note">Montants exprimés en ${currencySymbol}</div>
+
+  <!-- Items Table -->
   <table class="items-table">
     <thead>
       <tr>
-        <th>#</th>
-        <th>Description</th>
-        <th>Prix unitaire (€)</th>
-        <th>TVA (€)</th>
-        <th>Montant (€)</th>
-        <th>Statut</th>
-        <th>Date échéance</th>
+        <th style="width: 50%;">Désignation</th>
+        <th style="width: 12%;">TVA</th>
+        <th style="width: 13%;">P.U. HT</th>
+        <th style="width: 10%;">Qté</th>
+        <th style="width: 15%;">Total HT</th>
       </tr>
     </thead>
     <tbody>
-      ${invoiceLines.map((line, idx) => `
+      ${invoiceLines.map((line) => {
+    const lineHT = (line.unitPrice ?? 0) * (line.quantity ?? 1);
+    const unitPriceFormatted = formatMoneyPlain(line.unitPrice ?? 0, currency);
+    const totalHTFormatted = formatMoneyPlain(lineHT, currency);
+    return `
         <tr>
-          <td>${line.sequenceNo ?? idx + 1}</td>
-          <td>${line.description}</td>
-          <td>${formatMoney(line.unitPrice ?? 0)}</td>
-          <td>${formatMoney(line.vatAmount ?? 0)}</td>
-          <td>${formatMoney(line.amount ?? 0)}</td>
-          <td>${line.status ? labelOf(INVOICE_STATUS_LABELS, line.status) : ""}</td>
-          <td>${formatDateFR(line.dueDate)}</td>
+          <td class="designation-cell">${line.description}</td>
+          <td>${tvaRatePercent}%</td>
+          <td>${unitPriceFormatted}</td>
+          <td>${line.quantity ?? 1}</td>
+          <td>${totalHTFormatted}</td>
         </tr>
-      `).join("")}
+      `;
+  }).join("")}
     </tbody>
   </table>
 
+  <!-- Totals Section (right-aligned) -->
   <div class="totals-section">
-    <div class="totals-container">
-      <div class="total-row"><span>Total HT:</span><span>${formatMoney(amountHT)}</span></div>
-      <div class="total-row"><span>Total TVA:</span><span>${formatMoney(vatAmount)}</span></div>
-      <div class="total-due"><span>Total TTC:</span><span>${formatMoney(finalTotal)}</span></div>
-    </div>
+    <table class="totals-table">
+      <tr>
+        <td>Total HT</td>
+        <td>${formatMoneyPlain(finalHT, currency)}</td>
+      </tr>
+      <tr>
+        <td>Total TVA ${tvaRatePercent}%</td>
+        <td>${formatMoneyPlain(finalVAT, currency)}</td>
+      </tr>
+      <tr class="total-ttc">
+        <td>Total TTC</td>
+        <td>${formatMoneyPlain(finalTotal, currency)}</td>
+      </tr>
+    </table>
   </div>
 
-  <div class="footer">
-    Émis par ${companyName} - Signature: __________________
+  <!-- Payment Conditions -->
+  <div class="payment-conditions">
+    <div class="payment-conditions-title">Conditions de règlement:</div>
+    <div class="payment-conditions-content">${opts.paymentConditions || "À réception"}</div>
   </div>
+
+
+ <!-- Legal Footer -->
+  ${opts.companyFooter ? `
+    <div class="footer-legal">
+      Capital de ${opts.companyFooter.capital || "N/A"} - 
+      ${opts.companyFooter.rc ? `R.C.: ${opts.companyFooter.rc} - ` : ""}
+      ${opts.companyFooter.patente ? `Patente: ${opts.companyFooter.patente} - ` : ""}
+      ${opts.companyFooter.if ? `I.F.: ${opts.companyFooter.if} - ` : ""}
+      ${opts.companyFooter.cnss ? `C.N.S.S.: ${opts.companyFooter.cnss} - ` : ""}
+      ${opts.companyFooter.ice ? `ICE: ${opts.companyFooter.ice}` : ""}
+    </div>
+  ` : ""}
+
+  <!-- Page Number -->
+  <div class="page-number">1 / 1</div>
+
 </body>
 </html>
   `;

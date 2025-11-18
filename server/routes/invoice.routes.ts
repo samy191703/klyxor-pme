@@ -41,7 +41,7 @@ type InvoiceForPdf = {
     generatedAt: Date | string;
     status: string;
     baseAmount: number;
-    vatRate: number;
+    tvaRate: number;
     amount?: number;
     vatAmount: number;
     redactionAmount: number;
@@ -603,11 +603,27 @@ export function registerInvoiceRoutes(app: Express) {
                 // 6️⃣ Calculs des montants
                 const amountHt = Number(billingLineRow.amountHt ?? 0);
                 const contractVatRate = Number(existingContract.tvaRate ?? 0.20);
-                const vatRatePercent = contractVatRate * 100;
-                const formatDecimal = (num: any) => (Number(num) || 0).toFixed(2);
+                // Convert to percentage format for invoice:
+                // - If < 1, it's a decimal (0.20 -> 20), multiply by 100
+                // - If >= 1, it's already a percentage (20 -> 20), use as-is
+                const vatRatePercent = contractVatRate < 1 ? contractVatRate * 100 : contractVatRate;
+                // For calculations, always use decimal format
+                const contractVatRateDecimal = contractVatRate < 1 ? contractVatRate : contractVatRate / 100;
+
+                const formatDecimal = (num: string | number | null | undefined): string => {
+                    const n = Number(num) || 0;
+                    return n.toFixed(2);
+                };
+
+                // Calculate amounts: HT (amountHt), TVA, TTC (totalAmount)
+                // - baseAmount: Base amount before VAT (same as amountHt)
+                // - amount: HT amount (before VAT) - required by database schema
+                // - vatAmount: VAT amount = HT * rate (e.g., 100 * 0.20 = 20)
+                // - totalAmount: TTC (all taxes included) = HT + VAT
                 const baseAmount = amountHt;
-                const vatAmount = amountHt * contractVatRate;
-                const totalAmount = amountHt + vatAmount;
+                const amount = amountHt; // HT amount (same as baseAmount)
+                const vatAmount = amountHt * contractVatRateDecimal; // VAT = HT * rate (e.g., 100 * 0.20 = 20)
+                const totalAmount = amountHt + vatAmount; // TTC = HT + VAT
 
                 const invoiceData = {
                     contractId: d.contractId,
@@ -970,7 +986,7 @@ export function registerInvoiceRoutes(app: Express) {
                     status: invoice.status,
                     baseAmount: Number(invoice.baseAmount ?? 0),
                     amount: Number(invoice.amount ?? invoice.baseAmount ?? 0),
-                    vatRate: Number(invoice.vatRate ?? 0),
+                    tvaRate: Number(invoice.vatRate ?? 0),
                     vatAmount: Number(invoice.vatAmount ?? 0),
                     redactionAmount: Number(invoice.redactionAmount ?? 0),
                     totalAmount: Number(invoice.totalAmount ?? 0),
@@ -1034,9 +1050,33 @@ export function registerInvoiceRoutes(app: Express) {
 
                 const html = renderInvoiceHtml(invoiceForPdf, invoiceLines, {
                     logoDataUrl,
-                    companyName: "Ellington Wood Decor",
-                    companyAddress: "36 Terrick Rd, Ellington PE18 2NT, United Kingdom",
-                });
+                    companyName: "KLYXOR Solutionssss",
+                    companyAddress: "123 Rue de la Paix, 75000 Paris, France",
+                    companyPhone: "01 23 45 67 89",
+                    companyEmail: "contact@klyxor.com",
+                    companyWebsite: "https://www.klyxor.com",
+                    customerCode: "1234567890",
+                    bank: {
+                        bankName: "Banque de France",
+                        accountNumber: "1234567890",
+                        iban: "FR7612345678901234567890123",
+                        swift: "BNPAFRPP761",
+                        owner: "KLYXOR Solutions",
+                        address: "123 Rue de la Paix, 75000 Paris, France", 
+                    },
+                    companyFooter: {
+                        capital: "1000000",
+                        rc: "1234567890",
+                        patente: "1234567890",
+                        if: "1234567890",
+                        cnss: "1234567890",
+                        ice: "1234567890",
+                    },
+                    paymentConditions: "À réception",
+                    currency: "EUR",
+                    });
+
+
 
                 const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
                 const page = await browser.newPage();
