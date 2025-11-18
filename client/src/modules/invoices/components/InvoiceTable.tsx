@@ -144,17 +144,20 @@ export function InvoiceTable({
   const displayedRows = rows;
   const highlightedRowRef = useRef<HTMLTableRowElement | null>(null);
 
-  // Scroll vers la ligne surlignée quand elle est disponible
+  const query = new URLSearchParams(location.search);
+  const lnId = query.get("ln");
+
   useEffect(() => {
-    if (highlightLn && highlightedRowRef.current) {
+    if (lnId && highlightedRowRef.current) {
+      console.log('lnId',lnId)
       setTimeout(() => {
-        highlightedRowRef.current?.scrollIntoView({ 
-          behavior: "smooth", 
-          block: "center" 
+        highlightedRowRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
         });
       }, 300);
     }
-  }, [highlightLn, displayedRows]);
+  }, [lnId, rows]);
 
   const headerCellSx = {
     fontWeight: 600,
@@ -233,14 +236,17 @@ export function InvoiceTable({
               displayedRows.map((r) => {
                 const isDownloading = downloadingId === r.id;
                 // Comparer le billingLineId avec le paramètre ln de l'URL
-                const isHighlighted = highlightLn && r.billingLineId && String(r.billingLineId) === String(highlightLn);
+                const isHighlighted = lnId && r.billingLineId && String(r.billingLineId) === String(lnId);
 
                 return (
-                  <TableRow key={r.id} hover
-                   // sx={{
-                  //   backgroundColor: isHighlighted ? "rgba(92, 18, 18, 0.08)" : "inherit",
-                  // }}                
-                    >
+                  <TableRow
+                    key={r.id}
+                    hover
+                    ref={isHighlighted ? highlightedRowRef : null}
+                    sx={{
+                      backgroundColor: isHighlighted ? "rgba(92, 18, 18, 0.08)" : "inherit",
+                    }}
+                  >
                     {/* N° Facture */}
                     <TableCell sx={bodyCellSx}>
                       <Box

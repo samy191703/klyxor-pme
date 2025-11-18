@@ -358,12 +358,12 @@ export function ViewBillingScheduleDialog({
       // Rafraîchir le schedule complet depuis l'API /api/billing-schedules/{id}
       try {
         const refreshedSchedule = await fetchBillingScheduleWithLines(schedule.id);
-        
+
         // Mettre à jour les lignes localement
         if (refreshedSchedule.lines) {
           setLocalLines(refreshedSchedule.lines);
         }
-        
+
         // Notifier le parent pour qu'il mette à jour son état
         if (onScheduleUpdate) {
           onScheduleUpdate(refreshedSchedule);
@@ -629,13 +629,11 @@ export function ViewBillingScheduleDialog({
                                   <Tooltip title="Voir les détails">
                                     <IconButton
                                       size="small"
-                                      onClick={() => {
-                                        const baseUrl = window.location.origin;
-                                        window.location.href = `${baseUrl}/invoices?ln=${ln.id}`;
-                                      }}
+                                      onClick={() => (window.location.href = `/invoices?ln=${ln.id}`)}
                                     >
                                       <EyeIcon className="w-4 h-4 mr-2" />
                                     </IconButton>
+
                                   </Tooltip>
 
                                 )}
@@ -694,20 +692,20 @@ export function ViewBillingScheduleDialog({
               </div>
 
               <div>
-                  <Label className="text-gray-700">Conditions de paiement</Label>
-                  <select
-                    className="mt-1 w-full border rounded px-2 py-2"
-                    value={paymentTerms ?? ""}
-                    onChange={(e) => setPaymentTerms(e.target.value as PaymentTermsEnum)}
-                  >
-                    <option value="">-- Sélectionner --</option>
-                    {Object.values(PaymentTermsEnum).map((pt) => (
-                      <option key={pt} value={pt}>
-                        {pt.replace("_", " ")}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <Label className="text-gray-700">Conditions de paiement</Label>
+                <select
+                  className="mt-1 w-full border rounded px-2 py-2"
+                  value={paymentTerms ?? ""}
+                  onChange={(e) => setPaymentTerms(e.target.value as PaymentTermsEnum)}
+                >
+                  <option value="">-- Sélectionner --</option>
+                  {Object.values(PaymentTermsEnum).map((pt) => (
+                    <option key={pt} value={pt}>
+                      {pt.replace("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <DialogFooter className="flex justify-end gap-2 mt-4">
