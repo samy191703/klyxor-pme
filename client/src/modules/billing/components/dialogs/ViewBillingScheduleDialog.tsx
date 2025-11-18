@@ -290,10 +290,14 @@ export function ViewBillingScheduleDialog({
 
   const { toast } = useToast();
 
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
+
   const handleGenerateInvoice = async () => {
     if (!selectedLine || !contractId) return;
 
     try {
+      setLoadingInvoice(true);
+
       const dueDateParts = dueDate.split("-");
       const dueDateISO = new Date(
         Number(dueDateParts[0]),
@@ -311,7 +315,7 @@ export function ViewBillingScheduleDialog({
 
       console.log("Création de la facture avec le payload :", payload);
 
-      const res = await createInvoice(payload);
+      await createInvoice(payload);
 
       toast({
         title: "Facture générée",
@@ -332,8 +336,11 @@ export function ViewBillingScheduleDialog({
         title: "Erreur",
         description: msg,
       });
+    } finally {
+      setLoadingInvoice(false);
     }
   };
+
 
   return (
     <>
@@ -563,7 +570,7 @@ export function ViewBillingScheduleDialog({
                                         window.location.href = `${baseUrl}/invoices?ln=${ln.id}`;
                                       }}
                                     >
-                                      <EyeIcon fontSize="small" />
+                                      <EyeIcon className="w-4 h-4 mr-2" />
                                     </IconButton>
                                   </Tooltip>
 
@@ -593,40 +600,71 @@ export function ViewBillingScheduleDialog({
         <Dialog open={invoiceModalOpen} onOpenChange={setInvoiceModalOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Générer une facture</DialogTitle>
+              <DialogTitle>Générer une facture du contrat:</DialogTitle>
+              <DialogDescription> <b>{contractNumber ?? "—"}</b> </DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-2 mt-2">
-              <p><strong>Contract ID:</strong> {contractId}</p>
-              <p><strong>Billing Schedule ID:</strong> {schedule.id}</p>
+            <div className="grid gap-4 mt-4">
 
-              <label className="block">
-                Description
-                <input
-                  type="text"
-                  className="mt-1 w-full border rounded px-2 py-1"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </label>
+              <div>
+                <Label className="text-gray-700">Date d'échéance</Label>
 
-              <label className="block">
-                Due Date
                 <input
                   type="date"
-                  className="mt-1 w-full border rounded px-2 py-1"
                   value={formatForDateInput(dueDate)}
                   onChange={(e) => setDueDate(e.target.value)}
+                  className="mt-1 w-full border rounded px-2 py-2"
                 />
+              </div>
 
-              </label>
+              <div>
+                <Label className="text-gray-700">Description</Label>
+
+                <textarea
+                  rows={3}
+                  className="mt-1 w-full border rounded px-2 py-2"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Ajouter une description..."
+                />
+              </div>
+
             </div>
 
             <DialogFooter className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setInvoiceModalOpen(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleGenerateInvoice}>Générer</Button>
+
+              <Button
+                onClick={handleGenerateInvoice}
+                disabled={loadingInvoice} // désactive le bouton pendant le traitement
+                className="flex items-center gap-2"
+              >
+                {loadingInvoice && (
+                  <svg
+                    className="animate-spin h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    ></path>
+                  </svg>
+                )}
+                Générer
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
