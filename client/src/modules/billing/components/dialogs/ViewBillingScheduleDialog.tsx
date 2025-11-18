@@ -312,6 +312,7 @@ export function ViewBillingScheduleDialog({
         billingLineId: selectedLine.id,
         description,
         dueDate: dueDateISO,
+        CreationInvoiceType: "INV"
       };
 
       await createInvoice(payload);

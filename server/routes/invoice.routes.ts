@@ -58,6 +58,7 @@ const invoiceCreateSchema = z.object({
     billingLineId: z.string().uuid(),
     dueDate: z.string(),
     description: z.string().optional().default(""),
+    CreationInvoiceType: z.string().default("INV"),
 })
     .refine((data) => {
         const due = new Date(data.dueDate);
@@ -463,48 +464,57 @@ export function registerInvoiceRoutes(app: Express) {
 
     // --- POST create invoice --- 
     /**
-   * @openapi
-   * /api/invoices:
-   *   post:
-   *     summary: Create a new invoice
-   *     description: Create an invoice for a given contract and billing line.
-   *     tags:
-   *       - Invoices
-   *     security:
-   *       - cookieAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               contractId:
-   *                 type: string
-   *               billingLineId:
-   *                 type: string
-   *               description:
-   *                 type: string
-   *                 nullable: true
-   *               dueDate:
-   *                 type: string
-   *                 format: date-time
-   *     responses:
-   *       200:
-   *         description: The created invoice
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *       400:
-   *         description: Invalid data
-   *       404:
-   *         description: Contract or billing line not found
-   *       409:
-   *         description: Duplicate invoice number
-   *       500:
-   *         description: Failed to create invoice
-   */
+ * @openapi
+ * /api/invoices:
+ *   post:
+ *     summary: Create a new invoice
+ *     description: Create an invoice for a given contract and billing line.
+ *     tags:
+ *       - Invoices
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               contractId:
+ *                 type: string
+ *               billingLineId:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *                 nullable: true
+ *               dueDate:
+ *                 type: string
+ *                 format: date-time
+ *               CreationInvoiceType:
+ *                 type: string
+ *                 enum: ["INV", "AV"]
+ *                 description: Type de création de facture (INV = facture, AV = avoir)
+ *             required:
+ *               - contractId
+ *               - billingLineId
+ *               - dueDate
+ *               - CreationInvoiceType
+ *     responses:
+ *       200:
+ *         description: The created invoice
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Invalid data
+ *       404:
+ *         description: Contract or billing line not found
+ *       409:
+ *         description: Duplicate invoice number
+ *       500:
+ *         description: Failed to create invoice
+ */
     app.post(
         "/api/invoices",
         isAuthenticated,
@@ -534,9 +544,10 @@ export function registerInvoiceRoutes(app: Express) {
                     .limit(1)
                     .then((rows) => rows[0]);
 
-                if (!existingContract) return res.status(404).json({ error: "Contract not found" });
+                if (!existingContract)
+                    return res.status(404).json({ error: "Contract not found" });
 
-                // 3️⃣ Vérifier que la billing line existe
+                // 3️⃣ Vérifier la billing line
                 const billingLineRow = await db
                     .select()
                     .from(billingLines)
@@ -544,24 +555,35 @@ export function registerInvoiceRoutes(app: Express) {
                     .limit(1)
                     .then((rows) => rows[0]);
 
-                if (!billingLineRow) return res.status(404).json({ error: "Billing line not found" });
+                if (!billingLineRow)
+                    return res.status(404).json({ error: "Billing line not found" });
 
-                // 4️⃣ Générer un numéro de facture
+                // 4️⃣ Récupérer le total des invoices → pour séquence 0001, 0002, etc.
+                const totalInvoices = await db
+                    .select({ count: sql`COUNT(*)` })
+                    .from(invoices)
+                    .then((r) => Number(r[0]?.count ?? 0));
+
+                // 5️⃣ Générer le numéro de facture basé sur tableLength + type
                 let invoiceNumber: string;
                 try {
-                    invoiceNumber = await InvoiceNumberGenerator.generateInvoiceNumber(d.contractId);
+                    invoiceNumber = InvoiceNumberGenerator.generateInvoiceNumber({
+                        tableLength: totalInvoices,
+                        type: d.CreationInvoiceType
+                    });
                 } catch {
-                    invoiceNumber = `INV-${Date.now()}`;
+                    invoiceNumber = `INV-${Date.now()}`; // fallback
                 }
 
+                // 6️⃣ Calculs des montants
                 const amountHt = Number(billingLineRow.amountHt ?? 0);
                 const contractVatRate = Number(existingContract.tvaRate ?? 0.20);
                 const vatRatePercent = contractVatRate * 100;
 
-                const formatDecimal = (num: string | number | null | undefined) => (Number(num) || 0).toFixed(2);
+                const formatDecimal = (num: any) =>
+                    (Number(num) || 0).toFixed(2);
 
                 const baseAmount = amountHt;
-                const amount = amountHt;
                 const vatAmount = amountHt * contractVatRate;
                 const totalAmount = amountHt + vatAmount;
 
@@ -570,11 +592,11 @@ export function registerInvoiceRoutes(app: Express) {
                     billingLineId: d.billingLineId,
                     description: d.description || null,
                     dueDate: new Date(d.dueDate),
-                    amount: formatDecimal(amount),
+                    amount: formatDecimal(amountHt),
                     vatRate: formatDecimal(vatRatePercent),
                     vatAmount: formatDecimal(vatAmount),
                     baseAmount: formatDecimal(baseAmount),
-                    redactionAmount: formatDecimal(0),
+                    redactionAmount: "0.00",
                     type: TypeInvoice.NORMAL,
                     totalAmount: formatDecimal(totalAmount),
                     status: InvoiceStatus.Draft,
@@ -586,12 +608,10 @@ export function registerInvoiceRoutes(app: Express) {
 
                 const invoice = await storage.createInvoice(invoiceData);
 
-                // ✅ 5️⃣ Mettre à jour le status de la billing line
                 await db.update(billingLines)
                     .set({ status: BillingLineStatus.FACTUREE, updatedAt: new Date() })
                     .where(eq(billingLines.id, d.billingLineId));
 
-                // 6️⃣ Audit log (facultatif)
                 try {
                     await storage.createAuditLog?.({
                         userId: safeUserId(req) || "system",
