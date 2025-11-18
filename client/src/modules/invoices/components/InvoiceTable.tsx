@@ -1,5 +1,6 @@
 // src/modules/invoices/components/InvoiceTable.tsx
 import * as React from "react";
+import { useEffect, useRef } from "react";
 import {
   Paper,
   Box,
@@ -141,6 +142,20 @@ export function InvoiceTable({
   height = 400,
 }: Props) {
   const displayedRows = rows;
+  const highlightedRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  // Scroll vers la ligne surlignée quand elle est disponible
+  useEffect(() => {
+    if (highlightLn && highlightedRowRef.current) {
+      setTimeout(() => {
+        highlightedRowRef.current?.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "center" 
+        });
+      }, 300);
+    }
+  }, [highlightLn, displayedRows]);
+
   const headerCellSx = {
     fontWeight: 600,
     fontSize: 13,
@@ -217,14 +232,15 @@ export function InvoiceTable({
             ) : (
               displayedRows.map((r) => {
                 const isDownloading = downloadingId === r.id;
-                const isHighlighted = r.billingLineId
+                // Comparer le billingLineId avec le paramètre ln de l'URL
+                const isHighlighted = highlightLn && r.billingLineId && String(r.billingLineId) === String(highlightLn);
 
                 return (
                   <TableRow key={r.id} hover
-                  // sx={{
+                   // sx={{
                   //   backgroundColor: isHighlighted ? "rgba(92, 18, 18, 0.08)" : "inherit",
-                  // }}
-                  >
+                  // }}                
+                    >
                     {/* N° Facture */}
                     <TableCell sx={bodyCellSx}>
                       <Box

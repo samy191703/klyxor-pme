@@ -28,13 +28,15 @@ export default function InvoiceModulePage() {
 
   const [location] = useLocation();
 
-  let highlightLn: string | null = null;
-
-  if (location.includes("?")) {
-    const queryString = location.split("?")[1];
-    const params = new URLSearchParams(queryString);
-    highlightLn = params.get("ln");
-  }
+  // Récupérer le paramètre ln depuis l'URL
+  const highlightLn = useMemo(() => {
+    if (location.includes("?")) {
+      const queryString = location.split("?")[1];
+      const params = new URLSearchParams(queryString);
+      return params.get("ln");
+    }
+    return null;
+  }, [location]);
   const [filters, setFilters] = useState(DEFAULT_INVOICE_FILTERS);
   const { data: invoicesData, isLoading, error, refetch } = useQuery({
     queryKey: INVOICE_QK.invoices.list(filters),
@@ -245,6 +247,7 @@ export default function InvoiceModulePage() {
               ) : (
                 <InvoiceTable
                   rows={invoices}
+                  highlightLn={highlightLn}
                   total={totalInvoices}
                   limit={limit}
                   offset={offset}

@@ -1,5 +1,5 @@
 // src/modules/billing/components/ViewBillingScheduleDialog.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,17 +24,20 @@ import type { CalculateDto } from "@/_dtos/calculate-indexation.dto";
 import type { CalculationResult } from "@/_dtos/calculate-results.dto";
 import { getContract } from "@/services/contracts.api";
 import { postIndexationPreview } from "@/services/indexation.api";
-import { AlertTriangle, EyeIcon, FilePlus, FileText } from "lucide-react";
+import { AlertTriangle, EyeIcon, FilePlus, FileText, Loader2 } from "lucide-react";
 import { createInvoice } from "@/modules/invoices/api/invoice.api";
 import { useToast } from "@/hooks/use-toast";
 import { IconButton, Tooltip } from "@mui/material";
-import { fetchBillingLinesBySchedule, fetchBillingSchedules } from "../../api/billing.api";
+import { fetchBillingLinesBySchedule, fetchBillingSchedules, fetchBillingScheduleWithLines } from "../../api/billing.api";
 import { PaymentTermsEnum } from "@/modules/invoices/domain/types";
+import { queryClient } from "@/lib/queryClient";
+import { BILLING_QK } from "../../domain/constants";
 
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   schedule?: (BillingSchedule & { lines?: BillingLine[] }) | null;
+  onScheduleUpdate?: (schedule: BillingSchedule & { lines?: BillingLine[] }) => void;
 };
 
 // --------- Helpers ---------
@@ -172,6 +175,7 @@ export function ViewBillingScheduleDialog({
   open,
   onOpenChange,
   schedule,
+  onScheduleUpdate,
 }: Props) {
   if (!schedule) return null;
 
@@ -197,6 +201,19 @@ export function ViewBillingScheduleDialog({
   const frequencyLabel = BILLING_FREQUENCY_LABELS[frequency] ?? frequency;
   const billingTypeLabel = BILLING_TYPE_LABELS[billingType] ?? billingType;
 
+  // ---------- LINES STATE (local state for refreshing) ----------
+  const [localLines, setLocalLines] = useState<BillingLine[]>(lines);
+  const [generatingLineId, setGeneratingLineId] = useState<string | null>(null);
+
+  // Update local lines when schedule.lines changes or when schedule.id changes
+  useEffect(() => {
+    if (schedule?.lines) {
+      setLocalLines(schedule.lines);
+    } else if (lines) {
+      setLocalLines(lines);
+    }
+  }, [lines, schedule?.lines, schedule?.id]);
+
   // ---------- INDEXATION STATE ----------
   const [idxLoading, setIdxLoading] = useState(false);
   const [idxError, setIdxError] = useState<string | null>(null);
@@ -221,7 +238,7 @@ export function ViewBillingScheduleDialog({
       setIdxError("Aucun contrat associé à ce plan de facturation.");
       return;
     }
-    if (!lines.length) {
+    if (!localLines.length) {
       setIdxError("Aucune échéance à indexer.");
       return;
     }
@@ -241,7 +258,7 @@ export function ViewBillingScheduleDialog({
       }
 
       // 2) Pour chaque ligne, construire un payload dédié avec P0 = montant de l'échéance
-      const promises = lines.map(async (ln: BillingLine) => {
+      const promises = localLines.map(async (ln: BillingLine) => {
         const rawAmount = Number(ln.amountHt || 0);
         const dto = buildCalculateFromContract(contract, {
           baseAmountOverride: rawAmount,
@@ -296,10 +313,11 @@ export function ViewBillingScheduleDialog({
   const [loadingInvoice, setLoadingInvoice] = useState(false);
 
   const handleGenerateInvoice = async () => {
-    if (!selectedLine || !contractId) return;
+    if (!selectedLine || !contractId || !schedule?.id) return;
 
     try {
       setLoadingInvoice(true);
+      setGeneratingLineId(selectedLine.id);
 
       const dueDateParts = dueDate.split("-");
       const dueDateISO = new Date(
@@ -324,6 +342,43 @@ export function ViewBillingScheduleDialog({
         description: "La facture a été générée avec succès.",
       });
 
+      // Invalider les queries React Query pour rafraîchir les données
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: BILLING_QK.schedules.lines(schedule.id),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: BILLING_QK.schedules.detail(schedule.id),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: BILLING_QK.lines.detail(selectedLine.id),
+        }),
+      ]);
+
+      // Rafraîchir le schedule complet depuis l'API /api/billing-schedules/{id}
+      try {
+        const refreshedSchedule = await fetchBillingScheduleWithLines(schedule.id);
+        
+        // Mettre à jour les lignes localement
+        if (refreshedSchedule.lines) {
+          setLocalLines(refreshedSchedule.lines);
+        }
+        
+        // Notifier le parent pour qu'il mette à jour son état
+        if (onScheduleUpdate) {
+          onScheduleUpdate(refreshedSchedule);
+        }
+      } catch (refreshError) {
+        console.error("Erreur lors du rafraîchissement du schedule:", refreshError);
+        // En cas d'erreur, on essaie quand même de rafraîchir juste les lignes
+        try {
+          const refreshedLines = await fetchBillingLinesBySchedule(schedule.id);
+          setLocalLines(refreshedLines);
+        } catch (lineError) {
+          console.error("Erreur lors du rafraîchissement des lignes:", lineError);
+        }
+      }
+
       setInvoiceModalOpen(false);
     } catch (err: any) {
       console.error("Erreur lors de createInvoice :", err);
@@ -340,6 +395,7 @@ export function ViewBillingScheduleDialog({
       });
     } finally {
       setLoadingInvoice(false);
+      setGeneratingLineId(null);
     }
   };
 
@@ -400,7 +456,7 @@ export function ViewBillingScheduleDialog({
               <div>
                 <Label className="text-gray-600">Total HT</Label>
                 <p className="font-medium text-gray-900">{
-                  formatMoneyEUR(lines.reduce((sum: number, ln: BillingLine) => sum + Number(ln.amountHt || 0), 0))
+                  formatMoneyEUR(localLines.reduce((sum: number, ln: BillingLine) => sum + Number(ln.amountHt || 0), 0))
                 }</p>
               </div>
               <div>
@@ -438,17 +494,18 @@ export function ViewBillingScheduleDialog({
                 <Label className="text-gray-600">Prochaine échéance</Label>
                 <p className="font-medium text-gray-900">{
                   (() => {
-                    if (!lines || lines.length === 0) return "—";
+                    if (!localLines || localLines.length === 0) return "—";
 
                     const now = new Date();
-                    const futureDates = lines
+                    const futureDates = localLines
                       .map((ln: BillingLine) => new Date(ln.dueDate))
                       .filter((date: Date) => !isNaN(date.getTime()) && date > now)
                       .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 
                     if (futureDates.length === 0) return "—";
 
-                    return formatDateFR(futureDates[0]);
+                    const nextDate = futureDates[0];
+                    return formatDateFR(nextDate.toISOString());
                   })()
                 }</p>
               </div>
@@ -481,7 +538,7 @@ export function ViewBillingScheduleDialog({
 
             {idxError && <div className="text-xs text-red-600">{idxError}</div>}
 
-            {lines.length > 0 && (
+            {localLines.length > 0 && (
               <div className="mt-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-gray-600">Échéances</Label>
@@ -494,7 +551,7 @@ export function ViewBillingScheduleDialog({
                   >
                     {idxLoading
                       ? "Calcul…"
-                      : "Pré-calculer l’indexation des lignes"}
+                      : "Pré-calculer l'indexation des lignes"}
                   </Button>
                 </div>
 
@@ -514,7 +571,7 @@ export function ViewBillingScheduleDialog({
                         </tr>
                       </thead>
                       <tbody>
-                        {lines.map((ln: BillingLine) => {
+                        {localLines.map((ln: BillingLine) => {
                           const rawAmount = Number(ln.amountHt || 0);
                           const res = lineResults[ln.id];
                           const indexedAmount =
@@ -558,10 +615,15 @@ export function ViewBillingScheduleDialog({
                               <td className="px-3 py-2 text-center">
                                 {ln.status === BillingLineStatus.A_FACTURER ? (
                                   <button
-                                    className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs text-green-700 gap-1"
+                                    className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs text-green-700 gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                     onClick={() => handleOpenInvoiceModal(ln)}
+                                    disabled={generatingLineId === ln.id || loadingInvoice}
                                   >
-                                    <FilePlus className="w-4 h-4" />
+                                    {generatingLineId === ln.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <FilePlus className="w-4 h-4" />
+                                    )}
                                   </button>
                                 ) : (
                                   <Tooltip title="Voir les détails">

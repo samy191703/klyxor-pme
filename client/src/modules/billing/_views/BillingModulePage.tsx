@@ -604,6 +604,9 @@ const paymentsByDayProRata = useMemo(() => {
           if (!v) setViewingSchedule(null);
         }}
         schedule={viewingSchedule}
+        onScheduleUpdate={(updatedSchedule) => {
+          setViewingSchedule(updatedSchedule);
+        }}
       />
 
       {/* <EditBillingScheduleDialog
