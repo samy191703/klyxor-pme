@@ -40,7 +40,7 @@ type InvoiceForPdf = {
     generatedAt: Date | string;
     status: string;
     baseAmount: number;
-    vatRate: number;
+    tvaRate: number;
     amount?: number;
     vatAmount: number;
     redactionAmount: number;
@@ -566,8 +566,12 @@ export function registerInvoiceRoutes(app: Express) {
                 // Get VAT rate from contract (stored as decimal, e.g., 0.20 for 20%)
                 // Invoice schema stores vatRate as percentage (e.g., 20 for 20%)
                 const contractVatRate = Number(existingContract.tvaRate ?? 0.20);
-                // Convert to percentage format for invoice (0.20 -> 20)
-                const vatRatePercent = contractVatRate * 100;
+                // Convert to percentage format for invoice:
+                // - If < 1, it's a decimal (0.20 -> 20), multiply by 100
+                // - If >= 1, it's already a percentage (20 -> 20), use as-is
+                const vatRatePercent = contractVatRate < 1 ? contractVatRate * 100 : contractVatRate;
+                // For calculations, always use decimal format
+                const contractVatRateDecimal = contractVatRate < 1 ? contractVatRate : contractVatRate / 100;
 
                 const formatDecimal = (num: string | number | null | undefined): string => {
                     const n = Number(num) || 0;
@@ -581,7 +585,7 @@ export function registerInvoiceRoutes(app: Express) {
                 // - totalAmount: TTC (all taxes included) = HT + VAT
                 const baseAmount = amountHt;
                 const amount = amountHt; // HT amount (same as baseAmount)
-                const vatAmount = amountHt * contractVatRate; // VAT = HT * rate (e.g., 100 * 0.20 = 20)
+                const vatAmount = amountHt * contractVatRateDecimal; // VAT = HT * rate (e.g., 100 * 0.20 = 20)
                 const totalAmount = amountHt + vatAmount; // TTC = HT + VAT
 
                 const invoiceData = {
@@ -862,7 +866,7 @@ export function registerInvoiceRoutes(app: Express) {
                     status: invoice.status,
                     baseAmount: Number(invoice.baseAmount ?? 0),
                     amount: Number(invoice.amount ?? invoice.baseAmount ?? 0),
-                    vatRate: Number(invoice.vatRate ?? 0),
+                    tvaRate: Number(invoice.vatRate ?? 0),
                     vatAmount: Number(invoice.vatAmount ?? 0),
                     redactionAmount: Number(invoice.redactionAmount ?? 0),
                     totalAmount: Number(invoice.totalAmount ?? 0),

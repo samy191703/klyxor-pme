@@ -8,7 +8,7 @@ type InvoiceForPdf = {
   generatedAt: Date | string;
   status: string;
   baseAmount: number;
-  vatRate: number;
+  tvaRate: number;
   vatAmount: number;
   redactionAmount: number;
   totalAmount: number;
@@ -97,23 +97,44 @@ export function renderInvoiceHtml(
   const clientAddress = invoice.clientAddress || "";
 
   const amountHT = invoice.baseAmount ?? 0;
-  const vatRate = invoice.vatRate ?? 0;
-  const vatAmount = invoice.vatAmount ?? (amountHT * (vatRate / 100));
+  const rawTvaRate = invoice.tvaRate ?? 0;
+  // Normalize tvaRate: 
+  // - if < 1, it's a decimal (0.2 = 20%), multiply by 100
+  // - if >= 1 and <= 100, it's already a percentage (20 = 20%)
+  // - if > 100, it might be incorrectly stored (700 might mean 7%), divide by 10
+  let tvaRatePercent: number;
+  let tvaRateDecimal: number;
+  
+  if (rawTvaRate < 1) {
+    // Decimal format: 0.2 -> 20%
+    tvaRatePercent = rawTvaRate * 100;
+    tvaRateDecimal = rawTvaRate;
+  } else if (rawTvaRate > 100) {
+    // Likely incorrectly stored: 700 -> 7% (divide by 100)
+    tvaRatePercent = rawTvaRate / 100;
+    tvaRateDecimal = rawTvaRate / 10000;
+  } else {
+    // Already in percentage format: 20 -> 20%
+    tvaRatePercent = rawTvaRate;
+    tvaRateDecimal = rawTvaRate / 100;
+  }
+  const vatAmount = invoice.vatAmount ?? (amountHT * tvaRateDecimal);
   const totalAmount = invoice.totalAmount ?? (amountHT + vatAmount);
 
   const invoiceLines = lines && lines.length > 0
     ? lines.map((line, idx) => {
-      const lineHT = line.amountHt ?? line.unitPrice ?? 0;
-      const lineVat = line.vatAmount ?? (lineHT * (vatRate / 100));
-      const lineTotal = line.totalAmount ?? (lineHT + lineVat);
+      const lineTotal = line.totalAmount ?? (line.unitPrice ?? 0) * (line.quantity ?? 1);
+      const lineVatAmount = line.vatAmount ?? (lineTotal * tvaRateDecimal);
+      const lineTotalAmount = lineTotal + lineVatAmount;
+      const lineHT = line.unitPrice ?? 0;
 
       return {
         sequenceNo: line.sequenceNo ?? idx + 1,
         description: line.description || invoice.description || "Service",
         quantity: line.quantity ?? 1,
         unitPrice: lineHT,
-        amount: lineTotal,
-        vatAmount: lineVat,
+        amount: lineTotalAmount,
+        vatAmount: lineVatAmount,
         status: line.status,
         dueDate: line.dueDate,
       };
@@ -280,7 +301,7 @@ export function renderInvoiceHtml(
       padding: 8px 10px;
       text-align: center;
       vertical-align: top;
-      height: 400px;
+      height: 350px;
     }
 
     table.items-table td.designation-cell {
@@ -359,6 +380,10 @@ export function renderInvoiceHtml(
      padding-top: 10px;
      border-top: 1px solid #ccc;
 }
+    .total-ttc {
+      font-weight: bold;
+      background-color:rgb(179, 179, 179);
+    }
   </style>
 </head>
 <body>
@@ -414,13 +439,12 @@ export function renderInvoiceHtml(
     <tbody>
       ${invoiceLines.map((line) => {
     const lineHT = (line.unitPrice ?? 0) * (line.quantity ?? 1);
-    const vatPercent = vatRate; // vatRate is already in percentage form (e.g., 20 for 20%)
     const unitPriceFormatted = formatMoneyPlain(line.unitPrice ?? 0, currency);
     const totalHTFormatted = formatMoneyPlain(lineHT, currency);
     return `
         <tr>
           <td class="designation-cell">${line.description}</td>
-          <td>${vatPercent}%</td>
+          <td>${tvaRatePercent}%</td>
           <td>${unitPriceFormatted}</td>
           <td>${line.quantity ?? 1}</td>
           <td>${totalHTFormatted}</td>
@@ -438,10 +462,10 @@ export function renderInvoiceHtml(
         <td>${formatMoneyPlain(finalHT, currency)}</td>
       </tr>
       <tr>
-        <td>Total TVA ${vatRate}%</td>
+        <td>Total TVA ${tvaRatePercent}%</td>
         <td>${formatMoneyPlain(finalVAT, currency)}</td>
       </tr>
-      <tr>
+      <tr class="total-ttc">
         <td>Total TTC</td>
         <td>${formatMoneyPlain(finalTotal, currency)}</td>
       </tr>
