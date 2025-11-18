@@ -12,6 +12,7 @@ import { invoices, contracts, users, billingLines } from "@shared/schema";
 import { eq, desc, aliasedTable, inArray, ilike, gte, and, lte, sql, asc } from "drizzle-orm";
 import { InvoiceNumberGenerator } from "server/services/references-generator/invoiceNumberGenerator";
 import { renderInvoiceHtml } from "server/templates/invoice-billing-schedule.template";
+import { BillingLineStatus } from "@shared/enums/billing.enum";
 
 // ---- Helpers ----
 const safeUserId = (req: Request) => (req as any)?.user?.id || "system";
@@ -533,9 +534,7 @@ export function registerInvoiceRoutes(app: Express) {
                     .limit(1)
                     .then((rows) => rows[0]);
 
-                if (!existingContract) {
-                    return res.status(404).json({ error: "Contract not found" });
-                }
+                if (!existingContract) return res.status(404).json({ error: "Contract not found" });
 
                 // 3️⃣ Vérifier que la billing line existe
                 const billingLineRow = await db
@@ -545,9 +544,7 @@ export function registerInvoiceRoutes(app: Express) {
                     .limit(1)
                     .then((rows) => rows[0]);
 
-                if (!billingLineRow) {
-                    return res.status(404).json({ error: "Billing line not found" });
-                }
+                if (!billingLineRow) return res.status(404).json({ error: "Billing line not found" });
 
                 // 4️⃣ Générer un numéro de facture
                 let invoiceNumber: string;
@@ -557,32 +554,16 @@ export function registerInvoiceRoutes(app: Express) {
                     invoiceNumber = `INV-${Date.now()}`;
                 }
 
-                // ✅ FIX: Use billing line's amountHt instead of contract amount
-                // BUG FIX: Previously used existingContract.amount which could be null/undefined,
-                // causing "amount: Required" validation error. Invoices should use the billing
-                // line's amountHt which represents the actual amount to invoice.
                 const amountHt = Number(billingLineRow.amountHt ?? 0);
-                
-                // Get VAT rate from contract (stored as decimal, e.g., 0.20 for 20%)
-                // Invoice schema stores vatRate as percentage (e.g., 20 for 20%)
                 const contractVatRate = Number(existingContract.tvaRate ?? 0.20);
-                // Convert to percentage format for invoice (0.20 -> 20)
                 const vatRatePercent = contractVatRate * 100;
 
-                const formatDecimal = (num: string | number | null | undefined): string => {
-                    const n = Number(num) || 0;
-                    return n.toFixed(2);
-                };
+                const formatDecimal = (num: string | number | null | undefined) => (Number(num) || 0).toFixed(2);
 
-                // Calculate amounts: HT (amountHt), TVA, TTC (totalAmount)
-                // - baseAmount: Base amount before VAT (same as amountHt)
-                // - amount: HT amount (before VAT) - required by database schema
-                // - vatAmount: VAT amount = HT * rate (e.g., 100 * 0.20 = 20)
-                // - totalAmount: TTC (all taxes included) = HT + VAT
                 const baseAmount = amountHt;
-                const amount = amountHt; // HT amount (same as baseAmount)
-                const vatAmount = amountHt * contractVatRate; // VAT = HT * rate (e.g., 100 * 0.20 = 20)
-                const totalAmount = amountHt + vatAmount; // TTC = HT + VAT
+                const amount = amountHt;
+                const vatAmount = amountHt * contractVatRate;
+                const totalAmount = amountHt + vatAmount;
 
                 const invoiceData = {
                     contractId: d.contractId,
@@ -603,9 +584,14 @@ export function registerInvoiceRoutes(app: Express) {
                     updatedAt: new Date(),
                 };
 
-
                 const invoice = await storage.createInvoice(invoiceData);
 
+                // ✅ 5️⃣ Mettre à jour le status de la billing line
+                await db.update(billingLines)
+                    .set({ status: BillingLineStatus.FACTUREE, updatedAt: new Date() })
+                    .where(eq(billingLines.id, d.billingLineId));
+
+                // 6️⃣ Audit log (facultatif)
                 try {
                     await storage.createAuditLog?.({
                         userId: safeUserId(req) || "system",
@@ -617,31 +603,30 @@ export function registerInvoiceRoutes(app: Express) {
                         details: JSON.stringify({
                             invoiceNumber: invoice.invoiceNumber,
                             status: invoice.status,
+                            updatedBillingLineId: d.billingLineId,
+                            newBillingLineStatus: "FACTUREE",
                         }),
                         ipAddress: req.ip || "",
                         userAgent: req.headers["user-agent"] || "",
                     });
                 } catch { }
 
-                // 8️⃣ Succès
                 return res.json(invoice);
+
             } catch (error: any) {
-                // Conflit (invoice_number déjà utilisé)
-                const detail = String(error?.detail || "");
-                if (error?.code === "23505" && detail.includes("(invoice_number)")) {
+                if (error?.code === "23505" && String(error?.detail || "").includes("(invoice_number)")) {
                     return res.status(409).json({
                         error: "Duplicate",
                         field: "invoiceNumber",
                         message: "Invoice number already used.",
-                        detail,
                     });
                 }
-
                 console.error(error);
                 return res.status(500).json({ error: "Failed to create invoice" });
             }
         }
     );
+
 
     // ---- PUT update invoice ----
     /**

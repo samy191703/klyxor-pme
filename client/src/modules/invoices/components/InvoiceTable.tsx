@@ -211,9 +211,10 @@ export function InvoiceTable({
 
                 return (
                   <TableRow key={r.id} hover
-                    sx={{
-                      backgroundColor: isHighlighted ? "rgba(92, 18, 18, 0.08)" : "inherit",
-                    }}>
+                    // sx={{
+                    //   backgroundColor: isHighlighted ? "rgba(92, 18, 18, 0.08)" : "inherit",
+                    // }}
+                    >
                     {/* N° Facture */}
                     <TableCell sx={bodyCellSx}>
                       <Box

@@ -28,6 +28,7 @@ import { AlertTriangle, EyeIcon, FilePlus, FileText } from "lucide-react";
 import { createInvoice } from "@/modules/invoices/api/invoice.api";
 import { useToast } from "@/hooks/use-toast";
 import { IconButton, Tooltip } from "@mui/material";
+import { fetchBillingLinesBySchedule, fetchBillingSchedules } from "../../api/billing.api";
 
 type Props = {
   open: boolean;
@@ -312,8 +313,6 @@ export function ViewBillingScheduleDialog({
         description,
         dueDate: dueDateISO,
       };
-
-      console.log("Création de la facture avec le payload :", payload);
 
       await createInvoice(payload);
 
