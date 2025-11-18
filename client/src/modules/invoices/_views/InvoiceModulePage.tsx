@@ -7,9 +7,9 @@ import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
 
-import type { Invoice } from "../domain/types";
+import { InvoiceAction, type Invoice } from "../domain/types";
 import { useQuery } from "@tanstack/react-query";
-import { fetchInvoices, deleteInvoice, downloadInvoicePdf } from "../api/invoice.api";
+import { fetchInvoices, deleteInvoice, downloadInvoicePdf, updateInvoice, createInvoiceCreditNote } from "../api/invoice.api";
 import { INVOICE_QK, DEFAULT_INVOICE_FILTERS } from "../domain/constants";
 
 import { InvoiceTable } from "../components/InvoiceTable";
@@ -19,6 +19,7 @@ import ViewInvoiceDialog from "../components/dialogs/ViewInvoiceDialog";
 import EditInvoiceDialog from "../components/dialogs/EditInvoiceDialog";
 import { ConfirmDeleteDialog } from "../components/dialogs/ConfirmDeleteDialog";
 import { useLocation } from "wouter";
+import { Refresh } from "@mui/icons-material";
 
 
 export default function InvoiceModulePage() {
@@ -111,6 +112,59 @@ export default function InvoiceModulePage() {
   const handleViewInvoice = (invoice: Invoice) => setViewingInvoiceId(invoice.id);
   const handleEditInvoice = (invoice: Invoice) => setEditingInvoiceId(invoice.id);
 
+  const getErrorMessage = (err: any) => {
+    try {
+      // si c'est un string JSON (comme dans ton cas)
+      if (typeof err === "string") {
+        const parsed = JSON.parse(err);
+        if (parsed?.error) return parsed.error;
+      }
+      // axios / fetch
+      if (err?.response?.data?.error) return err.response.data.error;
+      if (err?.error) return err.error;
+      if (err?.message) return err.message;
+    } catch {
+      // en cas de JSON invalide
+      return String(err);
+    }
+    return "Une erreur est survenue";
+  }
+
+
+  const handleValidate = async (invoice: Invoice) => {
+    try {
+      await updateInvoice(invoice.id, { invoiceAction: InvoiceAction.Validate });
+      toast({ title: "Facture validée", description: `La facture ${invoice.invoiceNumber} a été validée.` });
+      await refetch();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: getErrorMessage(err), variant: "destructive" });
+    }
+  };
+
+  const handleRevert = async (invoice: Invoice) => {
+    try {
+      await updateInvoice(invoice.id, { invoiceAction: InvoiceAction.RevertToDraft });
+      toast({ title: "Facture remise en brouillon", description: `La facture ${invoice.invoiceNumber} a été remise en brouillon.` });
+      await refetch();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: getErrorMessage(err), variant: "destructive" });
+    }
+  };
+
+  const handleCreateAvoir = async (invoice: Invoice) => {
+    try {
+      await createInvoiceCreditNote(
+        invoice.id,
+        `Avoir pour ${invoice.invoiceNumber}`,
+        invoice.dueDate
+      );
+      toast({ title: "Avoir créé", description: `L'avoir pour la facture ${invoice.invoiceNumber} a été créé.` });
+      await refetch();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: getErrorMessage(err), variant: "destructive" });
+    }
+  };
+
   const handleDownloadInvoice = async (invoice: Invoice) => {
     try {
       setDownloadingId(invoice.id);
@@ -190,7 +244,6 @@ export default function InvoiceModulePage() {
                 </div>
               ) : (
                 <InvoiceTable
-                  highlightLn={highlightLn}
                   rows={invoices}
                   total={totalInvoices}
                   limit={limit}
@@ -208,6 +261,10 @@ export default function InvoiceModulePage() {
                   onDownload={handleDownloadInvoice}
                   downloadingId={downloadingId}
                   refresh={refetch}
+
+                  onValidate={handleValidate}
+                  onRevert={handleRevert}
+                  onCreateAvoir={handleCreateAvoir}
                 />
               )}
             </CardContent>

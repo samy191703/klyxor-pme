@@ -132,3 +132,19 @@ export async function downloadInvoicePdf(id: string, invoiceNumber?: string): Pr
     throw error;
   }
 }
+
+/** ================== Create Avoir ================== **/
+export async function createInvoiceCreditNote(
+  invoiceId: string,
+  description?: string,
+  dueDate?: string
+): Promise<Invoice> {
+  const payload: Partial<InvoiceCreateDto> = {
+    description: description,
+    dueDate: dueDate ?? new Date().toISOString(),
+  };
+
+  const res = await apiRequest("POST", `/api/invoices/${invoiceId}/avoir`, payload);
+  await queryClient.invalidateQueries({ queryKey: INVOICE_QK.invoices.list(undefined) });
+  return res.json();
+}

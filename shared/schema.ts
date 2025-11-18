@@ -586,7 +586,7 @@ export const billingSchedules = pgTable(
 
 /* -------------------------------- BILLING LINES ------------------------------ */
 
-export const billingLines = pgTable( 
+export const billingLines = pgTable(
   "billing_lines",
   {
     id: varchar("id")
@@ -653,23 +653,19 @@ export const invoices = pgTable(
     redactionAmount: decimal("redaction_amount", { precision: 15, scale: 2 }), // montant de réduction par defaut 0
     totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
     status: text("status").notNull().default("draft"), // draft, inpaid , paid, cancelled, paid parselly
-    dueDate: timestamp("due_date"), // in the validator we must test if the due date > created at 
+    dueDate: timestamp("due_date"),
     generatedAt: timestamp("generated_at").default(sql`now()`),
-    generatedBy: varchar("generated_by").references(() => users.id, { // user Id
-      onDelete: "set null",
-    }),
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`now()`),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .default(sql`now()`),
+    generatedBy: varchar("generated_by").references(() => users.id, { onDelete: "set null" }),
+    refundedInvoiceId: varchar("refunded_invoice_id"), 
+    createdAt: timestamp("created_at").notNull().default(sql`now()`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
   },
   (t) => ({
     byContract: index("idx_invoices_contract").on(t.contractId),
     byBillingLine: index("idx_invoices_billing_line").on(t.billingLineId),
     byStatus: index("idx_invoices_status").on(t.status),
     byDueDate: index("idx_invoices_due").on(t.dueDate),
+    byRefundedInvoice: index("idx_invoices_refunded").on(t.refundedInvoiceId),
   })
 );
 

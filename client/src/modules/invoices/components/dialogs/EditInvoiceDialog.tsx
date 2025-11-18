@@ -182,66 +182,6 @@ export function EditInvoiceDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Type */}
-            <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
-              <Select
-                value={form.type}
-                onValueChange={(value) =>
-                  setForm({ ...form, type: value as any })
-                }
-              >
-                <SelectTrigger id="type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NORMAL">
-                    {INVOICE_TYPE_LABELS.NORMAL}
-                  </SelectItem>
-                  <SelectItem value="ADJUSTEMENT">
-                    {INVOICE_TYPE_LABELS.ADJUSTEMENT}
-                  </SelectItem>
-                  <SelectItem value="AVOIR">
-                    {INVOICE_TYPE_LABELS.AVOIR}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Statut */}
-            <div className="space-y-2">
-              <Label htmlFor="status">Statut</Label>
-              <Select
-                value={form.status}
-                onValueChange={(value) =>
-                  setForm({ ...form, status: value as any })
-                }
-              >
-                <SelectTrigger id="status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">
-                    {INVOICE_STATUS_LABELS.draft}
-                  </SelectItem>
-                  <SelectItem value="inpaid">
-                    {INVOICE_STATUS_LABELS.inpaid}
-                  </SelectItem>
-                  <SelectItem value="paid">
-                    {INVOICE_STATUS_LABELS.paid}
-                  </SelectItem>
-                  <SelectItem value="paid_parsely">
-                    {INVOICE_STATUS_LABELS.paid_parsely}
-                  </SelectItem>
-                  <SelectItem value="cancelled">
-                    {INVOICE_STATUS_LABELS.cancelled}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           {/* Date d'échéance */}
           <div className="space-y-2">
             <Label htmlFor="dueDate">Date d'échéance</Label>

@@ -52,13 +52,18 @@ type InvoiceForPdf = {
     clientAddress?: string;
 };
 
+export enum InvoiceAction {
+    Validate = "validate",
+    RevertToDraft = "revertToDraft",
+}
+
+
 // ---- Zod schema ----
 const invoiceCreateSchema = z.object({
     contractId: z.string().uuid(),
     billingLineId: z.string().uuid(),
     dueDate: z.string(),
     description: z.string().optional().default(""),
-    CreationInvoiceType: z.string().default("INV"),
 })
     .refine((data) => {
         const due = new Date(data.dueDate);
@@ -79,6 +84,7 @@ const invoiceCreateSchema = z.object({
 
 // ---- Zod schema pour update ----
 const invoiceUpdateSchema = z.object({
+    invoiceAction: z.enum(["validate", "revertToDraft"]).optional(),
     type: z.enum(["NORMAL", "ADJUSTEMENT", "AVOIR"]).optional(),
     contractId: z.string().uuid().optional(),
     billingLineId: z.string().uuid().optional(),
@@ -490,15 +496,10 @@ export function registerInvoiceRoutes(app: Express) {
  *               dueDate:
  *                 type: string
  *                 format: date-time
- *               CreationInvoiceType:
- *                 type: string
- *                 enum: ["INV", "AV"]
- *                 description: Type de création de facture (INV = facture, AV = avoir)
  *             required:
  *               - contractId
  *               - billingLineId
  *               - dueDate
- *               - CreationInvoiceType
  *     responses:
  *       200:
  *         description: The created invoice
@@ -569,7 +570,7 @@ export function registerInvoiceRoutes(app: Express) {
                 try {
                     invoiceNumber = InvoiceNumberGenerator.generateInvoiceNumber({
                         tableLength: totalInvoices,
-                        type: d.CreationInvoiceType
+                        type: "INV"
                     });
                 } catch {
                     invoiceNumber = `INV-${Date.now()}`; // fallback
@@ -650,65 +651,79 @@ export function registerInvoiceRoutes(app: Express) {
 
     // ---- PUT update invoice ----
     /**
-     * @openapi
-     * /api/invoices/{id}:
-     *   put:
-     *     summary: Update an invoice
-     *     description: Update an existing invoice by ID. Only the provided fields will be updated.
-     *     tags:
-     *       - Invoices
-     *     security:
-     *       - cookieAuth: []
-     *     parameters:
-     *       - in: path
-     *         name: id
-     *         required: true
-     *         schema:
-     *           type: string
-     *         description: ID of the invoice
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             properties:
-     *               type:
-     *                 type: string
-     *                 enum: [NORMAL, ADJUSTEMENT, AVOIR]
-     *               description:
-     *                 type: string
-     *               baseAmount:
-     *                 type: number
-     *               amount:
-     *                 type: number
-     *               vatRate:
-     *                 type: number
-     *               vatAmount:
-     *                 type: number
-     *               redactionAmount:
-     *                 type: number
-     *               totalAmount:
-     *                 type: number
-     *               status:
-     *                 type: string
-     *                 enum: [draft, inpaid, paid, cancelled, paid_parsely]
-     *               dueDate:
-     *                 type: string
-     *                 format: date-time
-     *               generatedAt:
-     *                 type: string
-     *                 format: date-time
-     *     responses:
-     *       200:
-     *         description: Updated invoice
-     *       400:
-     *         description: Invalid data
-     *       404:
-     *         description: Invoice not found
-     *       500:
-     *         description: Failed to update invoice
-     */
+  * @openapi
+  * /api/invoices/{id}:
+  *   put:
+  *     summary: Update an invoice
+  *     description: Update an existing invoice by ID. Only the provided fields will be updated.
+  *                 Some actions such as validation or reverting to draft must be done using the field "invoiceAction".
+  *     tags:
+  *       - Invoices
+  *     security:
+  *       - cookieAuth: []
+  *     parameters:
+  *       - in: path
+  *         name: id
+  *         required: true
+  *         schema:
+  *           type: string
+  *         description: ID of the invoice
+  *     requestBody:
+  *       required: true
+  *       content:
+  *         application/json:
+  *           schema:
+  *             type: object
+  *             properties:
+  *               type:
+  *                 type: string
+  *                 enum: [NORMAL, ADJUSTEMENT, AVOIR]
+  *               description:
+  *                 type: string
+  *               baseAmount:
+  *                 type: number
+  *               amount:
+  *                 type: number
+  *               vatRate:
+  *                 type: number
+  *               vatAmount:
+  *                 type: number
+  *               redactionAmount:
+  *                 type: number
+  *               totalAmount:
+  *                 type: number
+  *               status:
+  *                 type: string
+  *                 enum: [draft, inpaid, paid, cancelled, paid_parsely]
+  *                 deprecated: true
+  *                 description: |
+  *                   ⚠ Deprecated. Do NOT update status through this field.
+  *                   Use "invoiceAction" instead.
+  *               dueDate:
+  *                 type: string
+  *                 format: date-time
+  *               generatedAt:
+  *                 type: string
+  *                 format: date-time
+  * 
+  *               invoiceAction:
+  *                 type: string
+  *                 enum: [validate, revertToDraft]
+  *                 description: >
+  *                   Action to apply on the invoice lifecycle.
+  *                   - "validate": validate a draft invoice → moves status to "inpaid"
+  *                   - "revertToDraft": revert an "inpaid" invoice back to draft
+  *     responses:
+  *       200:
+  *         description: Updated invoice
+  *       400:
+  *         description: Invalid data
+  *       404:
+  *         description: Invoice not found
+  *       500:
+  *         description: Failed to update invoice
+  */
+
     app.put("/api/invoices/:id",
         requirePermission("invoices", "update"),
         isAuthenticated,
@@ -728,29 +743,72 @@ export function registerInvoiceRoutes(app: Express) {
                     });
                 }
 
+                const existingInvoice = await storage.getInvoice(invoiceId);
+                if (!existingInvoice) {
+                    return res.status(404).json({ error: "Invoice not found" });
+                }
+
                 const updates: any = { ...parsed.data };
 
-                // 🔹 Convertir les dates en objet Date pour Drizzle
+                const action = parsed.data.invoiceAction;
+
+                if (action === InvoiceAction.Validate) {
+
+                    if (existingInvoice.status !== InvoiceStatus.Draft) {
+                        return res.status(400).json({
+                            error: "Seules les factures en brouillon peuvent être validées."
+                        });
+                    }
+
+                    updates.status = InvoiceStatus.InPaid;
+                    updates.updatedAt = new Date();
+                }
+
+                if (action === InvoiceAction.RevertToDraft) {
+
+                    if (existingInvoice.status !== InvoiceStatus.InPaid) {
+                        return res.status(400).json({
+                            error: "Seules les factures en impayé peuvent être remises en brouillon"
+                        });
+                    }
+
+                    updates.status = InvoiceStatus.Draft;
+                    updates.updatedAt = new Date();
+                }
+
+                Object.keys(updates).forEach((key) => {
+                    if (updates[key] === undefined) delete updates[key];
+                });
+
                 if (updates.dueDate) updates.dueDate = new Date(updates.dueDate);
                 if (updates.generatedAt) updates.generatedAt = new Date(updates.generatedAt);
 
-                // 🔹 Convertir les nombres en string car le storage attend string
-                ["amount", "baseAmount", "vatRate", "vatAmount", "redactionAmount", "totalAmount"].forEach((field) => {
+                [
+                    "amount",
+                    "baseAmount",
+                    "vatRate",
+                    "vatAmount",
+                    "redactionAmount",
+                    "totalAmount"
+                ].forEach((field) => {
                     if (updates[field] !== undefined && updates[field] !== null) {
                         updates[field] = String(updates[field]);
                     }
                 });
 
-                // 🔹 Mise à jour
                 const updatedInvoice = await storage.updateInvoice(invoiceId, updates);
-                if (!updatedInvoice) return res.status(404).json({ error: "Invoice not found" });
+                if (!updatedInvoice) {
+                    return res.status(404).json({ error: "Invoice not found" });
+                }
 
                 res.json(updatedInvoice);
             } catch (error) {
                 console.error(error);
                 res.status(500).json({ error: "Failed to update invoice" });
             }
-        });
+        }
+    );
+
 
     // ---- DELETE invoice ----
     /**
@@ -958,5 +1016,125 @@ export function registerInvoiceRoutes(app: Express) {
         }
     );
 
-}
+    // ---- POST create credit note / avoir ----
+    /**
+     * @openapi
+     * /api/invoices/{id}/avoir:
+     *   post:
+     *     summary: Create a credit note (avoir) from an existing invoice
+     *     description: Creates a credit note based on an existing invoice.
+     *     tags: [Invoices]
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *         description: ID of the original invoice
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               description:
+     *                 type: string
+     *               dueDate:
+     *                 type: string
+     *                 format: date-time
+     *     responses:
+     *       200:
+     *         description: The created credit note (avoir)
+     *       404:
+     *         description: Original invoice not found
+     *       500:
+     *         description: Failed to create credit note
+     */
+    app.post(
+        "/api/invoices/:id/avoir",
+        isAuthenticated,
+        requirePermission("invoices", "create"),
+        async (req: Request, res: Response) => {
+            try {
+                const originalInvoiceId = req.params.id;
+                const { description, dueDate } = req.body;
 
+                const original = await storage.getInvoice(originalInvoiceId);
+                if (!original) return res.status(404).json({ error: "Invoice not found" });
+
+                let avoir;
+                let attempts = 0;
+                const maxAttempts = 5;
+
+                while (!avoir && attempts < maxAttempts) {
+                    attempts++;
+
+                    const totalInvoices = await db
+                        .select({ count: sql`COUNT(*)` })
+                        .from(invoices)
+                        .then((r) => Number(r[0]?.count ?? 0));
+                    let invoiceNumber: string;
+                    try {
+                        invoiceNumber = InvoiceNumberGenerator.generateInvoiceNumber({
+                            tableLength: totalInvoices,
+                            type: "AV"
+                        });
+                    } catch {
+                        invoiceNumber = `AV-${Date.now()}`;  
+                    }
+
+                    const avoirData = {
+                        contractId: original.contractId,
+                        billingLineId: original.billingLineId,
+                        description: description || `Avoir de ${original.invoiceNumber}`,
+                        dueDate: dueDate ? new Date(dueDate) : (original.dueDate ? new Date(original.dueDate) : new Date()),
+                        amount: original.amount,
+                        baseAmount: original.baseAmount,
+                        vatRate: original.vatRate,
+                        vatAmount: original.vatAmount,
+                        redactionAmount: "0.00",
+                        type: TypeInvoice.AVOIR,
+                        totalAmount: original.totalAmount,
+                        status: InvoiceStatus.Draft,
+                        invoiceNumber,
+                        generatedBy: safeUserId(req),
+                        refundedInvoiceId: original.id,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    };
+
+                    try {
+                        avoir = await storage.createInvoice(avoirData);
+                    } catch (error: any) {
+                        if (error?.code === "23505" && String(error?.detail || "").includes("(invoice_number)")) {
+                            console.warn("Duplicate invoice number, retrying...");
+                            continue;
+                        }
+                        throw error;
+                    }
+                }
+
+                if (!avoir) {
+                    return res.status(500).json({ error: "Failed to create credit note after multiple attempts" });
+                }
+
+                return res.json(avoir);
+
+            } catch (error: any) {
+                if (error?.code === "23505" && String(error?.detail || "").includes("(invoice_number)")) {
+                    return res.status(409).json({
+                        error: "Duplicate",
+                        field: "invoiceNumber",
+                        message: "Invoice number already used.",
+                    });
+                }
+                console.error(error);
+                return res.status(500).json({ error: "Failed to create invoice" });
+            }
+        }
+    );
+
+}

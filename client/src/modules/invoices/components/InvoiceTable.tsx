@@ -29,6 +29,7 @@ import {
   INVOICE_TYPE_LABELS,
 } from "../domain/constants";
 import { formatDateFR, formatMoneyEUR } from "../utils/formatters";
+import MoreActions from "./MoreActions";
 
 type Props = {
   rows: Invoice[];
@@ -44,6 +45,11 @@ type Props = {
   downloadingId?: string | null;
   height?: string | number;
   refresh?: () => void;
+
+  onValidate?: (invoice: Invoice) => void;
+  onRevert?: (invoice: Invoice) => void;
+  onCreateAvoir?: (invoice: Invoice) => void;
+
 };
 
 // Fixed column widths
@@ -127,6 +133,10 @@ export function InvoiceTable({
   onEdit,
   onDelete,
   onDownload,
+  onValidate,
+  onRevert,
+  onCreateAvoir,
+
   downloadingId,
   height = 400,
 }: Props) {
@@ -211,10 +221,10 @@ export function InvoiceTable({
 
                 return (
                   <TableRow key={r.id} hover
-                    // sx={{
-                    //   backgroundColor: isHighlighted ? "rgba(92, 18, 18, 0.08)" : "inherit",
-                    // }}
-                    >
+                  // sx={{
+                  //   backgroundColor: isHighlighted ? "rgba(92, 18, 18, 0.08)" : "inherit",
+                  // }}
+                  >
                     {/* N° Facture */}
                     <TableCell sx={bodyCellSx}>
                       <Box
@@ -295,6 +305,7 @@ export function InvoiceTable({
                     </TableCell>
 
                     {/* Actions (sticky right) */}
+                    {/* Actions (sticky right) */}
                     <TableCell
                       sx={{
                         ...bodyCellSx,
@@ -304,34 +315,11 @@ export function InvoiceTable({
                         zIndex: 1,
                         bgcolor: "background.paper",
                         boxShadow: "-4px 0 6px -2px rgba(0,0,0,0.1)",
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        gap: 0.5,
                       }}
                     >
-                      {/* Télécharger PDF */}
-                      {onDownload && (
-                        <Tooltip title="Télécharger la facture (PDF)">
-                          <span>
-                            <IconButton
-                              size="small"
-                              onClick={() => onDownload(r)}
-                              disabled={!!isDownloading}
-                            >
-                              {isDownloading ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Download className="h-4 w-4" />
-                              )}
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                      )}
-
-                      {/* Voir */}
-                      <Tooltip title="Voir">
-                        <IconButton size="small" onClick={() => onView(r)}>
-                          <Eye className="h-4 w-4" />
-                        </IconButton>
-                      </Tooltip>
-
                       {/* Modifier */}
                       {onEdit && (
                         <Tooltip title="Modifier">
@@ -343,14 +331,42 @@ export function InvoiceTable({
 
                       {/* Supprimer */}
                       <Tooltip title="Supprimer">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => onDelete(r)}
-                        >
+                        <IconButton size="small" color="error" onClick={() => onDelete(r)}>
                           <Trash2 className="h-4 w-4" />
                         </IconButton>
                       </Tooltip>
+
+                      {/* Voir */}
+                      <Tooltip title="Voir">
+                        <IconButton size="small" onClick={() => onView(r)}>
+                          <Eye className="h-4 w-4" />
+                        </IconButton>
+                      </Tooltip>
+
+                      {/* Télécharger PDF */}
+                      {onDownload && (
+                        <Tooltip title="Télécharger la facture (PDF)">
+                          <span>
+                            <IconButton size="small" onClick={() => onDownload(r)} disabled={!!isDownloading}>
+                              {isDownloading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4" />
+                              )}
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      )}
+
+                      {/* More actions (trois points) */}
+                      {(onValidate || onRevert || onCreateAvoir) && (
+                        <MoreActions
+                          r={r}
+                          onValidate={onValidate}
+                          onRevert={onRevert}
+                          onCreateAvoir={onCreateAvoir}
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 );

@@ -9,6 +9,12 @@ export type InvoiceStatus = "draft" | "inpaid" | "paid" | "cancelled" | "paid_pa
 /** =========================
  *  INVOICE
  *  ========================= */
+
+export enum InvoiceAction {
+    Validate = "validate",
+    RevertToDraft = "revertToDraft",
+}
+
 export interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -67,6 +73,7 @@ export interface InvoiceUpdateDto {
   dueDate?: string;
   generatedAt?: string;
   generatedBy?: string;
+  invoiceAction?: "validate" | "revertToDraft";
 }
 
 /** =========================
