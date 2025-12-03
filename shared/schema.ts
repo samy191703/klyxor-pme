@@ -602,7 +602,7 @@ export const billingLines = pgTable(
     // ✅ timestamp (due_date)
     dueDate: timestamp("due_date").notNull(),
 
-    amountHt: decimal("amount_ht", { precision: 15, scale: 2 }).notNull(),
+    amountHt: decimal("amount_ht", { precision: 14, scale: 2 }).notNull(),
     // tvaRate: decimal("tva_rate", { precision: 5, scale: 2 }).default("0.20"),
     status: text("status").notNull().default("A_FACTURER"), // "A_FACTURER" | "FACTUREE"
 
@@ -1347,6 +1347,7 @@ export const contractsRelations = relations(contracts, ({ one, many }) => ({
   paymentProofs: many(paymentProofs),
   sapSyncs: many(sapSynchronizations),
   indexationProposals: many(indexationProposals),
+  billingSchedules: many(billingSchedules),
 }));
 
 /**
@@ -1463,6 +1464,21 @@ export const terminationsRelations = relations(terminations, ({ one }) => ({
   }),
 }));
 
+export const billingSchedulesRelations = relations(billingSchedules, ({ one, many }) => ({
+  contract: one(contracts, {
+    fields: [billingSchedules.contractId],
+    references: [contracts.id],
+  }),
+  billingLines: many(billingLines),
+}));
+
+export const billingLinesRelations = relations(billingLines, ({ one }) => ({
+  schedule: one(billingSchedules, {
+    fields: [billingLines.scheduleId],
+    references: [billingSchedules.id],
+  }),
+}));
+
 export const codeSnippetsRelations = relations(codeSnippets, ({ one }) => ({
   creator: one(users, {
     fields: [codeSnippets.createdBy],
@@ -1534,6 +1550,11 @@ export const insertTerminationSchema = createInsertSchema(terminations).omit({
   createdAt: true,
   updatedAt: true,
   executedAt: true,
+});
+export const insertBillingLineSchema = createInsertSchema(billingLines).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   id: true,
@@ -1674,6 +1695,8 @@ export type Amendment = typeof amendments.$inferSelect;
 export type InsertAmendment = z.infer<typeof insertAmendmentSchema>;
 export type Termination = typeof terminations.$inferSelect;
 export type InsertTermination = z.infer<typeof insertTerminationSchema>;
+export type BillingLine = typeof billingLines.$inferSelect;
+export type InsertBillingLine = z.infer<typeof insertBillingLineSchema>;
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type PaymentBlock = typeof paymentBlocks.$inferSelect;
