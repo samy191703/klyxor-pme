@@ -5,5 +5,3 @@ server/public
 vite.config.ts.*
 *.tar.gz
 server/uploads
-scripts/test-billing-calculation.ts
-scripts/README-BILLING-TEST.md
