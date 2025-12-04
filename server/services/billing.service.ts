@@ -4,7 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { billingLines, billingSchedules, contracts } from "@shared/schema";
 import { BillingFrequency, BillingType } from "@shared/enums/billing.enum";
 import {
-  // buildPeriods, // ⬅️ plus utilisé, le builder est maintenant local
+  buildPeriods,
+  calculateAmountsByPeriodDays,
   splitAmountWithRounding,
 } from "server/utils/billing";
 import { storage } from "server/storage";
@@ -243,25 +244,18 @@ export async function generateBillingScheduleForContract({
         );
     }
 
-    // 4) Calendar periods (month/quarter/year)
-    const periods = buildPeriods(start, end, frequency);
+    // 4) Récupérer la date d'indexation si elle existe
+    const indexationDate = ct.indexationDate
+      ? (ct.indexationDate as Date)
+      : null;
+
+    // 5) Calendar periods avec nouvelle logique (année n / année n+1, date d'indexation)
+    const periods = buildPeriods(start, end, frequency, indexationDate);
     if (!periods.length)
       throw new Error("No periods generated for given dates/frequency");
 
-    // 4.bis) Prorata par période :
-    // ratio = jours_effectifs / jours_totaux_période (borne sup exclue)
-    const ratios = periods.map(({ pStart }) => {
-      const pEndFull = addFrequencyUtc(pStart, frequency);
-      return periodProrataAgainstContract(pStart, pEndFull, start, end);
-    });
-
-    // 5) Normalize weights
-    const sum = ratios.reduce((a, b) => a + b, 0);
-    if (sum <= 0) throw new Error("Invalid ratios (no overlap)");
-    const norm = ratios.map((r) => r / sum);
-
-    // 6) Split total by normalized weights (and fix cents)
-    const amounts = splitAmountWithRounding(totalAmount, norm);
+    // 6) Calculer les montants basés sur les jours réels de chaque période
+    const amounts = calculateAmountsByPeriodDays(totalAmount, periods);
 
     // 7) Optional control ±0.01€
     const sumRounded =
