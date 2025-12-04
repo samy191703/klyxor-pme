@@ -314,27 +314,21 @@ export function BillingLinesTable({
               </TableRow>
             ))}
           </TableBody>
-          <tfoot className="table-light">
-            <TableRow className="font-semibold border-t">
-              <TableCell colSpan={2} className="text-right">
-                Total:
-              </TableCell>
-              <TableCell className="text-right">
-                {currencyFormatter.format(totalAmount)}
-              </TableCell>
-              <TableCell colSpan={2} />
-            </TableRow>
-          </tfoot>
         </Table>
       </div>
 
       {/* Pagination summary & controls */}
+
+        {/* Center: range text */}
       <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
-        {/* Left: range text */}
         <div>
           {startIndex + 1}–{Math.min(endIndex, totalItems)} sur {totalItems}
         </div>
 
+        {/* Left: total amount */}
+        <div className="font-semibold">
+          Total&nbsp;:&nbsp;{currencyFormatter.format(totalAmount)}
+        </div>
         {/* Right: page size + arrows */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
