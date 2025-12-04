@@ -18,6 +18,9 @@ import {
   BILLING_PERIODS,
 } from "@shared/enums/contracts";
 import { ContractStatusLabels } from "@shared/enums/contracts-status.enum";
+import { useBillingSchedule } from "@/hooks/useBillingSchedule";
+import { BillingLinesTable } from "@/components/BillingLinesTable";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ⬇️ Pills
 import { StatusPill } from "@/components/pills/contract-status-pill";
@@ -124,6 +127,43 @@ function Grid2({ children }: React.PropsWithChildren<{}>) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
   );
+}
+
+/** Billing Schedule Content Component */
+function BillingScheduleContent({ contractId }: { contractId?: string }) {
+  const { data, isLoading, error } = useBillingSchedule(contractId, true);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          {error instanceof Error
+            ? error.message
+            : "Erreur lors du chargement de l'échéancier"}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!data?.schedule?.billingLines || data.schedule.billingLines.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        Aucune échéance générée pour ce contrat
+      </div>
+    );
+  }
+
+  return <BillingLinesTable lines={data.schedule.billingLines} />;
 }
 
 /** ─────────────────────────── Component ─────────────────────────── **/
@@ -255,6 +295,7 @@ export default function ContractDetailsSheet({
               <TabsTrigger value="general">Général</TabsTrigger>
               <TabsTrigger value="period">Période & Montants</TabsTrigger>
               <TabsTrigger value="indexation">Indexation</TabsTrigger>
+              <TabsTrigger value="echeancier">Échéancier</TabsTrigger>
               <TabsTrigger value="attachments">
                 Pièces jointes
                 {attachments?.length ? ` (${attachments.length})` : ""}
@@ -520,6 +561,21 @@ export default function ContractDetailsSheet({
                       Pas d’indexation configurée.
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ───────── Échéancier ───────── */}
+            <TabsContent value="echeancier" className="m-0">
+              <Card>
+                <CardHeader>
+                  <h3 className="text-lg font-semibold">Échéances de facturation</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Plan de facturation actif pour ce contrat
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <BillingScheduleContent contractId={contract?.id} />
                 </CardContent>
               </Card>
             </TabsContent>

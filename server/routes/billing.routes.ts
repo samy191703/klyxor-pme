@@ -4,7 +4,7 @@ import { isAuthenticated } from "server/auth";
 import { generateBillingScheduleForContract } from "server/services/billing.service";
 import { db } from "server/db";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
-import { billingSchedules, billingLines, contracts } from "@shared/schema";
+import { billingSchedules, billingLines, contracts, invoices } from "@shared/schema";
 import { renderBillingScheduleHtml } from "server/templates/billing-schedule.template";
 import puppeteer, { Browser, Page } from "puppeteer";
 import path from "path";
@@ -107,7 +107,30 @@ export function registerBillingRoutes(app: Express) {
    * @openapi
    * /api/billing-schedules:
    *   get:
-   *     summary: List billing schedules
+   *     summary: Get active billing schedule by contractId or list billing schedules
+   *     description: |
+   *       If contractId query param is provided, returns the active billing schedule for that contract.
+   *       Otherwise, returns a paginated list of billing schedules with optional filters.
+   *     tags: [Billing, SAP Integration]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: contractId
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         required: false
+   *         description: Contract ID to get active schedule for
+   *       - in: query
+   *         name: include
+   *         schema:
+   *           type: string
+   *           enum: [lines]
+   *         required: false
+   *         description: Include billing lines in response (only when contractId is provided)
+   *       - in: query
+   *         name: contractNumber
    *     description: Returns billing schedules with pagination and optional filters.
    *     tags: [Billing, SAP Integration]
    *     security:
@@ -247,8 +270,95 @@ export function registerBillingRoutes(app: Express) {
   app.get(
   "/api/billing-schedules",
   isAuthenticated,
-  async (req: Request<{}, {}, {}, BillingSchedulesQueryDto>, res: Response) => {
+  async (req: Request<{}, {}, {}, BillingSchedulesQueryDto & { contractId?: string; include?: string }>, res: Response) => {
     try {
+      const { contractId, include } = req.query;
+
+      // Handle contractId query - return active schedule for contract
+      if (contractId) {
+        const startTime = Date.now();
+        
+        // Find active schedule with highest version for this contract
+        const activeSchedules = await db
+          .select()
+          .from(billingSchedules)
+          .where(
+            and(
+              eq(billingSchedules.contractId, contractId as string),
+              eq(billingSchedules.status, "active")
+            )
+          )
+          .orderBy(desc(billingSchedules.version))
+          .limit(1);
+
+        if (!activeSchedules.length) {
+          return res.status(404).json({ error: "No active billing schedule found for this contract" });
+        }
+
+        const schedule = activeSchedules[0];
+        let lines: any[] = [];
+        let invoiceRefs: Map<string, string> = new Map();
+
+        // Include billing lines if requested
+        if (include === "lines") {
+          lines = await db
+            .select()
+            .from(billingLines)
+            .where(eq(billingLines.scheduleId, schedule.id))
+            .orderBy(asc(billingLines.dueDate));
+
+          // Get invoice references for billing lines
+          if (lines.length > 0) {
+            const lineIds = lines.map(l => l.id);
+            const invoiceRows = await db
+              .select({
+                billingLineId: invoices.billingLineId,
+                invoiceNumber: invoices.invoiceNumber,
+              })
+              .from(invoices)
+              .where(inArray(invoices.billingLineId, lineIds));
+
+            invoiceRefs = new Map(
+              invoiceRows.map(inv => [inv.billingLineId, inv.invoiceNumber])
+            );
+          }
+        }
+
+        const responseTime = `${Date.now() - startTime}ms`;
+
+        return res.status(200).json({
+          schedule: {
+            id: schedule.id,
+            contractId: schedule.contractId,
+            startDate: schedule.startDate,
+            endDate: schedule.endDate,
+            frequency: schedule.frequency,
+            billingType: schedule.billingType,
+            version: schedule.version,
+            status: schedule.status,
+            createdAt: schedule.createdAt,
+            updatedAt: schedule.updatedAt,
+            ...(include === "lines" && {
+              billingLines: lines.map(line => ({
+                id: line.id,
+                scheduleId: line.scheduleId,
+                dueDate: line.dueDate,
+                amountHt: line.amountHt?.toString() || "0.00",
+                status: line.status,
+                invoiceReference: invoiceRefs.get(line.id) || null,
+                createdAt: line.createdAt,
+                updatedAt: line.updatedAt,
+              })),
+            }),
+          },
+          meta: {
+            totalLines: lines.length,
+            responseTime,
+          },
+        });
+      }
+
+      // Original list logic
       const {
         contractNumber,
         customer,
