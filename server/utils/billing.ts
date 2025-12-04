@@ -201,6 +201,93 @@ export function splitAmountInCents(
 }
 
 /**
+ * US5.2: Ajuste le dernier montant pour compenser exactement l'écart dû aux arrondis
+ * @param amounts Tableau de montants en centimes (résultat de US5.1)
+ * @param totalAmount Montant total en euros
+ * @param contractId ID du contrat (pour journalisation)
+ * @returns Tableau de montants en centimes avec dernier montant ajusté
+ */
+export function adjustLastAmount(
+  amounts: number[],
+  totalAmount: number,
+  contractId?: string
+): number[] {
+  if (amounts.length === 0) {
+    return amounts;
+  }
+
+  const startTime = Date.now();
+  const n = amounts.length;
+  const totalCents = Math.round(totalAmount * 100);
+
+  // Cas spécial : une seule échéance
+  if (n === 1) {
+    amounts[0] = totalCents;
+    return amounts;
+  }
+
+  // Calculer la somme des (n-1) premières échéances
+  const baseCents = amounts[0];
+  const sumPrev = baseCents * (n - 1);
+
+  // Le dernier montant = total - somme des précédents
+  const lastCents = totalCents - sumPrev;
+
+  // Contrôle : last doit être >= 0
+  if (lastCents < 0) {
+    throw new Error(
+      `Incohérence détectée: last_amount (${lastCents} centimes) < 0. ` +
+      `total_cents=${totalCents}, base_cents=${baseCents}, n=${n}`
+    );
+  }
+
+  // Ajuster le dernier montant
+  amounts[n - 1] = lastCents;
+
+  // Journalisation INFO
+  const durationMs = Date.now() - startTime;
+  if (contractId) {
+    console.log(
+      `[INFO] US5.2 adjustment - contract_id=${contractId}, n=${n}, ` +
+      `total_cents=${totalCents}, base_cents=${baseCents}, ` +
+      `last_cents=${lastCents}, duration_ms=${durationMs}`
+    );
+  }
+
+  // Journalisation WARN si last >> base (écart significatif)
+  const diff = Math.abs(lastCents - baseCents);
+  const threshold = baseCents * 0.1; // 10% de différence
+  if (diff > threshold && baseCents > 0) {
+    console.warn(
+      `[WARN] US5.2 - Écart significatif détecté: ` +
+      `last_cents=${lastCents}, base_cents=${baseCents}, ` +
+      `diff=${diff} centimes (${((diff / baseCents) * 100).toFixed(1)}%)`
+    );
+  }
+
+  return amounts;
+}
+
+/**
+ * US5.1 + US5.2 : Calcul complet avec ajustement du dernier montant
+ * @param totalAmount Montant total (>= 0.00)
+ * @param installmentsCount Nombre d'échéances (>= 1)
+ * @param contractId ID du contrat (optionnel, pour journalisation)
+ * @returns Tableau de montants en centimes (entiers) avec dernier ajusté
+ */
+export function splitAmountInCentsWithAdjustment(
+  totalAmount: number,
+  installmentsCount: number,
+  contractId?: string
+): number[] {
+  // US5.1 : Calcul des montants de base
+  const amounts = splitAmountInCents(totalAmount, installmentsCount);
+
+  // US5.2 : Ajustement du dernier montant
+  return adjustLastAmount(amounts, totalAmount, contractId);
+}
+
+/**
  * Convertit un montant en centimes vers un montant en euros (2 décimales)
  */
 export function centsToEuros(cents: number): number {
@@ -227,17 +314,31 @@ export function splitAmountWithRounding(
  * Utilise la logique US5.1 (travail en centimes) puis convertit en euros
  * @param totalAmount Montant total du contrat
  * @param periods Périodes calculées avec buildPeriods
+ * @param useEqualDistribution Si true, utilise US5.1+US5.2 pour répartition égale (quand périodes complètes)
+ * @param contractId ID du contrat (pour journalisation US5.2)
  * @returns Tableau de montants en euros (2 décimales)
  */
 export function calculateAmountsByPeriodDays(
   totalAmount: number,
-  periods: Array<{ pStart: Date; pEnd: Date }>
+  periods: Array<{ pStart: Date; pEnd: Date }>,
+  useEqualDistribution: boolean = false,
+  contractId?: string
 ): number[] {
   if (periods.length === 0) {
     return [];
   }
 
-  // Calculer le nombre de jours pour chaque période
+  // Si useEqualDistribution est true, utiliser US5.1+US5.2 pour répartition égale
+  if (useEqualDistribution) {
+    const amountsInCents = splitAmountInCentsWithAdjustment(
+      totalAmount,
+      periods.length,
+      contractId
+    );
+    return amountsInCents.map((cents) => cents / 100);
+  }
+
+  // Sinon, calculer proportionnellement aux jours réels
   const daysPerPeriod = periods.map(({ pStart, pEnd }) => 
     differenceInCalendarDays(pEnd, pStart) + 1
   );
@@ -256,6 +357,24 @@ export function calculateAmountsByPeriodDays(
   const amounts = splitAmountWithRounding(totalAmount, ratios);
 
   return amounts;
+}
+
+/**
+ * Détecte si toutes les périodes ont le même nombre de jours (périodes complètes)
+ * @param periods Périodes à analyser
+ * @returns true si toutes les périodes ont le même nombre de jours
+ */
+export function arePeriodsEqual(periods: Array<{ pStart: Date; pEnd: Date }>): boolean {
+  if (periods.length <= 1) {
+    return true;
+  }
+
+  const daysPerPeriod = periods.map(({ pStart, pEnd }) => 
+    differenceInCalendarDays(pEnd, pStart) + 1
+  );
+
+  const firstDays = daysPerPeriod[0];
+  return daysPerPeriod.every((days) => days === firstDays);
 }
 
 /** Due date selon type de facturation */

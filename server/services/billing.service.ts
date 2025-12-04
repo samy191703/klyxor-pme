@@ -6,6 +6,7 @@ import { BillingFrequency, BillingType } from "@shared/enums/billing.enum";
 import {
   buildPeriods,
   calculateAmountsByPeriodDays,
+  arePeriodsEqual,
   splitAmountWithRounding,
 } from "server/utils/billing";
 import { storage } from "server/storage";
@@ -254,8 +255,18 @@ export async function generateBillingScheduleForContract({
     if (!periods.length)
       throw new Error("No periods generated for given dates/frequency");
 
-    // 6) Calculer les montants basés sur les jours réels de chaque période
-    const amounts = calculateAmountsByPeriodDays(totalAmount, periods);
+    // 6) Détecter si toutes les périodes ont le même nombre de jours (périodes complètes)
+    // Si oui, utiliser US5.1+US5.2 pour répartition égale
+    // Sinon, calculer proportionnellement aux jours réels
+    const useEqualDistribution = arePeriodsEqual(periods);
+    
+    // Calculer les montants (US5.1+US5.2 si périodes égales, sinon proportionnel)
+    const amounts = calculateAmountsByPeriodDays(
+      totalAmount,
+      periods,
+      useEqualDistribution,
+      contractId
+    );
 
     // 7) Optional control ±0.01€
     const sumRounded =
