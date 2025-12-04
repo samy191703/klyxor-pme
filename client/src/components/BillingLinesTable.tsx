@@ -156,30 +156,13 @@ export function BillingLinesTable({
   const getStatusLabel = (status: BillingLineStatus) =>
     status === "FACTUREE" ? "Facturée" : "À facturer";
 
-  const pageNumbers = useMemo(() => {
-    const pages: number[] = [];
-    const maxPagesToShow = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = startPage + maxPagesToShow - 1;
-
-    if (endPage > totalPages) {
-      endPage = totalPages;
-      startPage = Math.max(1, endPage - maxPagesToShow + 1);
-    }
-
-    for (let p = startPage; p <= endPage; p++) {
-      pages.push(p);
-    }
-    return pages;
-  }, [currentPage, totalPages]);
-
   const hasLines = lines.length > 0;
   const hasResults = processedLines.length > 0;
 
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-3">
+      <div className="flex flex-col items-center justify-center gap-3 py-12">
         <div
           className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"
           aria-label="Chargement"
@@ -193,6 +176,18 @@ export function BillingLinesTable({
 
   // Error state
   if (error) {
+    // Cas fonctionnel : aucun échéancier actif pour ce contrat → même design que l’état vide
+    if (
+      error instanceof Error &&
+      error.message.includes("No active billing schedule found for this contract")
+    ) {
+      return (
+        <div className="text-center py-12 text-muted-foreground">
+          Aucune échéance générée pour ce contrat
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-6 text-sm">
         <p className="font-medium text-destructive">
@@ -266,24 +261,6 @@ export function BillingLinesTable({
             </SelectContent>
           </Select>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-muted-foreground">Afficher:</span>
-          <Select
-            value={String(pagination.itemsPerPage)}
-            onValueChange={handleItemsPerPageChange}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-            </SelectContent>
-          </Select>
-          <span className="text-sm text-muted-foreground">par page</span>
-        </div>
       </div>
 
       {/* Table */}
@@ -352,79 +329,58 @@ export function BillingLinesTable({
       </div>
 
       {/* Pagination summary & controls */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-xs sm:text-sm text-muted-foreground">
-          Affichage de {startIndex + 1} à{" "}
-          {Math.min(endIndex, processedLines.length)} sur{" "}
-          {processedLines.length} lignes
+      <div className="flex items-center justify-end gap-4 text-xs sm:text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <span>Lignes par page</span>
+          <Select
+            value={String(pagination.itemsPerPage)}
+            onValueChange={handleItemsPerPageChange}
+          >
+            <SelectTrigger className="w-[80px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <nav aria-label="Pagination">
-          <ul className="pagination inline-flex items-center gap-1">
-            <li
-              className={`page-item ${
-                currentPage === 1 ? "pointer-events-none opacity-50" : ""
-              }`}
-            >
-              <button
-                type="button"
-                className="page-link inline-flex h-8 min-w-[2.25rem] items-center justify-center rounded-md border bg-background px-2 text-xs sm:text-sm hover:bg-muted"
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    currentPage: Math.max(1, currentPage - 1),
-                  }))
-                }
-                disabled={currentPage === 1}
-              >
-                ← Précédent
-              </button>
-            </li>
-            {pageNumbers.map((page) => (
-              <li
-                key={page}
-                className={`page-item ${
-                  currentPage === page ? "font-semibold" : ""
-                }`}
-              >
-                <button
-                  type="button"
-                  className={`page-link inline-flex h-8 min-w-[2.25rem] items-center justify-center rounded-md border px-2 text-xs sm:text-sm ${
-                    currentPage === page
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background hover:bg-muted"
-                  }`}
-                  onClick={() =>
-                    setPagination((prev) => ({ ...prev, currentPage: page }))
-                  }
-                >
-                  {page}
-                </button>
-              </li>
-            ))}
-            <li
-              className={`page-item ${
-                currentPage === totalPages
-                  ? "pointer-events-none opacity-50"
-                  : ""
-              }`}
-            >
-              <button
-                type="button"
-                className="page-link inline-flex h-8 min-w-[2.25rem] items-center justify-center rounded-md border bg-background px-2 text-xs sm:text-sm hover:bg-muted"
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    currentPage: Math.min(totalPages, currentPage + 1),
-                  }))
-                }
-                disabled={currentPage === totalPages}
-              >
-                Suivant →
-              </button>
-            </li>
-          </ul>
-        </nav>
+        <div>
+          {startIndex + 1}–{Math.min(endIndex, totalItems)} sur {totalItems}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none"
+            onClick={() =>
+              setPagination((prev) => ({
+                ...prev,
+                currentPage: Math.max(1, currentPage - 1),
+              }))
+            }
+            disabled={currentPage === 1}
+            aria-label="Page précédente"
+          >
+            {"<"}
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none"
+            onClick={() =>
+              setPagination((prev) => ({
+                ...prev,
+                currentPage: Math.min(totalPages, currentPage + 1),
+              }))
+            }
+            disabled={currentPage === totalPages}
+            aria-label="Page suivante"
+          >
+            {">"}
+          </button>
+        </div>
       </div>
     </div>
   );
