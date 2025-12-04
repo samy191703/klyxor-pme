@@ -263,8 +263,8 @@ export function BillingLinesTable({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="table-responsive overflow-x-auto rounded-md border">
+      {/* Table (inner vertical scrollbar, page stays fixed) */}
+      <div className="table-responsive overflow-x-auto overflow-y-auto rounded-md border max-h-[460px]">
         <Table className="w-full table table-striped table-hover">
           <TableHeader className="table-light">
             <TableRow>
@@ -329,57 +329,61 @@ export function BillingLinesTable({
       </div>
 
       {/* Pagination summary & controls */}
-      <div className="flex items-center justify-end gap-4 text-xs sm:text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <span>Lignes par page</span>
-          <Select
-            value={String(pagination.itemsPerPage)}
-            onValueChange={handleItemsPerPageChange}
-          >
-            <SelectTrigger className="w-[80px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
+      <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
+        {/* Left: range text */}
         <div>
           {startIndex + 1}–{Math.min(endIndex, totalItems)} sur {totalItems}
         </div>
 
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none"
-            onClick={() =>
-              setPagination((prev) => ({
-                ...prev,
-                currentPage: Math.max(1, currentPage - 1),
-              }))
-            }
-            disabled={currentPage === 1}
-            aria-label="Page précédente"
-          >
-            {"<"}
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none"
-            onClick={() =>
-              setPagination((prev) => ({
-                ...prev,
-                currentPage: Math.min(totalPages, currentPage + 1),
-              }))
-            }
-            disabled={currentPage === totalPages}
-            aria-label="Page suivante"
-          >
-            {">"}
-          </button>
+        {/* Right: page size + arrows */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span>Afficher :</span>
+            <Select
+              value={String(pagination.itemsPerPage)}
+              onValueChange={handleItemsPerPageChange}
+            >
+              <SelectTrigger className="w-[80px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none"
+              onClick={() =>
+                setPagination((prev) => ({
+                  ...prev,
+                  currentPage: Math.max(1, currentPage - 1),
+                }))
+              }
+              disabled={currentPage === 1}
+              aria-label="Page précédente"
+            >
+              {"<"}
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none"
+              onClick={() =>
+                setPagination((prev) => ({
+                  ...prev,
+                  currentPage: Math.min(totalPages, currentPage + 1),
+                }))
+              }
+              disabled={currentPage === totalPages}
+              aria-label="Page suivante"
+            >
+              {">"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
