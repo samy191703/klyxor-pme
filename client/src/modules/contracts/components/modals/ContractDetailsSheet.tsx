@@ -133,37 +133,13 @@ function Grid2({ children }: React.PropsWithChildren<{}>) {
 function BillingScheduleContent({ contractId }: { contractId?: string }) {
   const { data, isLoading, error } = useBillingSchedule(contractId, true);
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          {error instanceof Error
-            ? error.message
-            : "Erreur lors du chargement de l'échéancier"}
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (!data?.schedule?.billingLines || data.schedule.billingLines.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        Aucune échéance générée pour ce contrat
-      </div>
-    );
-  }
-
-  return <BillingLinesTable lines={data.schedule.billingLines} />;
+  return (
+    <BillingLinesTable
+      lines={data?.schedule?.billingLines ?? []}
+      isLoading={isLoading}
+      error={error as Error | null}
+    />
+  );
 }
 
 /** ─────────────────────────── Component ─────────────────────────── **/
