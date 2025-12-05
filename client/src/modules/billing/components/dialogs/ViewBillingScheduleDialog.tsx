@@ -17,18 +17,32 @@ import {
   BILLING_FREQUENCY_LABELS,
   BILLING_LINE_STATUS_LABELS,
 } from "../../domain/constants";
-import { BILLING_TYPE_LABELS, BillingLineStatus } from "@shared/enums/billing.enum";
+import {
+  BILLING_TYPE_LABELS,
+  BillingLineStatus,
+} from "@shared/enums/billing.enum";
 
 import type { Contract } from "@shared/schema";
 import type { CalculateDto } from "@/_dtos/calculate-indexation.dto";
 import type { CalculationResult } from "@/_dtos/calculate-results.dto";
 import { getContract } from "@/services/contracts.api";
 import { postIndexationPreview } from "@/services/indexation.api";
-import { AlertTriangle, EyeIcon, FilePlus, FileText, Loader2, Calendar } from "lucide-react";
+import {
+  AlertTriangle,
+  EyeIcon,
+  FilePlus,
+  FileText,
+  Loader2,
+  Calendar,
+} from "lucide-react";
 import { createInvoice } from "@/modules/invoices/api/invoice.api";
 import { useToast } from "@/hooks/use-toast";
 import { IconButton, Tooltip } from "@mui/material";
-import { fetchBillingLinesBySchedule, fetchBillingSchedules, fetchBillingScheduleWithLines } from "../../api/billing.api";
+import {
+  fetchBillingLinesBySchedule,
+  fetchBillingSchedules,
+  fetchBillingScheduleWithLines,
+} from "../../api/billing.api";
 import { PaymentTermsEnum } from "@/modules/invoices/domain/types";
 import { queryClient } from "@/lib/queryClient";
 import { BILLING_QK } from "../../domain/constants";
@@ -37,7 +51,9 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   schedule?: (BillingSchedule & { lines?: BillingLine[] }) | null;
-  onScheduleUpdate?: (schedule: BillingSchedule & { lines?: BillingLine[] }) => void;
+  onScheduleUpdate?: (
+    schedule: BillingSchedule & { lines?: BillingLine[] }
+  ) => void;
 };
 
 // Couleur or/jaune fixe pour le design
@@ -212,19 +228,29 @@ export function ViewBillingScheduleDialog({
   useEffect(() => {
     if (schedule?.lines) {
       console.log("📊 Schedule lines loaded:", schedule.lines.length, "lines");
-      console.log("📅 First line dates:", schedule.lines[0] ? {
-        billingStartDate: schedule.lines[0].billingStartDate,
-        billingEndDate: schedule.lines[0].billingEndDate,
-        invoiceDate: schedule.lines[0].invoiceDate,
-      } : "No lines");
+      console.log(
+        "📅 First line dates:",
+        schedule.lines[0]
+          ? {
+              billingStartDate: schedule.lines[0].billingStartDate,
+              billingEndDate: schedule.lines[0].billingEndDate,
+              invoiceDate: schedule.lines[0].invoiceDate,
+            }
+          : "No lines"
+      );
       setLocalLines(schedule.lines);
     } else if (lines) {
       console.log("📊 Lines loaded:", lines.length, "lines");
-      console.log("📅 First line dates:", lines[0] ? {
-        billingStartDate: lines[0].billingStartDate,
-        billingEndDate: lines[0].billingEndDate,
-        invoiceDate: lines[0].invoiceDate,
-      } : "No lines");
+      console.log(
+        "📅 First line dates:",
+        lines[0]
+          ? {
+              billingStartDate: lines[0].billingStartDate,
+              billingEndDate: lines[0].billingEndDate,
+              invoiceDate: lines[0].invoiceDate,
+            }
+          : "No lines"
+      );
       setLocalLines(lines);
     }
   }, [lines, schedule?.lines, schedule?.id]);
@@ -245,8 +271,8 @@ export function ViewBillingScheduleDialog({
     summaryResult && typeof summaryResult.factor === "number"
       ? summaryResult.factor
       : summaryResult && typeof summaryResult.rawFactor === "number"
-        ? summaryResult.rawFactor
-        : null;
+      ? summaryResult.rawFactor
+      : null;
 
   const handlePrecalculateIndexation = async () => {
     if (!contractId) {
@@ -309,7 +335,9 @@ export function ViewBillingScheduleDialog({
   const [selectedLine, setSelectedLine] = useState<BillingLine | null>(null);
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [paymentTerms, setPaymentTerms] = useState<PaymentTermsEnum | null>(null);
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermsEnum | null>(
+    null
+  );
 
   const progressionPercent = calculateProgression(startDate, endDate);
 
@@ -322,13 +350,12 @@ export function ViewBillingScheduleDialog({
   const totalTVA = totalHT * tvaRateValue;
   const totalTTC = totalHT + totalTVA;
 
-
   const handleOpenInvoiceModal = (line: BillingLine) => {
     setSelectedLine(line);
     setDueDate(line.dueDate);
     setDescription("");
     setInvoiceModalOpen(true);
-  }
+  };
 
   const formatForDateInput = (date: string | Date) => {
     const d = new Date(date);
@@ -351,7 +378,10 @@ export function ViewBillingScheduleDialog({
         Number(dueDateParts[0]),
         Number(dueDateParts[1]) - 1,
         Number(dueDateParts[2]),
-        12, 0, 0, 0
+        12,
+        0,
+        0,
+        0
       ).toISOString();
 
       const payload = {
@@ -384,7 +414,9 @@ export function ViewBillingScheduleDialog({
 
       // Rafraîchir le schedule complet depuis l'API /api/billing-schedules/{id}
       try {
-        const refreshedSchedule = await fetchBillingScheduleWithLines(schedule.id);
+        const refreshedSchedule = await fetchBillingScheduleWithLines(
+          schedule.id
+        );
 
         // Mettre à jour les lignes localement
         if (refreshedSchedule.lines) {
@@ -396,13 +428,19 @@ export function ViewBillingScheduleDialog({
           onScheduleUpdate(refreshedSchedule);
         }
       } catch (refreshError) {
-        console.error("Erreur lors du rafraîchissement du schedule:", refreshError);
+        console.error(
+          "Erreur lors du rafraîchissement du schedule:",
+          refreshError
+        );
         // En cas d'erreur, on essaie quand même de rafraîchir juste les lignes
         try {
           const refreshedLines = await fetchBillingLinesBySchedule(schedule.id);
           setLocalLines(refreshedLines);
         } catch (lineError) {
-          console.error("Erreur lors du rafraîchissement des lignes:", lineError);
+          console.error(
+            "Erreur lors du rafraîchissement des lignes:",
+            lineError
+          );
         }
       }
 
@@ -426,7 +464,6 @@ export function ViewBillingScheduleDialog({
     }
   };
 
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -439,8 +476,7 @@ export function ViewBillingScheduleDialog({
                   V {version}
                 </span>
                 <DialogTitle className="text-lg font-semibold">
-                  <span className="text-gray-900">Détails du Plan de facturation </span>
-                  <span style={{ color: GOLD_COLOR }}>{contractNumber ?? ""}</span>
+                  Détails du Plan de facturation {contractNumber ?? ""}
                 </DialogTitle>
               </div>
               <div className="text-sm text-gray-500">
@@ -455,7 +491,10 @@ export function ViewBillingScheduleDialog({
             {/* First Row: 3 cards */}
             <div className="grid grid-cols-3 gap-2">
               {/* PÉRIODE Card */}
-              <div className="bg-gray-50 rounded-lg shadow-sm p-2.5" style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}>
+              <div
+                className="bg-gray-50 rounded-lg shadow-sm p-2.5"
+                style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}
+              >
                 <Label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
                   PÉRIODE
                 </Label>
@@ -465,7 +504,10 @@ export function ViewBillingScheduleDialog({
               </div>
 
               {/* FRÉQUENCE Card */}
-              <div className="bg-gray-50 rounded-lg shadow-sm p-2.5" style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}>
+              <div
+                className="bg-gray-50 rounded-lg shadow-sm p-2.5"
+                style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}
+              >
                 <Label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
                   FRÉQUENCE
                 </Label>
@@ -475,7 +517,10 @@ export function ViewBillingScheduleDialog({
               </div>
 
               {/* PROGRESSION Card */}
-              <div className="bg-gray-50 rounded-lg shadow-sm p-2.5" style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}>
+              <div
+                className="bg-gray-50 rounded-lg shadow-sm p-2.5"
+                style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}
+              >
                 <Label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
                   PROGRESSION
                 </Label>
@@ -485,9 +530,12 @@ export function ViewBillingScheduleDialog({
                 <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
-                    style={{ 
-                      width: `${Math.min(100, Math.max(0, parseFloat(progressionPercent)))}%`,
-                      backgroundColor: GOLD_COLOR
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.max(0, parseFloat(progressionPercent))
+                      )}%`,
+                      backgroundColor: GOLD_COLOR,
                     }}
                   ></div>
                 </div>
@@ -497,7 +545,10 @@ export function ViewBillingScheduleDialog({
             {/* Second Row: 3 cards */}
             <div className="grid grid-cols-3 gap-2">
               {/* TYPE Card */}
-              <div className="bg-gray-50 rounded-lg shadow-sm p-2.5" style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}>
+              <div
+                className="bg-gray-50 rounded-lg shadow-sm p-2.5"
+                style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}
+              >
                 <Label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
                   TYPE
                 </Label>
@@ -507,18 +558,23 @@ export function ViewBillingScheduleDialog({
               </div>
 
               {/* STATUT Card */}
-              <div className="bg-gray-50 rounded-lg shadow-sm p-2.5" style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}>
+              <div
+                className="bg-gray-50 rounded-lg shadow-sm p-2.5"
+                style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}
+              >
                 <Label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
                   STATUT
                 </Label>
                 <div>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white ${
-                    status === "active"
-                      ? "bg-green-600"
-                      : status === "draft"
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white ${
+                      status === "active"
+                        ? "bg-green-600"
+                        : status === "draft"
                         ? "bg-gray-500"
                         : "bg-gray-400"
-                  }`}>
+                    }`}
+                  >
                     <span className="w-1 h-1 bg-white rounded-full"></span>
                     {statusLabel}
                   </span>
@@ -526,7 +582,10 @@ export function ViewBillingScheduleDialog({
               </div>
 
               {/* PROCHAINE ÉCHÉANCE Card */}
-              <div className="bg-gray-50 rounded-lg shadow-sm p-2.5" style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}>
+              <div
+                className="bg-gray-50 rounded-lg shadow-sm p-2.5"
+                style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}
+              >
                 <Label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
                   PROCHAINE ÉCHÉANCE
                 </Label>
@@ -542,7 +601,10 @@ export function ViewBillingScheduleDialog({
             {/* Third Row: 3 cards - Financial Summary */}
             <div className="grid grid-cols-3 gap-2">
               {/* TOTAL HT Card */}
-              <div className="bg-gray-50 rounded-lg shadow-sm p-2.5" style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}>
+              <div
+                className="bg-gray-50 rounded-lg shadow-sm p-2.5"
+                style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}
+              >
                 <Label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
                   TOTAL HT
                 </Label>
@@ -552,7 +614,10 @@ export function ViewBillingScheduleDialog({
               </div>
 
               {/* TAUX DE TVA Card */}
-              <div className="bg-gray-50 rounded-lg shadow-sm p-2.5" style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}>
+              <div
+                className="bg-gray-50 rounded-lg shadow-sm p-2.5"
+                style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}
+              >
                 <Label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
                   TAUX DE TVA APPLICABLE
                 </Label>
@@ -564,7 +629,10 @@ export function ViewBillingScheduleDialog({
               </div>
 
               {/* MONTANT TTC Card */}
-              <div className="bg-gray-50 rounded-lg shadow-sm p-2.5" style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}>
+              <div
+                className="bg-gray-50 rounded-lg shadow-sm p-2.5"
+                style={{ borderLeft: `4px solid ${GOLD_COLOR}` }}
+              >
                 <Label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
                   MONTANT TTC
                 </Label>
@@ -581,13 +649,17 @@ export function ViewBillingScheduleDialog({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <span className="text-[9px] font-medium text-blue-700 uppercase tracking-wide">Facteur</span>
+                    <span className="text-[9px] font-medium text-blue-700 uppercase tracking-wide">
+                      Facteur
+                    </span>
                     <p className="text-xs font-bold text-blue-900 mt-1">
                       {factor != null ? factor.toFixed(4) : "—"}
                     </p>
                   </div>
                   <div>
-                    <span className="text-[9px] font-medium text-blue-700 uppercase tracking-wide">Effectif le</span>
+                    <span className="text-[9px] font-medium text-blue-700 uppercase tracking-wide">
+                      Effectif le
+                    </span>
                     <p className="text-xs font-bold text-blue-900 mt-1">
                       {summaryResult.effectiveFrom
                         ? formatDateFR(summaryResult.effectiveFrom as any)
@@ -596,7 +668,8 @@ export function ViewBillingScheduleDialog({
                   </div>
                 </div>
                 <div className="text-[10px] text-blue-700 pt-1 border-t border-blue-200">
-                  Les montants indexés par ligne sont calculés à partir de ce contrat. Aucune modification n'est encore enregistrée.
+                  Les montants indexés par ligne sont calculés à partir de ce
+                  contrat. Aucune modification n'est encore enregistrée.
                 </div>
               </div>
             )}
@@ -605,7 +678,9 @@ export function ViewBillingScheduleDialog({
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
-                  <span className="text-xs font-medium text-red-800">{idxError}</span>
+                  <span className="text-xs font-medium text-red-800">
+                    {idxError}
+                  </span>
                 </div>
               </div>
             )}
@@ -633,186 +708,220 @@ export function ViewBillingScheduleDialog({
 
               {/* Table scrollable */}
               <div className="flex-1 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-h-0">
-                <div className="h-full overflow-y-auto overflow-x-auto relative">
-                    <table className="w-full text-xs border-collapse relative" style={{ tableLayout: 'auto' }}>
-                      <thead className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 z-10">
-                        <tr className="text-left">
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-[100] min-w-[40px] border-r border-gray-200">
-                            #
-                          </th>
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider min-w-[160px]">
-                            Période facturée
-                          </th>
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider min-w-[100px]">
-                            Échéance
-                          </th>
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-right min-w-[110px]">
-                            Montant HT
-                          </th>
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-right min-w-[110px]">
-                            Montant TTC
-                          </th>
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-right min-w-[110px]">
-                            Montant TVA
-                          </th>
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-right min-w-[120px]">
-                            Montant indexé
-                          </th>
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider min-w-[100px]">
-                            Date facture
-                          </th>
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider min-w-[90px]">
-                            Statut
-                          </th>
-                          <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-center min-w-[80px] sticky right-0 bg-gray-50 z-[100] border-l border-gray-200">
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {localLines.map((ln: BillingLine) => {
-                          // Debug: Vérifier les dates
-                          if (!ln.billingStartDate || !ln.billingEndDate) {
-                            console.log("⚠️ BillingLine sans dates:", {
-                              id: ln.id,
-                              sequenceNo: ln.sequenceNo,
-                              billingStartDate: ln.billingStartDate,
-                              billingEndDate: ln.billingEndDate,
-                              invoiceDate: ln.invoiceDate,
-                              fullLine: ln
-                            });
-                          }
+                <div className="h-full overflow-auto relative">
+                  <table
+                    className="w-full text-xs border-collapse relative"
+                    style={{ tableLayout: "auto" }}
+                  >
+                    <thead className="sticky top-0 bg-gray-50 border-b-2 border-gray-200 z-30">
+                      <tr className="text-left">
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-40 min-w-[40px] border-r border-gray-200">
+                          #
+                        </th>
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider min-w-[160px] bg-gray-50 z-30">
+                          Période facturée
+                        </th>
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider min-w-[100px] bg-gray-50 z-30">
+                          Échéance
+                        </th>
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-right min-w-[110px] bg-gray-50 z-30">
+                          Montant HT
+                        </th>
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-right min-w-[110px] bg-gray-50 z-30">
+                          Montant TTC
+                        </th>
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-right min-w-[110px] bg-gray-50 z-30">
+                          Montant TVA
+                        </th>
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-right min-w-[120px] bg-gray-50 z-30">
+                          Montant indexé
+                        </th>
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider min-w-[100px] bg-gray-50 z-30">
+                          Date facture
+                        </th>
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider min-w-[90px] bg-gray-50 z-30">
+                          Statut
+                        </th>
+                        <th className="px-2 py-2 text-[10px] font-bold text-gray-700 uppercase tracking-wider text-center min-w-[80px] sticky right-0 bg-gray-50 z-40 border-l border-gray-200">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white">
+                      {localLines.map((ln: BillingLine) => {
+                        // Debug: Vérifier les dates
+                        // if (!ln.billingStartDate || !ln.billingEndDate) {
+                        //   console.log("⚠️ BillingLine sans dates:", {
+                        //     id: ln.id,
+                        //     sequenceNo: ln.sequenceNo,
+                        //     billingStartDate: ln.billingStartDate,
+                        //     billingEndDate: ln.billingEndDate,
+                        //     invoiceDate: ln.invoiceDate,
+                        //     fullLine: ln,
+                        //   });
+                        // }
 
-                          const rawAmount = Number(ln.amountHt || 0);
-                          const res = lineResults[ln.id];
-                          const indexedAmount =
-                            res && typeof res.price === "number"
-                              ? res.price
-                              : null;
+                        const rawAmount = Number(ln.amountHt || 0);
+                        const res = lineResults[ln.id];
+                        const indexedAmount =
+                          res && typeof res.price === "number"
+                            ? res.price
+                            : null;
 
-                          const lineStatusLabel =
-                            (BILLING_LINE_STATUS_LABELS[ln.status as keyof typeof BILLING_LINE_STATUS_LABELS] ?? ln.status) as string;
+                        const lineStatusLabel = (BILLING_LINE_STATUS_LABELS[
+                          ln.status as keyof typeof BILLING_LINE_STATUS_LABELS
+                        ] ?? ln.status) as string;
 
-                          // Calculate TVA and TTC
-                          const tvaRateValue = Number(tvaRate ?? 0);
-                          const tvaAmount = rawAmount * tvaRateValue;
-                          const ttcAmount = rawAmount + tvaAmount;
+                        // Calculate TVA and TTC
+                        const tvaRateValue = Number(tvaRate ?? 0);
+                        const tvaAmount = rawAmount * tvaRateValue;
+                        const ttcAmount = rawAmount + tvaAmount;
 
-                          return (
-                            <tr key={ln.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors">
-                              <td className="px-2 py-2 font-bold text-gray-900 sticky left-0 bg-white z-[90] border-r border-gray-100 text-xs">
-                                {ln.sequenceNo}
-                              </td>
-                              <td className="px-2 py-2 text-xs text-gray-700">
-                                {ln.billingStartDate && ln.billingEndDate ? (
-                                  (() => {
-                                    const startDate = new Date(ln.billingStartDate).toDateString();
-                                    const endDate = new Date(ln.billingEndDate).toDateString();
-                                    const isSameDate = startDate === endDate;
-                                    return (
-                                      <div className="flex items-center gap-1.5">
-                                        <Calendar className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                                        <span className="font-medium whitespace-nowrap">
-                                          {isSameDate 
-                                            ? formatDateFR(ln.billingStartDate)
-                                            : `${formatDateFR(ln.billingStartDate)} → ${formatDateFR(ln.billingEndDate)}`
-                                          }
-                                        </span>
-                                      </div>
-                                    );
-                                  })()
-                                ) : (
-                                  <span className="text-gray-400">—</span>
-                                )}
-                              </td>
-                              <td className="px-2 py-2">
-                                <div className="font-semibold text-gray-900 text-xs">
-                                  {formatDateFR(ln.dueDate)}
-                                </div>
-                              </td>
-                              <td className="px-2 py-2 text-right">
-                                <span className="font-bold text-gray-900 text-xs">
-                                  {formatMoneyEUR(rawAmount)}
+                        return (
+                          <tr
+                            key={ln.id}
+                            className="border-b border-gray-100 last:border-0 hover:bg-blue-50/50 transition-colors"
+                          >
+                            <td className="px-2 py-2 font-bold text-gray-900 sticky left-0 bg-white hover:bg-blue-50/50 z-20 border-r border-gray-100 text-xs">
+                              {ln.sequenceNo}
+                            </td>
+                            <td className="px-2 py-2 text-xs text-gray-700">
+                              {ln.billingStartDate && ln.billingEndDate ? (
+                                (() => {
+                                  const startDate = new Date(
+                                    ln.billingStartDate
+                                  ).toDateString();
+                                  const endDate = new Date(
+                                    ln.billingEndDate
+                                  ).toDateString();
+                                  const isSameDate = startDate === endDate;
+                                  return (
+                                    <div className="flex items-center gap-1.5">
+                                      <Calendar className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                      <span className="font-medium whitespace-nowrap">
+                                        {isSameDate
+                                          ? formatDateFR(ln.billingStartDate)
+                                          : `${formatDateFR(
+                                              ln.billingStartDate
+                                            )} → ${formatDateFR(
+                                              ln.billingEndDate
+                                            )}`}
+                                      </span>
+                                    </div>
+                                  );
+                                })()
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-2 py-2">
+                              <div className="font-semibold text-gray-900 text-xs">
+                                {formatDateFR(ln.dueDate)}
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              <span className="font-bold text-gray-900 text-xs">
+                                {formatMoneyEUR(rawAmount)}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              <span className="font-semibold text-gray-900 text-xs">
+                                {formatMoneyEUR(ttcAmount)}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              <span className="font-medium text-gray-700 text-xs">
+                                {formatMoneyEUR(tvaAmount)}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              {indexedAmount != null ? (
+                                <span className="font-bold text-blue-700 text-xs">
+                                  {formatMoneyEUR(indexedAmount)}
                                 </span>
-                              </td>
-                              <td className="px-2 py-2 text-right">
-                                <span className="font-semibold text-gray-900 text-xs">
-                                  {formatMoneyEUR(ttcAmount)}
+                              ) : (
+                                <span className="text-gray-400 text-xs">—</span>
+                              )}
+                            </td>
+                            <td className="px-2 py-2">
+                              {ln.invoiceDate ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-50 text-green-700 font-medium text-[10px] border border-green-200">
+                                  <FileText className="h-3 w-3" />
+                                  {formatDateFR(ln.invoiceDate)}
                                 </span>
-                              </td>
-                              <td className="px-2 py-2 text-right">
-                                <span className="font-medium text-gray-700 text-xs">
-                                  {formatMoneyEUR(tvaAmount)}
-                                </span>
-                              </td>
-                              <td className="px-2 py-2 text-right">
-                                {indexedAmount != null ? (
-                                  <span className="font-bold text-blue-700 text-xs">
-                                    {formatMoneyEUR(indexedAmount)}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400 text-xs">—</span>
-                                )}
-                              </td>
-                              <td className="px-2 py-2">
-                                {ln.invoiceDate ? (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-50 text-green-700 font-medium text-[10px] border border-green-200">
-                                    <FileText className="h-3 w-3" />
-                                    {formatDateFR(ln.invoiceDate)}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400 text-xs">—</span>
-                                )}
-                              </td>
-                              <td className="px-2 py-2">
-                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                  ln.status === "FACTUREE" 
-                                    ? "bg-green-100 text-green-800 border border-green-300" 
+                              ) : (
+                                <span className="text-gray-400 text-xs">—</span>
+                              )}
+                            </td>
+                            <td className="px-2 py-2">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                  ln.status === "FACTUREE"
+                                    ? "bg-green-100 text-green-800 border border-green-300"
                                     : "bg-amber-100 text-amber-800 border border-amber-300"
-                                }`}>
-                                  {lineStatusLabel}
-                                </span>
-                              </td>
-                              <td className="px-2 py-2 text-center sticky right-0 bg-white z-[90] border-l border-gray-100">
-                                {ln.status === BillingLineStatus.A_FACTURER ? (
-                                  <button
-                                    className="inline-flex items-center justify-center rounded-md bg-green-600 hover:bg-green-700 text-white px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={() => handleOpenInvoiceModal(ln)}
-                                    disabled={generatingLineId === ln.id || loadingInvoice}
+                                }`}
+                              >
+                                {lineStatusLabel}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2 text-center sticky right-0 bg-white hover:bg-blue-50/50 z-20 border-l border-gray-100">
+                              {ln.status === BillingLineStatus.A_FACTURER ? (
+                                <button
+                                  className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs text-green-700 gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  onClick={() => handleOpenInvoiceModal(ln)}
+                                  disabled={
+                                    generatingLineId === ln.id || loadingInvoice
+                                  }
+                                >
+                                  {generatingLineId === ln.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <FilePlus className="w-3 h-3" />
+                                  )}
+                                </button>
+                              ) : (
+                                <Tooltip title="Voir les détails">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() =>
+                                      (window.location.href = `/invoices?ln=${ln.id}`)
+                                    }
+                                    className="text-gray-600 hover:text-gray-900"
+                                    sx={{ padding: "4px" }}
                                   >
-                                    {generatingLineId === ln.id ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <FilePlus className="w-3 h-3" />
-                                    )}
-                                  </button>
-                                ) : (
-                                  <Tooltip title="Voir les détails">
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => (window.location.href = `/invoices?ln=${ln.id}`)}
-                                      className="text-gray-600 hover:text-gray-900"
-                                      sx={{ padding: '4px' }}
-                                    >
-                                      <EyeIcon className="w-3.5 h-3.5" />
-                                    </IconButton>
-                                  </Tooltip>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                    <EyeIcon className="w-3.5 h-3.5" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {localLines.length === 0 && (
+                        <tr>
+                          <td
+                            className="px-4 py-12 text-center text-gray-500"
+                            colSpan={10}
+                          >
+                            <div className="flex flex-col items-center justify-center">
+                              <span className="text-sm">
+                                Aucune ligne trouvée
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
           {/* Footer fixe */}
           <DialogFooter className="flex-shrink-0 px-6 py-4 border-t border-gray-200 bg-white">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => onOpenChange(false)}
               className="px-4 py-1.5 text-xs font-medium"
             >
@@ -828,11 +937,13 @@ export function ViewBillingScheduleDialog({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Générer une facture du contrat:</DialogTitle>
-              <DialogDescription> <b>{contractNumber ?? "—"}</b> </DialogDescription>
+              <DialogDescription>
+                {" "}
+                <b>{contractNumber ?? "—"}</b>{" "}
+              </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 mt-4">
-
               <div>
                 <Label className="text-gray-700">Date d'échéance</Label>
 
@@ -861,7 +972,9 @@ export function ViewBillingScheduleDialog({
                 <select
                   className="mt-1 w-full border rounded px-2 py-2"
                   value={paymentTerms ?? ""}
-                  onChange={(e) => setPaymentTerms(e.target.value as PaymentTermsEnum)}
+                  onChange={(e) =>
+                    setPaymentTerms(e.target.value as PaymentTermsEnum)
+                  }
                 >
                   <option value="">-- Sélectionner --</option>
                   {Object.values(PaymentTermsEnum).map((pt) => (
@@ -874,7 +987,10 @@ export function ViewBillingScheduleDialog({
             </div>
 
             <DialogFooter className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setInvoiceModalOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setInvoiceModalOpen(false)}
+              >
                 Annuler
               </Button>
 
