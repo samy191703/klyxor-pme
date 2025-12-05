@@ -342,7 +342,11 @@ export function registerBillingRoutes(app: Express) {
               billingLines: lines.map(line => ({
                 id: line.id,
                 scheduleId: line.scheduleId,
+                sequenceNo: line.sequenceNo,
                 dueDate: line.dueDate,
+                billingStartDate: line.billingStartDate,
+                billingEndDate: line.billingEndDate,
+                invoiceDate: line.invoiceDate,
                 amountHt: line.amountHt?.toString() || "0.00",
                 status: line.status,
                 invoiceReference: invoiceRefs.get(line.id) || null,

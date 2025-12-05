@@ -602,6 +602,13 @@ export const billingLines = pgTable(
     // ✅ timestamp (due_date)
     dueDate: timestamp("due_date").notNull(),
 
+    // ✅ Dates de période de facturation
+    billingStartDate: timestamp("billing_start_date").notNull(),
+    billingEndDate: timestamp("billing_end_date").notNull(),
+    
+    // ✅ Date de génération de la facture (nullable)
+    invoiceDate: timestamp("invoice_date"),
+
     amountHt: decimal("amount_ht", { precision: 14, scale: 2 }).notNull(),
     // tvaRate: decimal("tva_rate", { precision: 5, scale: 2 }).default("0.20"),
     status: text("status").notNull().default("A_FACTURER"), // "A_FACTURER" | "FACTUREE"
@@ -625,6 +632,17 @@ export const billingLines = pgTable(
     byScheduleDueDate: index("idx_billing_lines_schedule_duedate").on(
       t.scheduleId,
       t.dueDate
+    ),
+    byBillingStartDate: index("idx_billing_lines_billing_start_date").on(
+      t.billingStartDate
+    ),
+    byBillingEndDate: index("idx_billing_lines_billing_end_date").on(
+      t.billingEndDate
+    ),
+    byInvoiceDate: index("idx_billing_lines_invoice_date").on(t.invoiceDate),
+    byBillingPeriod: index("idx_billing_lines_billing_period").on(
+      t.billingStartDate,
+      t.billingEndDate
     ),
   })
 );
