@@ -11,7 +11,7 @@ export type BillingFrequency =
 export type BillingType = "A_ECHOIR" | "TERME_ECHU";
 export type BillingScheduleStatus = "draft" | "active" | "archived";
 
-export type BillingLineStatus = "A_FACTURER" | "FACTUREE";
+export type BillingLineStatus = "DRAFT" | "A_FACTURER" | "FACTUREE" | "ANNULEE";
 
 /** =========================
  *  BILLING SCHEDULE

@@ -1,4 +1,4 @@
-export type BillingLineStatus = 'A_FACTURER' | 'FACTUREE';
+export type BillingLineStatus = 'DRAFT' | 'A_FACTURER' | 'FACTUREE' | 'ANNULEE';
 
 export interface BillingLine {
   id: string;

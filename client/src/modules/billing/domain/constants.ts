@@ -61,8 +61,10 @@ export const BILLING_STATUS_LABELS: Record<BillingScheduleStatus, string> = {
 };
 
 export const BILLING_LINE_STATUS_LABELS: Record<BillingLineStatus, string> = {
+  DRAFT: "Brouillon",
   A_FACTURER: "À facturer",
   FACTUREE: "Facturée",
+  ANNULEE: "Annulée",
 };
 
 /* -----------------------------

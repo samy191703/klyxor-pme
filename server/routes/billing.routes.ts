@@ -5,6 +5,9 @@ import { generateBillingScheduleForContract } from "server/services/billing.serv
 import { db } from "server/db";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 import { billingSchedules, billingLines, contracts, invoices } from "@shared/schema";
+import { BillingLineStatus } from "@shared/enums/billing.enum";
+import { validateStatusTransition } from "server/validators/billing-line-status.validator";
+import { storage } from "server/storage";
 import { renderBillingScheduleHtml } from "server/templates/billing-schedule.template";
 import puppeteer, { Browser, Page } from "puppeteer";
 import path from "path";
@@ -969,6 +972,227 @@ export function registerBillingRoutes(app: Express) {
         if (!res.headersSent) {
           return res.status(500).json({ error: e.message || "Server error" });
         }
+      }
+    }
+  );
+
+  /**
+   * @openapi
+   * /api/billing-lines/{id}/status:
+   *   patch:
+   *     summary: Update billing line status
+   *     description: |
+   *       Updates the status of a billing line with validation of allowed transitions.
+   *       Transitions allowed:
+   *       - DRAFT → A_FACTURER | ANNULEE
+   *       - A_FACTURER → FACTUREE | ANNULEE
+   *       All other transitions are forbidden (returns 409).
+   *     tags: [Billing]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Billing line ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - status
+   *             properties:
+   *               status:
+   *                 type: string
+   *                 enum: [DRAFT, A_FACTURER, FACTUREE, ANNULEE]
+   *     responses:
+   *       200:
+   *         description: Status updated successfully
+   *       400:
+   *         description: Invalid request
+   *       404:
+   *         description: Billing line not found
+   *       409:
+   *         description: Status transition not allowed
+   *       500:
+   *         description: Server error
+   */
+  app.patch(
+    "/api/billing-lines/:id/status",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status || !Object.values(BillingLineStatus).includes(status)) {
+          return res.status(400).json({
+            error: "Status invalide. Valeurs autorisées: DRAFT, A_FACTURER, FACTUREE, ANNULEE",
+          });
+        }
+
+        // Récupérer la ligne actuelle
+        const [currentLine] = await db
+          .select()
+          .from(billingLines)
+          .where(eq(billingLines.id, id))
+          .limit(1);
+
+        if (!currentLine) {
+          return res.status(404).json({ error: "Ligne de facturation non trouvée" });
+        }
+
+        const oldStatus = currentLine.status as BillingLineStatus;
+        const newStatus = status as BillingLineStatus;
+
+        // Valider la transition
+        try {
+          validateStatusTransition(oldStatus, newStatus);
+        } catch (validationError: any) {
+          return res.status(409).json({
+            error: validationError.message || "Transition de statut interdite",
+          });
+        }
+
+        // Mettre à jour le statut
+        await db
+          .update(billingLines)
+          .set({
+            status: newStatus,
+            updatedAt: new Date(),
+          })
+          .where(eq(billingLines.id, id));
+
+        // Audit log
+        await storage.createAuditLog?.({
+          userId: (req as any).user?.id ?? "system",
+          username: (req as any).user?.name ?? "System",
+          action: "billing_line_status_updated",
+          traceId: `billing-line-${id}`,
+          entityType: "billing_line",
+          entityId: id,
+          details: JSON.stringify({
+            oldStatus,
+            newStatus,
+            billingLineId: id,
+            scheduleId: currentLine.scheduleId,
+          }),
+          ipAddress: req.ip || "",
+          userAgent: req.get("user-agent") || "",
+        });
+
+        return res.status(200).json({
+          message: "Statut mis à jour avec succès",
+          billingLine: {
+            id,
+            status: newStatus,
+          },
+        });
+      } catch (e: any) {
+        console.error("Error updating billing line status:", e);
+        return res.status(500).json({ error: e.message || "Erreur serveur" });
+      }
+    }
+  );
+
+  /**
+   * @openapi
+   * /api/billing-schedules/{id}:
+   *   delete:
+   *     summary: Delete a billing schedule
+   *     description: |
+   *       Deletes a billing schedule. 
+   *       Deletion is forbidden if the schedule has at least one billing line with status FACTUREE (returns 409).
+   *     tags: [Billing]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Billing schedule ID
+   *     responses:
+   *       200:
+   *         description: Schedule deleted successfully
+   *       404:
+   *         description: Schedule not found
+   *       409:
+   *         description: Cannot delete schedule with FACTUREE lines
+   *       500:
+   *         description: Server error
+   */
+  app.delete(
+    "/api/billing-schedules/:id",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+
+        // Vérifier que le schedule existe
+        const [schedule] = await db
+          .select()
+          .from(billingSchedules)
+          .where(eq(billingSchedules.id, id))
+          .limit(1);
+
+        if (!schedule) {
+          return res.status(404).json({ error: "Plan de facturation non trouvé" });
+        }
+
+        // Vérifier s'il y a des lignes FACTUREE
+        const factureeLines = await db
+          .select()
+          .from(billingLines)
+          .where(
+            and(
+              eq(billingLines.scheduleId, id),
+              eq(billingLines.status, BillingLineStatus.FACTUREE)
+            )
+          )
+          .limit(1);
+
+        if (factureeLines.length > 0) {
+          return res.status(409).json({
+            error:
+              "Impossible de supprimer un plan de facturation contenant au moins une échéance facturée",
+          });
+        }
+
+        // Supprimer les lignes associées (cascade devrait le faire, mais on le fait explicitement)
+        await db.delete(billingLines).where(eq(billingLines.scheduleId, id));
+
+        // Supprimer le schedule
+        await db.delete(billingSchedules).where(eq(billingSchedules.id, id));
+
+        // Audit log
+        await storage.createAuditLog?.({
+          userId: (req as any).user?.id ?? "system",
+          username: (req as any).user?.name ?? "System",
+          action: "billing_schedule_deleted",
+          traceId: `billing-schedule-${id}`,
+          entityType: "billing_schedule",
+          entityId: id,
+          details: JSON.stringify({
+            scheduleId: id,
+            contractId: schedule.contractId,
+            version: schedule.version,
+          }),
+          ipAddress: req.ip || "",
+          userAgent: req.get("user-agent") || "",
+        });
+
+        return res.status(200).json({
+          message: "Plan de facturation supprimé avec succès",
+        });
+      } catch (e: any) {
+        console.error("Error deleting billing schedule:", e);
+        return res.status(500).json({ error: e.message || "Erreur serveur" });
       }
     }
   );

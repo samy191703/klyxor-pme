@@ -145,11 +145,21 @@ export function BillingLinesTable({
                 </td>
                 <td className="px-3 py-3">
                   <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                    l.status === "FACTUREE" 
-                      ? "bg-green-100 text-green-800 border border-green-200" 
+                    l.status === "DRAFT"
+                      ? "bg-gray-100 text-gray-800 border border-gray-200"
+                      : l.status === "A_FACTURER"
+                      ? "bg-blue-100 text-blue-800 border border-blue-200"
+                      : l.status === "FACTUREE"
+                      ? "bg-green-100 text-green-800 border border-green-200"
+                      : l.status === "ANNULEE"
+                      ? "bg-red-100 text-red-800 border border-red-200"
                       : "bg-amber-100 text-amber-800 border border-amber-200"
                   }`}>
-                    {l.status === "FACTUREE" ? "Facturée" : "À facturer"}
+                    {l.status === "DRAFT" ? "Brouillon" 
+                      : l.status === "A_FACTURER" ? "À facturer"
+                      : l.status === "FACTUREE" ? "Facturée"
+                      : l.status === "ANNULEE" ? "Annulée"
+                      : l.status}
                   </span>
                 </td>
                 <td className="px-3 py-3 sticky right-0 bg-white z-10 border-l border-gray-100">

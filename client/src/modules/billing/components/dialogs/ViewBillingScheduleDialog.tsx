@@ -223,6 +223,14 @@ export function ViewBillingScheduleDialog({
   // ---------- LINES STATE (local state for refreshing) ----------
   const [localLines, setLocalLines] = useState<BillingLine[]>(lines);
   const [generatingLineId, setGeneratingLineId] = useState<string | null>(null);
+  
+  // ---------- FILTER STATE ----------
+  const [selectedStatuses, setSelectedStatuses] = useState<BillingLineStatus[]>([
+    BillingLineStatus.DRAFT,
+    BillingLineStatus.A_FACTURER,
+    BillingLineStatus.FACTUREE,
+    BillingLineStatus.ANNULEE,
+  ]); // Par défaut, tous les statuts sont sélectionnés
 
   // Update local lines when schedule.lines changes or when schedule.id changes
   useEffect(() => {
@@ -298,8 +306,18 @@ export function ViewBillingScheduleDialog({
         return;
       }
 
-      // 2) Pour chaque ligne, construire un payload dédié avec P0 = montant de l'échéance
-      const promises = localLines.map(async (ln: BillingLine) => {
+      // 2) Filtrer les lignes : exclure FACTUREE et ANNULEE de l'indexation par défaut
+      const linesToIndex = localLines.filter(
+        (ln: BillingLine) => ln.status !== "FACTUREE" && ln.status !== "ANNULEE"
+      );
+
+      if (linesToIndex.length === 0) {
+        setIdxError("Aucune échéance à indexer (toutes sont facturées ou annulées).");
+        return;
+      }
+
+      // 3) Pour chaque ligne, construire un payload dédié avec P0 = montant de l'échéance
+      const promises = linesToIndex.map(async (ln: BillingLine) => {
         const rawAmount = Number(ln.amountHt || 0);
         const dto = buildCalculateFromContract(contract, {
           baseAmountOverride: rawAmount,
@@ -690,20 +708,65 @@ export function ViewBillingScheduleDialog({
           {localLines.length > 0 && (
             <div className="flex-1 flex flex-col min-h-0 px-6 py-4">
               {/* Header section Échéances - fixe */}
-              <div className="flex-shrink-0 flex items-center justify-between pb-3">
-                <h3 className="text-sm font-bold text-gray-900">Échéances</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrecalculateIndexation}
-                  disabled={idxLoading}
-                  className="text-[10px] font-medium h-7 px-2"
-                >
-                  {idxLoading
-                    ? "Calcul…"
-                    : "Pré-calculer l'indexation des lignes"}
-                </Button>
+              <div className="flex-shrink-0 flex flex-col gap-2 pb-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-gray-900">Échéances</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrecalculateIndexation}
+                    disabled={idxLoading}
+                    className="text-[10px] font-medium h-7 px-2"
+                  >
+                    {idxLoading
+                      ? "Calcul…"
+                      : "Pré-calculer l'indexation des lignes"}
+                  </Button>
+                </div>
+                
+                {/* Filtre par statut */}
+                <div className="flex items-center gap-4 flex-wrap">
+                  <Label className="text-xs font-medium text-gray-700">
+                    Filtrer par statut:
+                  </Label>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {Object.values(BillingLineStatus).map((status) => (
+                      <label
+                        key={status}
+                        className="flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedStatuses.includes(status)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedStatuses([...selectedStatuses, status]);
+                            } else {
+                              setSelectedStatuses(
+                                selectedStatuses.filter((s) => s !== status)
+                              );
+                            }
+                          }}
+                          className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-xs text-gray-700">
+                          {BILLING_LINE_STATUS_LABELS[status]}
+                        </span>
+                      </label>
+                    ))}
+                    {selectedStatuses.length < Object.values(BillingLineStatus).length && (
+                      <button
+                        onClick={() =>
+                          setSelectedStatuses(Object.values(BillingLineStatus))
+                        }
+                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Tout sélectionner
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Table scrollable */}
@@ -748,7 +811,11 @@ export function ViewBillingScheduleDialog({
                       </tr>
                     </thead>
                     <tbody className="bg-white">
-                      {localLines.map((ln: BillingLine) => {
+                      {localLines
+                        .filter((ln: BillingLine) =>
+                          selectedStatuses.includes(ln.status as BillingLineStatus)
+                        )
+                        .map((ln: BillingLine) => {
                         // Debug: Vérifier les dates
                         // if (!ln.billingStartDate || !ln.billingEndDate) {
                         //   console.log("⚠️ BillingLine sans dates:", {
@@ -856,8 +923,14 @@ export function ViewBillingScheduleDialog({
                             <td className="px-2 py-2">
                               <span
                                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                  ln.status === "FACTUREE"
+                                  ln.status === "DRAFT"
+                                    ? "bg-gray-100 text-gray-800 border border-gray-300"
+                                    : ln.status === "A_FACTURER"
+                                    ? "bg-blue-100 text-blue-800 border border-blue-300"
+                                    : ln.status === "FACTUREE"
                                     ? "bg-green-100 text-green-800 border border-green-300"
+                                    : ln.status === "ANNULEE"
+                                    ? "bg-red-100 text-red-800 border border-red-300"
                                     : "bg-amber-100 text-amber-800 border border-amber-300"
                                 }`}
                               >
@@ -897,7 +970,9 @@ export function ViewBillingScheduleDialog({
                           </tr>
                         );
                       })}
-                      {localLines.length === 0 && (
+                      {localLines.filter((ln: BillingLine) =>
+                        selectedStatuses.includes(ln.status as BillingLineStatus)
+                      ).length === 0 && (
                         <tr>
                           <td
                             className="px-4 py-12 text-center text-gray-500"
@@ -905,7 +980,9 @@ export function ViewBillingScheduleDialog({
                           >
                             <div className="flex flex-col items-center justify-center">
                               <span className="text-sm">
-                                Aucune ligne trouvée
+                                {localLines.length === 0
+                                  ? "Aucune ligne trouvée"
+                                  : "Aucune échéance ne correspond aux filtres sélectionnés"}
                               </span>
                             </div>
                           </td>
