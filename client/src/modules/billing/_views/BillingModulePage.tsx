@@ -201,6 +201,24 @@ export default function BillingModulePage() {
         archived: 0,
         A_ECHOIR: 0,
         TERME_ECHU: 0,
+        // Nouveaux KPI
+        totalInvoiced: 0,
+        evolutionPercent: 0,
+        invoicesInProgressCount: 0,
+        invoicesInProgressAmount: 0,
+        pendingAmount: 0,
+        rejectedInvoicesCount: 0,
+        indexationAmount: 0,
+        indexationCount: 0,
+        upcomingIndexationsCount: 0,
+        collectedAmount: 0,
+        overdueAmount: 0,
+        dso: 0,
+        forecasts: {
+          threeMonths: 0,
+          sixMonths: 0,
+          twelveMonths: 0,
+        },
       };
 
     const getStatus = (name: string) =>
@@ -211,6 +229,7 @@ export default function BillingModulePage() {
       );
 
     return {
+      // KPI existants (pour compatibilité)
       totalCount: Number(api.totals?.count ?? 0),
       totalAmount: api.totals?.totalCentimes
         ? Number(api.totals.totalCentimes) / 100
@@ -220,6 +239,24 @@ export default function BillingModulePage() {
       archived: getStatus("archived"),
       A_ECHOIR: getType("A_ECHOIR"),
       TERME_ECHU: getType("TERME_ECHU"),
+      // Nouveaux KPI selon le ticket
+      totalInvoiced: Number(api.totalInvoiced ?? 0),
+      evolutionPercent: Number(api.evolutionPercent ?? 0),
+      invoicesInProgressCount: Number(api.invoicesInProgressCount ?? 0),
+      invoicesInProgressAmount: Number(api.invoicesInProgressAmount ?? 0),
+      pendingAmount: Number(api.pendingAmount ?? 0),
+      rejectedInvoicesCount: Number(api.rejectedInvoicesCount ?? 0),
+      indexationAmount: Number(api.indexationAmount ?? 0),
+      indexationCount: Number(api.indexationCount ?? 0),
+      upcomingIndexationsCount: Number(api.upcomingIndexationsCount ?? 0),
+      collectedAmount: Number(api.collectedAmount ?? 0),
+      overdueAmount: Number(api.overdueAmount ?? 0),
+      dso: Number(api.dso ?? 0),
+      forecasts: {
+        threeMonths: Number(api.forecasts?.threeMonths ?? 0),
+        sixMonths: Number(api.forecasts?.sixMonths ?? 0),
+        twelveMonths: Number(api.forecasts?.twelveMonths ?? 0),
+      },
     };
   }, [summaryKpis]);
 
