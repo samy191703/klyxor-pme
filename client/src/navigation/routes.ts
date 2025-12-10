@@ -38,6 +38,7 @@ export const menuItems: MenuItem[] = [
       { label: "Gestion des contrats", href: "/contracts", icon: FileText },
       { label: "Avenants", href: "/amendments", icon: Edit },
       { label: "Résiliations", href: "/terminations", icon: XCircle },
+      { label: "Clients", href: "/clients", icon: XCircle },
     ],
   },
   {
