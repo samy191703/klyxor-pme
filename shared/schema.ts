@@ -34,6 +34,72 @@ export const users = pgTable("users", {
   keycloakSub: text("keycloak_sub"),
 });
 
+/* --------------------------------- CLIENTS -------------------------------- */
+
+export const clients = pgTable(
+  "clients",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    // Discriminant (RG1)
+    typeClient: text("type_client").notNull(), // 'professionnel' | 'particulier'
+
+    // -------- Champs communs --------
+    email: text("email").notNull(), // RG3: unique
+    phone: text("phone"),
+    address: text("address").notNull(),
+    postalCode: text("postal_code").notNull(),
+    city: text("city").notNull(),
+    countryCode: text("country_code").notNull().default("FR"), // ISO, default France
+
+    // -------- Client professionnel --------
+    companyName: text("company_name"), // Raison sociale
+    siret: text("siret"), // RG2: unique (14 digits côté validation)
+    paymentTerms: text("payment_terms").default("30j_date_facture"),
+
+    // -------- Client particulier --------
+    lastName: text("last_name"),
+    firstName: text("first_name"),
+
+    // -------- Statut & audit --------
+    status: text("status").notNull().default("active"), // active | inactive (pour RG6/RG8)
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    // RG3 : unicité email (pros + particuliers)
+    uxClientsEmail: uniqueIndex("ux_clients_email").on(t.email),
+
+    // RG2 : unicité SIRET (NULLs autorisés, Postgres les accepte)
+    uxClientsSiret: uniqueIndex("ux_clients_siret").on(t.siret),
+
+    // Index pratique pour les listes
+    idxClientsTypeStatus: index("idx_clients_type_status").on(
+      t.typeClient,
+      t.status
+    ),
+  })
+);
+
+export const insertClientSchema = createInsertSchema(clients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = z.infer<typeof insertClientSchema>;
+
+export const clientsRelations = relations(clients, ({ many }) => ({
+  contracts: many(contracts),
+}));
+
 /* ------------------------------- CONTRACTS -------------------------------- */
 
 export const contracts = pgTable(
@@ -46,7 +112,9 @@ export const contracts = pgTable(
     title: text("title").notNull(),
     status: text("status").notNull().default("draft"),
     type: text("type").notNull(),
-
+    clientId: varchar("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "restrict" }),
     clientName: text("client_name").notNull().default("Client inconnu"),
     language: text("language").notNull().default(Languages.FR),
     technology: text("technology"),
@@ -54,7 +122,9 @@ export const contracts = pgTable(
     businessUnit: text("business_unit").notNull(),
 
     amount: decimal("amount", { precision: 15, scale: 2 }).$type<number>(),
-    tvaRate: decimal("tva_rate", { precision: 5, scale: 2 }).$type<number>().default(0.07),
+    tvaRate: decimal("tva_rate", { precision: 5, scale: 2 })
+      .$type<number>()
+      .default(0.07),
     billingPeriod: text("billing_period"),
     billingFrequency: text("billing_frequency"),
     billingType: text("billing_type"),
@@ -655,11 +725,17 @@ export const invoices = pgTable(
     status: text("status").notNull().default("draft"), // draft, inpaid , paid, cancelled, paid parselly
     dueDate: timestamp("due_date"),
     generatedAt: timestamp("generated_at").default(sql`now()`),
-    generatedBy: varchar("generated_by").references(() => users.id, { onDelete: "set null" }),
-    refundedInvoiceId: varchar("refunded_invoice_id"), 
+    generatedBy: varchar("generated_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    refundedInvoiceId: varchar("refunded_invoice_id"),
     paymentTerms: text("payment_terms"),
-    createdAt: timestamp("created_at").notNull().default(sql`now()`),
-    updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
   },
   (t) => ({
     byContract: index("idx_invoices_contract").on(t.contractId),
@@ -1337,6 +1413,10 @@ export const contractsRelations = relations(contracts, ({ one, many }) => ({
     fields: [contracts.validatedBy],
     references: [users.id],
   }),
+  client: one(clients, {
+    fields: [contracts.clientId],
+    references: [clients.id],
+  }),
   indexations: many(indexations),
   deadlines: many(deadlines),
   amendments: many(amendments),
@@ -1464,13 +1544,16 @@ export const terminationsRelations = relations(terminations, ({ one }) => ({
   }),
 }));
 
-export const billingSchedulesRelations = relations(billingSchedules, ({ one, many }) => ({
-  contract: one(contracts, {
-    fields: [billingSchedules.contractId],
-    references: [contracts.id],
-  }),
-  billingLines: many(billingLines),
-}));
+export const billingSchedulesRelations = relations(
+  billingSchedules,
+  ({ one, many }) => ({
+    contract: one(contracts, {
+      fields: [billingSchedules.contractId],
+      references: [contracts.id],
+    }),
+    billingLines: many(billingLines),
+  })
+);
 
 export const billingLinesRelations = relations(billingLines, ({ one }) => ({
   schedule: one(billingSchedules, {
