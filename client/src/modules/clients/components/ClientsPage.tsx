@@ -18,12 +18,13 @@ import type { Client } from "../domain/types";
 import ClientFilters, { ClientFiltersValue } from "./ClientFilters";
 import { ClientsTable } from "./ClientsTable";
 import { CreateClientDialog } from "./Dialogs/CreateClientDialog";
+import { EditClientDialog } from "./Dialogs/EditClientDialog";
 // import { CreateClientDialog } from "./CreateClientDialog";
 // import { ViewClientDialog } from "./ViewClientDialog";
 // import { EditClientDialog } from "./EditClientDialog";
 
 export default function ClientsPage() {
-  const { canCreateContract, canModifyContract, canDeleteContract } =
+  const { canCreateClient, canEditClient, canDeleteClient } =
     usePermissions();
   const { toast } = useToast();
 
@@ -86,7 +87,7 @@ export default function ClientsPage() {
 
   const handleDelete = async (id: string) => {
     if (
-      !canDeleteContract() ||
+      !canDeleteClient() ||
       !confirm("Êtes-vous sûr de vouloir supprimer ce client ?")
     )
       return;
@@ -259,19 +260,20 @@ export default function ClientsPage() {
        <CreateClientDialog
         open={openCreate}
         onOpenChange={setOpenCreate}
-        canCreate={canCreateContract()}
+        canCreate={canCreateClient()}
       />
       {/*<ViewClientDialog
         open={openView}
         onOpenChange={setOpenView}
         client={selected}
-      />
+      />*/}
       <EditClientDialog
+        key={selected?.id || "edit-dialog"}
         open={openEdit}
         onOpenChange={setOpenEdit}
         client={selected}
-        canEdit={canModifyContract()}
-      /> */}
+        canEdit={canEditClient()}
+      /> 
     </div>
   );
 }
