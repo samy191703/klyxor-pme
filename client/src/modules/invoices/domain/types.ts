@@ -104,6 +104,9 @@ export interface BillingLine {
   scheduleId: string;
   sequenceNo: number;
   dueDate: string;
+  billingStartDate: string; // ISO timestamp - Date de début de la période facturée
+  billingEndDate: string; // ISO timestamp - Date de fin de la période facturée
+  invoiceDate?: string | null; // ISO timestamp - Date de génération de la facture
   amountHt: number;
   status: "A_FACTURER" | "FACTUREE";
   createdAt: string;

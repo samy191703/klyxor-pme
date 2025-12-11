@@ -11,6 +11,7 @@ import {
   Search,
   FileText,
   User,
+  Receipt,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -201,6 +202,24 @@ export default function BillingModulePage() {
         archived: 0,
         A_ECHOIR: 0,
         TERME_ECHU: 0,
+        // Nouveaux KPI
+        totalInvoiced: 0,
+        evolutionPercent: 0,
+        invoicesInProgressCount: 0,
+        invoicesInProgressAmount: 0,
+        pendingAmount: 0,
+        rejectedInvoicesCount: 0,
+        indexationAmount: 0,
+        indexationCount: 0,
+        upcomingIndexationsCount: 0,
+        collectedAmount: 0,
+        overdueAmount: 0,
+        dso: 0,
+        forecasts: {
+          threeMonths: 0,
+          sixMonths: 0,
+          twelveMonths: 0,
+        },
       };
 
     const getStatus = (name: string) =>
@@ -211,6 +230,7 @@ export default function BillingModulePage() {
       );
 
     return {
+      // KPI existants (pour compatibilité)
       totalCount: Number(api.totals?.count ?? 0),
       totalAmount: api.totals?.totalCentimes
         ? Number(api.totals.totalCentimes) / 100
@@ -220,6 +240,24 @@ export default function BillingModulePage() {
       archived: getStatus("archived"),
       A_ECHOIR: getType("A_ECHOIR"),
       TERME_ECHU: getType("TERME_ECHU"),
+      // Nouveaux KPI selon le ticket
+      totalInvoiced: Number(api.totalInvoiced ?? 0),
+      evolutionPercent: Number(api.evolutionPercent ?? 0),
+      invoicesInProgressCount: Number(api.invoicesInProgressCount ?? 0),
+      invoicesInProgressAmount: Number(api.invoicesInProgressAmount ?? 0),
+      pendingAmount: Number(api.pendingAmount ?? 0),
+      rejectedInvoicesCount: Number(api.rejectedInvoicesCount ?? 0),
+      indexationAmount: Number(api.indexationAmount ?? 0),
+      indexationCount: Number(api.indexationCount ?? 0),
+      upcomingIndexationsCount: Number(api.upcomingIndexationsCount ?? 0),
+      collectedAmount: Number(api.collectedAmount ?? 0),
+      overdueAmount: Number(api.overdueAmount ?? 0),
+      dso: Number(api.dso ?? 0),
+      forecasts: {
+        threeMonths: Number(api.forecasts?.threeMonths ?? 0),
+        sixMonths: Number(api.forecasts?.sixMonths ?? 0),
+        twelveMonths: Number(api.forecasts?.twelveMonths ?? 0),
+      },
     };
   }, [summaryKpis]);
 
@@ -419,46 +457,48 @@ const paymentsByDayProRata = useMemo(() => {
       <main className="h-[calc(100vh-64px)] px-4 py-2 lg:px-6 lg:py-1">
         <div className="w-full">
           {/* En-tête de page + actions */}
-          <div className="mb-3">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Gestion de la Facturation
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Gérer les plans de facturation et leurs lignes
-                </p>
+          <div className="mb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+              <div className="mb-4 md:mb-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
+                    <Receipt className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+                      Gestion de la Facturation
+                    </h1>
+                    <p className="text-gray-600 mt-1 text-sm">
+                      Visualisez en un coup d'œil les principaux indicateurs liés à la facturation
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2">
-                {/* <Button
-                  onClick={() => setOpenCreate(true)}
-                  data-testid="button-new-billing-schedule"
-                  disabled={!canCreateContract()}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouveau plan
-                </Button> */}
+              <div className="flex gap-2 flex-shrink-0">
                 <Button
                   variant="outline"
                   onClick={toggleExpand}
-                  title={expanded ? "Réduire" : "Agrandir le tableau"}
+                  title={expanded ? "Masquer les statistiques" : "Afficher les statistiques"}
+                  className="border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-colors"
                 >
                   {expanded ? (
-                    <EyeIcon className="w-4 h-4 mr-2" />
-                  ) : (
                     <EyeOffIcon className="w-4 h-4 mr-2" />
+                  ) : (
+                    <EyeIcon className="w-4 h-4 mr-2" />
                   )}
-                  Statistiques
+                  {expanded ? "Masquer" : "Afficher"} Statistiques
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => setShowKpiFilters((v) => !v)}
-                  className="rounded-lg hover:bg-blue-50 text-blue-600 border-blue-300 relative"
+                  className="rounded-lg hover:bg-blue-50 text-blue-600 border-blue-300 relative transition-colors"
                   title="Afficher / masquer les filtres KPI"
                 >
                   <Filter className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
+                  {showKpiFilters && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full ring-2 ring-white" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -506,7 +546,11 @@ const paymentsByDayProRata = useMemo(() => {
               )}
 
               {/* KpiCounters */}
-              <KpiCounters kpi={kpi} />
+              <KpiCounters 
+                kpi={kpi} 
+                donutData={donutData}
+                paymentsByDay={paymentsByDayProRata}
+              />
 
               {/* KpiCharts */}
               <KpiCharts

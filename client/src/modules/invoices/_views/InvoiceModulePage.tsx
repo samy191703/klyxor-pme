@@ -87,7 +87,7 @@ export default function InvoiceModulePage() {
     } catch (err: any) {
       toast({
         title: "Erreur",
-        description: err?.message || "Impossible de supprimer la facture",
+        description: getErrorMessage(err) || "Impossible de supprimer la facture",
         variant: "destructive",
       });
     } finally {
@@ -118,10 +118,22 @@ export default function InvoiceModulePage() {
     try {
       // si c'est un string JSON (comme dans ton cas)
       if (typeof err === "string") {
-        const parsed = JSON.parse(err);
+        // gérer le pattern "<status>: {\"error\":\"...\"}"
+        const maybeJsonPart = err.includes(":") ? err.split(":").slice(1).join(":").trim() : err;
+        const parsed = JSON.parse(maybeJsonPart);
         if (parsed?.error) return parsed.error;
       }
-      // axios / fetch
+      if (typeof err?.message === "string") {
+        const message = err.message;
+        const jsonCandidate = message.includes(":") ? message.split(":").slice(1).join(":").trim() : message;
+        try {
+          const parsed = JSON.parse(jsonCandidate);
+          if (parsed?.error) return parsed.error;
+        } catch {
+          /* ignore, fallback below */
+        }
+        if (message) return message;
+      }
       if (err?.response?.data?.error) return err.response.data.error;
       if (err?.error) return err.error;
       if (err?.message) return err.message;
@@ -131,8 +143,6 @@ export default function InvoiceModulePage() {
     }
     return "Une erreur est survenue";
   }
-
-
   const handleValidate = async (invoice: Invoice) => {
     try {
       await updateInvoice(invoice.id, { invoiceAction: InvoiceAction.Validate });
@@ -299,3 +309,4 @@ export default function InvoiceModulePage() {
     </div>
   );
 }
+

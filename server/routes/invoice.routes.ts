@@ -647,8 +647,15 @@ export function registerInvoiceRoutes(app: Express) {
 
                 const invoice = await storage.createInvoice(invoiceData);
 
+                // Mettre à jour la ligne de facturation : statut et date de facture
+                // Utiliser generatedAt de la facture (ou createdAt si generatedAt n'est pas défini)
+                const invoiceDate = invoice.generatedAt ? new Date(invoice.generatedAt) : (invoice.createdAt ? new Date(invoice.createdAt) : new Date());
                 await db.update(billingLines)
-                    .set({ status: BillingLineStatus.FACTUREE, updatedAt: new Date() })
+                    .set({ 
+                        status: BillingLineStatus.FACTUREE, 
+                        invoiceDate: invoiceDate,
+                        updatedAt: new Date() 
+                    })
                     .where(eq(billingLines.id, d.billingLineId));
 
                 try {
@@ -898,8 +905,13 @@ export function registerInvoiceRoutes(app: Express) {
                 if (!deleted) return res.status(404).json({ error: "Invoice not found" });
 
                 if (invoice.billingLineId) {
+                    // Remettre la ligne à A_FACTURER et réinitialiser invoice_date
                     await db.update(billingLines)
-                        .set({ status: BillingLineStatus.A_FACTURER, updatedAt: new Date() })
+                        .set({ 
+                            status: BillingLineStatus.A_FACTURER, 
+                            invoiceDate: null,
+                            updatedAt: new Date() 
+                        })
                         .where(eq(billingLines.id, invoice.billingLineId));
                 }
 
