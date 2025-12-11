@@ -105,6 +105,7 @@ export const clientsRelations = relations(clients, ({ many }) => ({
 export const contracts = pgTable(
   "contracts",
   {
+    
     id: varchar("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
