@@ -20,6 +20,7 @@ import {
   BarChart,
   Activity,
   Calculator,
+  Users,
 } from "lucide-react";
 
 export interface MenuItem {
@@ -38,7 +39,7 @@ export const menuItems: MenuItem[] = [
       { label: "Gestion des contrats", href: "/contracts", icon: FileText },
       { label: "Avenants", href: "/amendments", icon: Edit },
       { label: "Résiliations", href: "/terminations", icon: XCircle },
-      { label: "Clients", href: "/clients", icon: XCircle },
+      { label: "Clients", href: "/clients", icon: Users },
     ],
   },
   {

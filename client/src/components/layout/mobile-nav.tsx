@@ -21,7 +21,8 @@ import {
   FileCheck,
   DollarSign,
   Ban,
-  Receipt
+  Receipt,
+  Users
 } from "lucide-react";
 
 const menuItems = [
@@ -59,6 +60,11 @@ const menuItems = [
     label: "Résiliations",
     href: "/terminations",
     icon: XCircle,
+  },
+  {
+    label: "Clients",
+    href: "/clients",
+    icon: Users,
   },
   {
     label: "Documents & GED",
