@@ -85,6 +85,7 @@ export function buildContractPayload(wd: any) {
 
   return {
     title: wd.title,
+    clientId: wd.clientId,
     type,
     businessUnit,
     clientName: sanitizeClientName(wd.clientName),

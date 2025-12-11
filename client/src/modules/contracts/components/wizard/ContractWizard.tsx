@@ -190,6 +190,7 @@ export default function ContractWizard({
 
     //if (!v.number) e.number = "N° contrat requis";
     if (!v.title) e.title = "Titre requis";
+    if (!v.clientId) e.clientId = "Client requis";
     if (!v.type) e.type = "Type requis";
     if (!v.businessUnit) e.businessUnit = "Business Unit requise";
     if (!v.clientName) e.clientName = "Client requis";
@@ -302,6 +303,7 @@ export default function ContractWizard({
     const payload: PatchStep1Payload = {
       number: d.number ?? "", // or omit if truly optional in your API
       title: d.title,
+      clientId: d.clientId,
       clientName: sanitizeClientName(d.clientName),
       type: d.type,
       businessUnit: d.businessUnit,

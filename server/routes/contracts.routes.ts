@@ -159,6 +159,7 @@ export function registerContractRoutes(app: Express): void {
         const insertContract: InsertContract = {
           number: String(resolvedNumber),
           title: String(validation.data.title),
+          clientId: String(validation.data.clientId),
           type: String(validation.data.type),
           businessUnit: String(validation.data.businessUnit),
 
@@ -321,6 +322,7 @@ export function registerContractRoutes(app: Express): void {
         const patch = {
           // number: String(d.number),
           title: String(d.title),
+          clientId: String(d.clientId),
           clientName: String(d.clientName),
           type: String(d.type),
           businessUnit: String(d.businessUnit),
