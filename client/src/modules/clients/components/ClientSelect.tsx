@@ -9,6 +9,11 @@ import AddIcon from "@mui/icons-material/Add";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import Chip from "@mui/material/Chip";
+import BusinessIcon from "@mui/icons-material/Business";
+import PersonIcon from "@mui/icons-material/Person";
+import EmailIcon from "@mui/icons-material/Email";
+import SearchIcon from "@mui/icons-material/Search";
 import { useClients } from "../queries/useClients";
 import { CreateClientDialog } from "./Dialogs/CreateClientDialog";
 import type { Client } from "../domain/types";
@@ -123,10 +128,8 @@ export function ClientSelect({
   // Auto-select newly created client
   useEffect(() => {
     if (clients.length > previousClientsCount && !openCreateDialog) {
-      // A new client was just created
       const newClient = clients[clients.length - 1];
       if (newClient && !value) {
-        // Only auto-select if no client is currently selected
         const newOption: ClientOption = {
           value: newClient.id,
           label:
@@ -152,57 +155,110 @@ export function ClientSelect({
     return (
       <Paper 
         {...props} 
+        elevation={0}
         sx={{ 
           ...props.sx, 
-          mt: 1,
+          mt: 0.5,
           maxHeight: { xs: "60vh", sm: "400px" },
-          overflow: "auto",
-          width: { xs: "calc(100vw - 32px)", sm: "auto" },
-          maxWidth: { xs: "calc(100vw - 32px)", sm: "none" },
+          overflow: "hidden",
+          width: "100%",
+          borderRadius: "6px",
+          border: "1px solid",
+          borderColor: "#e5e7eb",
+          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
         }}
       >
-        {props.children}
+        {/* Results Header */}
+        {hasResults && (
+          <Box
+            sx={{
+              px: 2,
+              py: 1,
+              bgcolor: "#f9fafb",
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: 0.3,
+                color: "#6b7280",
+                fontSize: "0.7rem",
+              }}
+            >
+              {filteredClients.length} client{filteredClients.length > 1 ? "s" : ""} trouvé{filteredClients.length > 1 ? "s" : ""}
+            </Typography>
+          </Box>
+        )}
+
+        {/* Scrollable Results */}
+        <Box
+          sx={{
+            maxHeight: { xs: "calc(60vh - 140px)", sm: "280px" },
+            overflow: "auto",
+            "&::-webkit-scrollbar": {
+              width: "6px",
+            },
+            "&::-webkit-scrollbar-track": {
+              background: "#f9fafb",
+            },
+            "&::-webkit-scrollbar-thumb": {
+              background: "#d1d5db",
+              borderRadius: "3px",
+              "&:hover": {
+                background: "#9ca3af",
+              },
+            },
+          }}
+        >
+          {props.children}
+        </Box>
         
+        {/* Loading State */}
         {showLoading && (
           <Box
             sx={{
-              p: 1.5,
+              p: 3,
               textAlign: "center",
-              bgcolor: "background.default",
-              borderTop: hasResults ? 1 : 0,
-              borderColor: "divider",
+              bgcolor: "#fff",
+              borderTop: hasResults ? "1px solid #e5e7eb" : 0,
             }}
           >
-            <Typography variant="body2" color="text.secondary">
-              Chargement...
+            <CircularProgress size={24} sx={{ mb: 1 }} />
+            <Typography variant="body2" color="text.secondary" fontWeight={500}>
+              Recherche en cours...
             </Typography>
           </Box>
         )}
         
+        {/* No Results State */}
         {showNoResults && (
           <Box
             sx={{
-              p: 2,
-              borderRadius: 1,
-              border: 1,
-              borderColor: "divider",
+              p: 4,
               textAlign: "center",
-              background: "linear-gradient(90deg,rgb(46, 41, 27) 0%, #C9A646 100%)",
+              bgcolor: "#fafafa",
             }}
           >
+            <SearchIcon sx={{ fontSize: 48, color: "#d1d5db", mb: 2 }} />
+            <Typography variant="body1" fontWeight={600} color="text.primary" gutterBottom>
+              Aucun client trouvé
+            </Typography>
             <Typography variant="body2" color="text.secondary">
-              Pas de résultats
+              Essayez avec un autre terme de recherche
             </Typography>
           </Box>
         )}
         
+        {/* Create Client Button */}
         {hasCreatePermission && (
           <Box
             sx={{
-              borderTop: 1,
-              borderColor: "divider",
-              p: { xs: 1, sm: 1 },
-              bgcolor: "background.default",
+              borderTop: "1px solid #e5e7eb",
+              p: 1.5,
+              bgcolor: "#fff",
             }}
           >
             <Button
@@ -221,22 +277,29 @@ export function ClientSelect({
               fullWidth
               sx={{
                 textTransform: "none",
-                bgcolor: "primary.main",
-                color: "primary.contrastText",
-                fontWeight: 500,
-                fontSize: { xs: "0.8125rem", sm: "0.875rem" },
-                py: { xs: 1, sm: 0.75 },
-                minHeight: { xs: "44px", sm: "auto" },
+                bgcolor: "#0f172a",
+                color: "white",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                py: 1,
+                minHeight: { xs: "40px", sm: "auto" },
+                borderRadius: "6px",
+                boxShadow: "none",
+                transition: "all 0.2s ease",
                 "&:hover": {
-                  bgcolor: "primary.dark",
+                  bgcolor: "#1e293b",
+                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.15)",
+                },
+                "&:active": {
+                  transform: "translateY(1px)",
                 },
                 "&:disabled": {
-                  bgcolor: "action.disabledBackground",
-                  color: "action.disabled",
+                  bgcolor: "#e5e7eb",
+                  color: "#9ca3af",
                 },
               }}
             >
-              Nouveau client
+              Créer un nouveau client
             </Button>
           </Box>
         )}
@@ -271,49 +334,151 @@ export function ClientSelect({
             helperText={helperText}
             InputProps={{
               ...params.InputProps,
+              sx: {
+                height: 42,
+                fontSize: "0.875rem",
+                fontWeight: 400,
+                borderRadius: "6px",
+                bgcolor: "#fff",
+                "& input": {
+                  padding: "10px 14px !important",
+                },
+                "& fieldset": {
+                  borderWidth: 1,
+                  borderColor: error ? "error.main" : "#e5e7eb",
+                },
+                "&:hover fieldset": {
+                  borderColor: error ? "error.main" : "#d1d5db",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: error ? "error.main" : "#3b82f6",
+                  borderWidth: 1,
+                },
+              },
               endAdornment: (
                 <>
                   {isLoading || searchLoading ? (
-                    <CircularProgress color="inherit" size={20} />
+                    <CircularProgress color="inherit" size={18} />
                   ) : null}
                   {params.InputProps.endAdornment}
                 </>
               ),
+            }}
+            InputLabelProps={{
+              sx: {
+                fontWeight: 500,
+                fontSize: "0.875rem",
+                color: "#6b7280",
+                "&.Mui-focused": {
+                  color: error ? "error.main" : "#3b82f6",
+                },
+                "&.MuiInputLabel-shrink": {
+                  transform: "translate(14px, -9px) scale(0.75)",
+                },
+              },
             }}
           />
         )}
         renderOption={(props, option) => {
           const client = option.client;
           const typeLabel = CLIENT_TYPE_LABELS[client.typeClient] || client.typeClient;
+          const isPro = client.typeClient === "professionnel";
+          
           return (
             <Box
               component="li"
               {...props}
               sx={{
                 display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                py: { xs: 1.25, sm: 1.5 },
-                px: { xs: 1.5, sm: 2 },
-                minHeight: { xs: "48px", sm: "auto" },
+                alignItems: "center",
+                gap: 1.5,
+                py: 1.25,
+                px: 2,
+                minHeight: { xs: "52px", sm: "auto" },
+                borderBottom: "1px solid #f3f4f6",
+                transition: "background-color 0.15s ease",
+                "&:last-child": {
+                  borderBottom: "none",
+                },
+                "&:hover": {
+                  bgcolor: "#f9fafb",
+                  cursor: "pointer",
+                },
+                "&.Mui-focused": {
+                  bgcolor: "#f3f4f6",
+                },
               }}
             >
-              <Box sx={{ 
-                fontWeight: 600, 
-                fontSize: { xs: 13, sm: 14 },
-                wordBreak: "break-word",
-                width: "100%",
-              }}>
-                {option.label}
+              {/* Icon */}
+              <Box
+                sx={{
+                  flexShrink: 0,
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  bgcolor: "#f3f4f6",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                {isPro ? (
+                  <BusinessIcon sx={{ color: "#6b7280", fontSize: 18 }} />
+                ) : (
+                  <PersonIcon sx={{ color: "#6b7280", fontSize: 18 }} />
+                )}
               </Box>
-              <Box sx={{ 
-                fontSize: { xs: 11, sm: 12 }, 
-                color: "text.secondary", 
-                mt: 0.5,
-                wordBreak: "break-word",
-                width: "100%",
-              }}>
-                {typeLabel} {client.email ? `• ${client.email}` : ""}
+
+              {/* Content */}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.25 }}>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      fontWeight: 500,
+                      fontSize: { xs: 14, sm: 14 },
+                      color: "#111827",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {option.label}
+                  </Typography>
+                  <Chip
+                    label={typeLabel}
+                    size="small"
+                    sx={{
+                      height: 18,
+                      fontSize: "0.65rem",
+                      fontWeight: 500,
+                      bgcolor: "#f3f4f6",
+                      color: "#6b7280",
+                      border: "none",
+                      "& .MuiChip-label": {
+                        px: 1,
+                      },
+                    }}
+                  />
+                </Box>
+                {client.email && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <EmailIcon sx={{ fontSize: 13, color: "#9ca3af" }} />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: { xs: 12, sm: 12 },
+                        color: "#6b7280",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {client.email}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </Box>
           );
@@ -321,8 +486,7 @@ export function ClientSelect({
         sx={{ 
           width: "100%",
           "& .MuiAutocomplete-popper": {
-            width: { xs: "calc(100vw - 32px) !important", sm: "auto" },
-            maxWidth: { xs: "calc(100vw - 32px) !important", sm: "none" },
+            width: "100% !important",
           },
         }}
       />
@@ -332,7 +496,6 @@ export function ClientSelect({
         onOpenChange={(open) => {
           setOpenCreateDialog(open);
           if (!open) {
-            // Refresh clients list when dialog closes to get the newly created client
             setTimeout(() => {
               refetch();
             }, 500);
@@ -343,4 +506,3 @@ export function ClientSelect({
     </Box>
   );
 }
-

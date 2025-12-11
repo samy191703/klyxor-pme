@@ -69,6 +69,7 @@ export default function Step1General({
         </div>
 
         <div className="w-full">
+          <Label>Nom du Client</Label>
           <ClientSelect
             value={data.clientId || null}
             onChange={(clientId, clientName) => {
