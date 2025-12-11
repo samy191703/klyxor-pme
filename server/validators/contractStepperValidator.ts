@@ -20,6 +20,12 @@ export const contractStep1Schema = z
       .min(2, "Le numéro doit contenir au moins 2 caractères")
       .max(100, "Le numéro ne peut pas dépasser 100 caractères"), */
     // .regex(CONTRACT_NUMBER_RX, "Numéro de contrat invalide"),
+    clientId: z
+      .string({
+        required_error: "L'identifiant client est requis",
+        invalid_type_error: "L'identifiant client est invalide",
+      })
+      .uuid("Identifiant client invalide"),
     title: z
       .string()
       .min(3, "Le titre doit contenir au moins 3 caractères")

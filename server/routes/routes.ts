@@ -35,6 +35,7 @@ import { registerAmendmentRoutes } from "./amendments.routes";
 import { registerTerminationRoutes } from "./termination.routes";
 import { registerBillingRoutes } from "./billing.routes";
 import { registerInvoiceRoutes } from "./invoice.routes";
+import { registerClientRoutes } from "./clients.routes";
 
 /**
  * Fonction principale d'enregistrement des routes
@@ -110,6 +111,7 @@ export async function registerRoutes(
   registerTerminationRoutes(app);
   registerBillingRoutes(app);
   registerInvoiceRoutes(app);
+  registerClientRoutes(app);
 
   app.get("/api/kpis", isAuthenticated, async (req, res) => {
     try {

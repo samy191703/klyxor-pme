@@ -4,7 +4,10 @@ import { isAuthenticated } from "server/auth";
 import { generateBillingScheduleForContract } from "server/services/billing.service";
 import { db } from "server/db";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
-import { billingSchedules, billingLines, contracts, invoices } from "@shared/schema";
+import { billingSchedules, billingLines, contracts, invoices, indexations } from "@shared/schema";
+import { BillingLineStatus } from "@shared/enums/billing.enum";
+import { validateStatusTransition } from "server/validators/billing-line-status.validator";
+import { storage } from "server/storage";
 import { renderBillingScheduleHtml } from "server/templates/billing-schedule.template";
 import puppeteer, { Browser, Page } from "puppeteer";
 import path from "path";
@@ -48,16 +51,302 @@ export function registerBillingRoutes(app: Express) {
     isAuthenticated,
     async (req: Request, res: Response) => {
       try {
-        const { from, to, customer } = req.query as KpiFiltersDto ;
+        const { from, to, customer } = req.query as KpiFiltersDto;
+
+        // Déterminer la période de référence
+        const periodStart = from ? new Date(from) : new Date(new Date().getFullYear(), 0, 1); // Début de l'année si non spécifié
+        const periodEnd = to ? new Date(to) : new Date(new Date().getFullYear(), 11, 31, 23, 59, 59); // Fin de l'année si non spécifié
+        
+        // Période précédente (N-1) pour calculer l'évolution
+        const previousPeriodStart = new Date(periodStart);
+        previousPeriodStart.setFullYear(previousPeriodStart.getFullYear() - 1);
+        const previousPeriodEnd = new Date(periodEnd);
+        previousPeriodEnd.setFullYear(previousPeriodEnd.getFullYear() - 1);
+
+        // Fin de l'année en cours (31.12)
+        const currentYearEnd = new Date(new Date().getFullYear(), 11, 31, 23, 59, 59);
+        
+        // Date limite pour les indexations à venir (30 jours)
+        const next30Days = new Date();
+        next30Days.setDate(next30Days.getDate() + 30);
 
         const conditions: any[] = [];
-
-        if (from) conditions.push(gte(billingSchedules.startDate, new Date(from)));
-        if (to) conditions.push(lte(billingSchedules.endDate, new Date(to)));
+        if (from) conditions.push(gte(billingSchedules.startDate, periodStart));
+        if (to) conditions.push(lte(billingSchedules.endDate, periodEnd));
         if (customer) conditions.push(eq(contracts.clientName, customer));
 
         const whereClause = conditions.length ? and(...conditions) : undefined;
 
+        // 1. KPI de facturation globale - Montant total facturé (période sélectionnée)
+        const totalInvoicedResult = await db
+          .select({
+            totalCentimes: sql<number>`COALESCE(SUM(${invoices.totalAmount} * 100), 0)`,
+          })
+          .from(invoices)
+          .leftJoin(billingLines, eq(invoices.billingLineId, billingLines.id))
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              eq(invoices.status, "paid"),
+              gte(invoices.generatedAt, periodStart),
+              lte(invoices.generatedAt, periodEnd),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const totalInvoiced = Number(totalInvoicedResult[0]?.totalCentimes || 0) / 100;
+
+        // 2. Évolution vs période précédente N-1
+        const previousPeriodInvoicedResult = await db
+          .select({
+            totalCentimes: sql<number>`COALESCE(SUM(${invoices.totalAmount} * 100), 0)`,
+          })
+          .from(invoices)
+          .leftJoin(billingLines, eq(invoices.billingLineId, billingLines.id))
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              eq(invoices.status, "paid"),
+              gte(invoices.generatedAt, previousPeriodStart),
+              lte(invoices.generatedAt, previousPeriodEnd),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const previousPeriodInvoiced = Number(previousPeriodInvoicedResult[0]?.totalCentimes || 0) / 100;
+        const evolutionPercent = previousPeriodInvoiced > 0 
+          ? ((totalInvoiced - previousPeriodInvoiced) / previousPeriodInvoiced) * 100 
+          : 0;
+
+        // 3. Factures en cours de facturation (statut "inpaid")
+        const invoicesInProgressResult = await db
+          .select({
+            count: sql<number>`COUNT(*)`,
+            totalCentimes: sql<number>`COALESCE(SUM(${invoices.totalAmount} * 100), 0)`,
+          })
+          .from(invoices)
+          .leftJoin(billingLines, eq(invoices.billingLineId, billingLines.id))
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              eq(invoices.status, "inpaid"),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const invoicesInProgressCount = Number(invoicesInProgressResult[0]?.count || 0);
+        const invoicesInProgressAmount = Number(invoicesInProgressResult[0]?.totalCentimes || 0) / 100;
+
+        // 4. Montant en attente d'émission (statut "A_FACTURER" jusqu'au 31.12 de l'année en cours)
+        const pendingBillingLinesResult = await db
+          .select({
+            totalCentimes: sql<number>`COALESCE(SUM(${billingLines.amountHt} * 100), 0)`,
+          })
+          .from(billingLines)
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              eq(billingLines.status, BillingLineStatus.A_FACTURER),
+              lte(billingLines.dueDate, currentYearEnd),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const pendingAmount = Number(pendingBillingLinesResult[0]?.totalCentimes || 0) / 100;
+
+        // 5. Nombre de factures rejetées (statut "cancelled")
+        const rejectedInvoicesResult = await db
+          .select({
+            count: sql<number>`COUNT(*)`,
+          })
+          .from(invoices)
+          .leftJoin(billingLines, eq(invoices.billingLineId, billingLines.id))
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              eq(invoices.status, "cancelled"),
+              gte(invoices.generatedAt, periodStart),
+              lte(invoices.generatedAt, periodEnd),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const rejectedInvoicesCount = Number(rejectedInvoicesResult[0]?.count || 0);
+
+        // 6. Montant additionnel généré par les indexations (deltaAmount dans la période)
+        const indexationAmountResult = await db
+          .select({
+            totalCentimes: sql<number>`COALESCE(SUM(${indexations.deltaAmount} * 100), 0)`,
+            count: sql<number>`COUNT(*)`,
+          })
+          .from(indexations)
+          .leftJoin(contracts, eq(indexations.contractId, contracts.id))
+          .where(
+            and(
+              gte(indexations.indexationDate, periodStart),
+              lte(indexations.indexationDate, periodEnd),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const indexationAmount = Number(indexationAmountResult[0]?.totalCentimes || 0) / 100;
+        const indexationCount = Number(indexationAmountResult[0]?.count || 0);
+
+        // 7. Indexations prévues à venir dans les 30 jours
+        const upcomingIndexationsResult = await db
+          .select({
+            count: sql<number>`COUNT(*)`,
+          })
+          .from(indexations)
+          .leftJoin(contracts, eq(indexations.contractId, contracts.id))
+          .where(
+            and(
+              gte(indexations.indexationDate, new Date()),
+              lte(indexations.indexationDate, next30Days),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const upcomingIndexationsCount = Number(upcomingIndexationsResult[0]?.count || 0);
+
+        // 8. Montant encaissé (factures payées)
+        const collectedAmountResult = await db
+          .select({
+            totalCentimes: sql<number>`COALESCE(SUM(${invoices.totalAmount} * 100), 0)`,
+          })
+          .from(invoices)
+          .leftJoin(billingLines, eq(invoices.billingLineId, billingLines.id))
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              eq(invoices.status, "paid"),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const collectedAmount = Number(collectedAmountResult[0]?.totalCentimes || 0) / 100;
+
+        // 9. Montant en retard (factures avec dueDate passée et statut "inpaid")
+        const overdueAmountResult = await db
+          .select({
+            totalCentimes: sql<number>`COALESCE(SUM(${invoices.totalAmount} * 100), 0)`,
+          })
+          .from(invoices)
+          .leftJoin(billingLines, eq(invoices.billingLineId, billingLines.id))
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              eq(invoices.status, "inpaid"),
+              lte(invoices.dueDate, new Date()),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const overdueAmount = Number(overdueAmountResult[0]?.totalCentimes || 0) / 100;
+
+        // 10. DSO (Days Sales Outstanding) - Moyenne des jours entre génération et paiement
+        const dsoResult = await db
+          .select({
+            avgDays: sql<number>`COALESCE(AVG(EXTRACT(EPOCH FROM (${invoices.updatedAt} - ${invoices.generatedAt})) / 86400), 0)`,
+          })
+          .from(invoices)
+          .leftJoin(billingLines, eq(invoices.billingLineId, billingLines.id))
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              eq(invoices.status, "paid"),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const dso = Number(dsoResult[0]?.avgDays || 0);
+
+        // 11. Prévisions de facturation (3, 6, 12 mois) - basées sur les lignes de facturation à venir
+        const now = new Date();
+        const forecast3Months = new Date(now);
+        forecast3Months.setMonth(forecast3Months.getMonth() + 3);
+        const forecast6Months = new Date(now);
+        forecast6Months.setMonth(forecast6Months.getMonth() + 6);
+        const forecast12Months = new Date(now);
+        forecast12Months.setMonth(forecast12Months.getMonth() + 12);
+
+        const forecast3MonthsResult = await db
+          .select({
+            totalCentimes: sql<number>`COALESCE(SUM(${billingLines.amountHt} * 100), 0)`,
+          })
+          .from(billingLines)
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              gte(billingLines.dueDate, now),
+              lte(billingLines.dueDate, forecast3Months),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const forecast6MonthsResult = await db
+          .select({
+            totalCentimes: sql<number>`COALESCE(SUM(${billingLines.amountHt} * 100), 0)`,
+          })
+          .from(billingLines)
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              gte(billingLines.dueDate, now),
+              lte(billingLines.dueDate, forecast6Months),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const forecast12MonthsResult = await db
+          .select({
+            totalCentimes: sql<number>`COALESCE(SUM(${billingLines.amountHt} * 100), 0)`,
+          })
+          .from(billingLines)
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              gte(billingLines.dueDate, now),
+              lte(billingLines.dueDate, forecast12Months),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          );
+
+        const forecast3MonthsAmount = Number(forecast3MonthsResult[0]?.totalCentimes || 0) / 100;
+        const forecast6MonthsAmount = Number(forecast6MonthsResult[0]?.totalCentimes || 0) / 100;
+        const forecast12MonthsAmount = Number(forecast12MonthsResult[0]?.totalCentimes || 0) / 100;
+
+        // 12. Répartition par type de contrat (pour graphique)
+        const contractTypeDistribution = await db
+          .select({
+            contractType: contracts.type,
+            totalCentimes: sql<number>`COALESCE(SUM(${invoices.totalAmount} * 100), 0)`,
+          })
+          .from(invoices)
+          .leftJoin(billingLines, eq(invoices.billingLineId, billingLines.id))
+          .leftJoin(billingSchedules, eq(billingLines.scheduleId, billingSchedules.id))
+          .leftJoin(contracts, eq(billingSchedules.contractId, contracts.id))
+          .where(
+            and(
+              gte(invoices.generatedAt, periodStart),
+              lte(invoices.generatedAt, periodEnd),
+              customer ? eq(contracts.clientName, customer) : undefined
+            )
+          )
+          .groupBy(contracts.type);
+
+        // KPI existants (pour compatibilité)
         const statusKpis = await db
           .select({
             status: billingSchedules.status,
@@ -93,11 +382,35 @@ export function registerBillingRoutes(app: Express) {
           .where(whereClause);
 
         return res.status(200).json({
+          // Nouveaux KPI selon le ticket
+          totalInvoiced,
+          evolutionPercent,
+          invoicesInProgressCount,
+          invoicesInProgressAmount,
+          pendingAmount,
+          rejectedInvoicesCount,
+          indexationAmount,
+          indexationCount,
+          upcomingIndexationsCount,
+          collectedAmount,
+          overdueAmount,
+          dso,
+          forecasts: {
+            threeMonths: forecast3MonthsAmount,
+            sixMonths: forecast6MonthsAmount,
+            twelveMonths: forecast12MonthsAmount,
+          },
+          contractTypeDistribution: contractTypeDistribution.map((item) => ({
+            type: item.contractType,
+            amount: Number(item.totalCentimes || 0) / 100,
+          })),
+          // KPI existants (pour compatibilité)
           status: statusKpis,
           billingType: typeKpis,
           totals: totals[0],
         });
       } catch (e: any) {
+        console.error("Error in billing KPIs endpoint:", e);
         return res.status(500).json({ error: e.message });
       }
     }
@@ -342,7 +655,11 @@ export function registerBillingRoutes(app: Express) {
               billingLines: lines.map(line => ({
                 id: line.id,
                 scheduleId: line.scheduleId,
+                sequenceNo: line.sequenceNo,
                 dueDate: line.dueDate,
+                billingStartDate: line.billingStartDate,
+                billingEndDate: line.billingEndDate,
+                invoiceDate: line.invoiceDate,
                 amountHt: line.amountHt?.toString() || "0.00",
                 status: line.status,
                 invoiceReference: invoiceRefs.get(line.id) || null,
@@ -774,10 +1091,15 @@ export function registerBillingRoutes(app: Express) {
           .where(eq(billingLines.scheduleId, id))
           .orderBy(billingLines.sequenceNo);
 
-        const linesForPdf = lineRows.map((ln) => ({
+        const linesForPdf: Array<{
+          sequenceNo: number;
+          dueDate: Date | string | null;
+          amountHt: number | null;
+          status: string | null;
+        }> = lineRows.map((ln) => ({
           sequenceNo: ln.sequenceNo,
           dueDate: ln.dueDate,
-          amountHt: ln.amountHt,
+          amountHt: ln.amountHt ? Number(ln.amountHt) : null,
           status: ln.status,
         }));
 
@@ -812,7 +1134,7 @@ export function registerBillingRoutes(app: Express) {
             contractNumber: schedule.contractNumber ?? null,
             startDate: schedule.startDate,
             endDate: schedule.endDate,
-            frequency: schedule.frequency,
+            frequency: schedule.frequency,  
             billingType: schedule.billingType,
             version: schedule.version,
             status: schedule.status,
@@ -965,6 +1287,227 @@ export function registerBillingRoutes(app: Express) {
         if (!res.headersSent) {
           return res.status(500).json({ error: e.message || "Server error" });
         }
+      }
+    }
+  );
+
+  /**
+   * @openapi
+   * /api/billing-lines/{id}/status:
+   *   patch:
+   *     summary: Update billing line status
+   *     description: |
+   *       Updates the status of a billing line with validation of allowed transitions.
+   *       Transitions allowed:
+   *       - DRAFT → A_FACTURER | ANNULEE
+   *       - A_FACTURER → FACTUREE | ANNULEE
+   *       All other transitions are forbidden (returns 409).
+   *     tags: [Billing]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Billing line ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - status
+   *             properties:
+   *               status:
+   *                 type: string
+   *                 enum: [DRAFT, A_FACTURER, FACTUREE, ANNULEE]
+   *     responses:
+   *       200:
+   *         description: Status updated successfully
+   *       400:
+   *         description: Invalid request
+   *       404:
+   *         description: Billing line not found
+   *       409:
+   *         description: Status transition not allowed
+   *       500:
+   *         description: Server error
+   */
+  app.patch(
+    "/api/billing-lines/:id/status",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status || !Object.values(BillingLineStatus).includes(status)) {
+          return res.status(400).json({
+            error: "Status invalide. Valeurs autorisées: DRAFT, A_FACTURER, FACTUREE, ANNULEE",
+          });
+        }
+
+        // Récupérer la ligne actuelle
+        const [currentLine] = await db
+          .select()
+          .from(billingLines)
+          .where(eq(billingLines.id, id))
+          .limit(1);
+
+        if (!currentLine) {
+          return res.status(404).json({ error: "Ligne de facturation non trouvée" });
+        }
+
+        const oldStatus = currentLine.status as BillingLineStatus;
+        const newStatus = status as BillingLineStatus;
+
+        // Valider la transition
+        try {
+          validateStatusTransition(oldStatus, newStatus);
+        } catch (validationError: any) {
+          return res.status(409).json({
+            error: validationError.message || "Transition de statut interdite",
+          });
+        }
+
+        // Mettre à jour le statut
+        await db
+          .update(billingLines)
+          .set({
+            status: newStatus,
+            updatedAt: new Date(),
+          })
+          .where(eq(billingLines.id, id));
+
+        // Audit log
+        await storage.createAuditLog?.({
+          userId: (req as any).user?.id ?? "system",
+          username: (req as any).user?.name ?? "System",
+          action: "billing_line_status_updated",
+          traceId: `billing-line-${id}`,
+          entityType: "billing_line",
+          entityId: id,
+          details: JSON.stringify({
+            oldStatus,
+            newStatus,
+            billingLineId: id,
+            scheduleId: currentLine.scheduleId,
+          }),
+          ipAddress: req.ip || "",
+          userAgent: req.get("user-agent") || "",
+        });
+
+        return res.status(200).json({
+          message: "Statut mis à jour avec succès",
+          billingLine: {
+            id,
+            status: newStatus,
+          },
+        });
+      } catch (e: any) {
+        console.error("Error updating billing line status:", e);
+        return res.status(500).json({ error: e.message || "Erreur serveur" });
+      }
+    }
+  );
+
+  /**
+   * @openapi
+   * /api/billing-schedules/{id}:
+   *   delete:
+   *     summary: Delete a billing schedule
+   *     description: |
+   *       Deletes a billing schedule. 
+   *       Deletion is forbidden if the schedule has at least one billing line with status FACTUREE (returns 409).
+   *     tags: [Billing]
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Billing schedule ID
+   *     responses:
+   *       200:
+   *         description: Schedule deleted successfully
+   *       404:
+   *         description: Schedule not found
+   *       409:
+   *         description: Cannot delete schedule with FACTUREE lines
+   *       500:
+   *         description: Server error
+   */
+  app.delete(
+    "/api/billing-schedules/:id",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+
+        // Vérifier que le schedule existe
+        const [schedule] = await db
+          .select()
+          .from(billingSchedules)
+          .where(eq(billingSchedules.id, id))
+          .limit(1);
+
+        if (!schedule) {
+          return res.status(404).json({ error: "Plan de facturation non trouvé" });
+        }
+
+        // Vérifier s'il y a des lignes FACTUREE
+        const factureeLines = await db
+          .select()
+          .from(billingLines)
+          .where(
+            and(
+              eq(billingLines.scheduleId, id),
+              eq(billingLines.status, BillingLineStatus.FACTUREE)
+            )
+          )
+          .limit(1);
+
+        if (factureeLines.length > 0) {
+          return res.status(409).json({
+            error:
+              "Impossible de supprimer un plan de facturation contenant au moins une échéance facturée",
+          });
+        }
+
+        // Supprimer les lignes associées (cascade devrait le faire, mais on le fait explicitement)
+        await db.delete(billingLines).where(eq(billingLines.scheduleId, id));
+
+        // Supprimer le schedule
+        await db.delete(billingSchedules).where(eq(billingSchedules.id, id));
+
+        // Audit log
+        await storage.createAuditLog?.({
+          userId: (req as any).user?.id ?? "system",
+          username: (req as any).user?.name ?? "System",
+          action: "billing_schedule_deleted",
+          traceId: `billing-schedule-${id}`,
+          entityType: "billing_schedule",
+          entityId: id,
+          details: JSON.stringify({
+            scheduleId: id,
+            contractId: schedule.contractId,
+            version: schedule.version,
+          }),
+          ipAddress: req.ip || "",
+          userAgent: req.get("user-agent") || "",
+        });
+
+        return res.status(200).json({
+          message: "Plan de facturation supprimé avec succès",
+        });
+      } catch (e: any) {
+        console.error("Error deleting billing schedule:", e);
+        return res.status(500).json({ error: e.message || "Erreur serveur" });
       }
     }
   );

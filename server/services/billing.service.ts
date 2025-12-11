@@ -315,6 +315,8 @@ export async function generateBillingScheduleForContract({
       scheduleId: schedule.id,
       sequenceNo: i + 1,
       dueDate: computeDueDateFromPeriod(pStart, pEnd, billingType),
+      billingStartDate: pStart, // Date de début de la période facturée
+      billingEndDate: pEnd, // Date de fin de la période facturée
       amountHt: toMoneyString(amounts[i]),
       status: "A_FACTURER",
     }));

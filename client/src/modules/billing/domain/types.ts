@@ -11,7 +11,7 @@ export type BillingFrequency =
 export type BillingType = "A_ECHOIR" | "TERME_ECHU";
 export type BillingScheduleStatus = "draft" | "active" | "archived";
 
-export type BillingLineStatus = "A_FACTURER" | "FACTUREE";
+export type BillingLineStatus = "DRAFT" | "A_FACTURER" | "FACTUREE" | "ANNULEE";
 
 /** =========================
  *  BILLING SCHEDULE
@@ -77,8 +77,15 @@ export interface BillingLine {
   sequenceNo: number; // 1..N
   dueDate: string; // ISO timestamp
 
-  /** Attention: si l’API renvoie un DECIMAL en string, tu peux typer string | number
-   *  et normaliser à l’entrée. Ici on reste en number pour coller aux autres modules. */
+  // ✅ Dates de période de facturation
+  billingStartDate: string; // ISO timestamp - Date de début de la période facturée
+  billingEndDate: string; // ISO timestamp - Date de fin de la période facturée
+  
+  // ✅ Date de génération de la facture (nullable)
+  invoiceDate?: string | null; // ISO timestamp - Date de génération de la facture
+
+  /** Attention: si l'API renvoie un DECIMAL en string, tu peux typer string | number
+   *  et normaliser à l'entrée. Ici on reste en number pour coller aux autres modules. */
   amountHt: number;
 
   status: BillingLineStatus;
@@ -92,6 +99,8 @@ export interface BillingLineCreateDto {
   scheduleId: string;
   sequenceNo: number;
   dueDate: string;
+  billingStartDate: string; // ISO timestamp
+  billingEndDate: string; // ISO timestamp
   amountHt: number;
   status?: BillingLineStatus; // défaut "A_FACTURER"
 }

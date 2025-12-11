@@ -1,7 +1,7 @@
 // components/KpiDashboard.tsx
 import { Card, CardContent } from "@mui/material";
 import { User } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
 // Définir un type pour les filtres KPI
@@ -10,6 +10,8 @@ interface KpiFilters {
   to: string;
   customer: string;
 }
+
+type PeriodPreset = "month" | "quarter" | "year" | "custom";
 
 // Ajuster les props
 interface KpiDashboardProps {
@@ -46,6 +48,97 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [highlightIndex, setHighlightIndex] = useState<number>(-1);
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("custom");
+
+  // Fonction pour définir les dates selon la période prédéfinie
+  const applyPeriodPreset = (preset: PeriodPreset) => {
+    const now = new Date();
+    let from: Date;
+    let to: Date = new Date(now);
+
+    switch (preset) {
+      case "month":
+        from = new Date(now.getFullYear(), now.getMonth(), 1);
+        to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case "quarter":
+        const quarter = Math.floor(now.getMonth() / 3);
+        from = new Date(now.getFullYear(), quarter * 3, 1);
+        to = new Date(now.getFullYear(), (quarter + 1) * 3, 0, 23, 59, 59);
+        break;
+      case "year":
+        from = new Date(now.getFullYear(), 0, 1);
+        to = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+        break;
+      case "custom":
+      default:
+        // Ne pas modifier les dates si personnalisé
+        return;
+    }
+
+    setKpiFilters((f) => ({
+      ...f,
+      from: from.toISOString().split("T")[0],
+      to: to.toISOString().split("T")[0],
+    }));
+  };
+
+  const handlePeriodPresetChange = (preset: PeriodPreset) => {
+    setPeriodPreset(preset);
+    if (preset !== "custom") {
+      applyPeriodPreset(preset);
+    }
+  };
+
+  // Détecter si les dates correspondent à une période prédéfinie
+  const detectPeriodPreset = () => {
+    if (!kpiFilters.from || !kpiFilters.to) return "custom";
+
+    const now = new Date();
+    const from = new Date(kpiFilters.from);
+    const to = new Date(kpiFilters.to);
+
+    // Vérifier si c'est le mois en cours
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    if (
+      from.getTime() === monthStart.getTime() &&
+      to.getTime() === monthEnd.getTime()
+    ) {
+      return "month";
+    }
+
+    // Vérifier si c'est le trimestre en cours
+    const quarter = Math.floor(now.getMonth() / 3);
+    const quarterStart = new Date(now.getFullYear(), quarter * 3, 1);
+    const quarterEnd = new Date(now.getFullYear(), (quarter + 1) * 3, 0, 23, 59, 59);
+    if (
+      from.getTime() === quarterStart.getTime() &&
+      to.getTime() === quarterEnd.getTime()
+    ) {
+      return "quarter";
+    }
+
+    // Vérifier si c'est l'année en cours
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const yearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    if (
+      from.getTime() === yearStart.getTime() &&
+      to.getTime() === yearEnd.getTime()
+    ) {
+      return "year";
+    }
+
+    return "custom";
+  };
+
+  // Mettre à jour le preset détecté quand les dates changent
+  useEffect(() => {
+    const detected = detectPeriodPreset();
+    if (detected !== periodPreset) {
+      setPeriodPreset(detected);
+    }
+  }, [kpiFilters.from, kpiFilters.to]);
 
   const filteredCustomers = customerOptions
     .filter((c) => c.toLowerCase().includes(customerSearch.toLowerCase()))
@@ -79,7 +172,21 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({
     <div>
       {showKpiFilters && (
         <Card className="mb-4 animate-fadeIn">
-          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* Période prédéfinie */}
+            <div className="flex flex-col">
+              <label className="text-sm text-gray-600 mb-1">Période</label>
+              <select
+                className="border rounded px-2 py-1"
+                value={periodPreset}
+                onChange={(e) => handlePeriodPresetChange(e.target.value as PeriodPreset)}
+              >
+                <option value="month">Mois en cours</option>
+                <option value="quarter">Trimestre en cours</option>
+                <option value="year">Année en cours</option>
+                <option value="custom">Personnalisé</option>
+              </select>
+            </div>
 
             {/* Du */}
             <div className="flex flex-col">
@@ -88,9 +195,10 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({
                 type="date"
                 className="border rounded px-2 py-1"
                 value={kpiFilters.from}
-                onChange={(e) =>
-                  setKpiFilters(f => ({ ...f, from: e.target.value }))
-                }
+                onChange={(e) => {
+                  setKpiFilters(f => ({ ...f, from: e.target.value }));
+                  setPeriodPreset("custom");
+                }}
               />
             </div>
 
@@ -101,9 +209,10 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({
                 type="date"
                 className="border rounded px-2 py-1"
                 value={kpiFilters.to}
-                onChange={(e) =>
-                  setKpiFilters(f => ({ ...f, to: e.target.value }))
-                }
+                onChange={(e) => {
+                  setKpiFilters(f => ({ ...f, to: e.target.value }));
+                  setPeriodPreset("custom");
+                }}
               />
             </div>
 

@@ -51,6 +51,7 @@ import { ValidationRequestsView } from "./modules/validation-requests";
 import ValidationRequestsPage from "./modules/validation-requests/components/ValidationRequestsPage";
 import BillingModulePage from "./modules/billing/_views/BillingModulePage";
 import InvoiceModulePage from "./modules/invoices/_views/InvoiceModulePage";
+import ClientsPage from "./modules/clients/components/ClientsPage";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -119,6 +120,11 @@ function Router() {
           <Route path="/amendments">
             <ProtectedRoute route="/amendments">
               <AmendmentsPage />
+            </ProtectedRoute>
+          </Route>
+            <Route path="/clients">
+            <ProtectedRoute route="/clients">
+              <ClientsPage />
             </ProtectedRoute>
           </Route>
           <Route path="/terminations">

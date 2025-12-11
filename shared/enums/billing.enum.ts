@@ -33,8 +33,10 @@ export type BillingScheduleStatus =
   (typeof BillingScheduleStatus)[keyof typeof BillingScheduleStatus];
 
 export const BillingLineStatus = {
+  DRAFT: "DRAFT",
   A_FACTURER: "A_FACTURER",
   FACTUREE: "FACTUREE",
+  ANNULEE: "ANNULEE",
 } as const;
 export type BillingLineStatus =
   (typeof BillingLineStatus)[keyof typeof BillingLineStatus];

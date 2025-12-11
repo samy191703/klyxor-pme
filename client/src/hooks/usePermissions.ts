@@ -186,10 +186,18 @@ export function usePermissions() {
     // console.log(permission.allowedRoles.includes(user.role as UserRole));
     return permission.allowedRoles.includes(user.role as UserRole);
   };
-
+ 
   const canCreateContract = (): boolean =>
     !!user && ["manager", "contract_manager"].includes(user.role);
-
+   const canCreateClient = (): boolean =>
+    !!user && ["manager", "admin", "business_unit_manager", "finance_manager", "validator","user", "contract_manager"].includes(user.role);
+  
+   const canEditClient = (): boolean =>
+    !!user && ["manager", "admin","contract_manager"].includes(user.role);
+  
+   const canDeleteClient = (): boolean =>
+    !!user && ["manager", "admin","contract_manager"].includes(user.role);
+  
   const canValidate = (): boolean =>
     !!user && ["manager", "validator"].includes(user.role);
 
@@ -238,6 +246,9 @@ export function usePermissions() {
     canViewIndexation,
     canValidateIndexation,
     canConfigureIndexation,
+    canCreateClient,
+    canEditClient,
+    canDeleteClient,
     userRole: user?.role as UserRole | undefined,
   };
 }

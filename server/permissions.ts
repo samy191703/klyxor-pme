@@ -8,6 +8,8 @@
  * @since 2025-01-02
  */
 
+import { clients } from "@shared/schema";
+
 export interface Permission {
   action: string;
   resource: string;
@@ -18,6 +20,7 @@ export const rolePermissions = {
   admin: {
     // Admin gère le système mais ne valide pas les contrats
     contracts: ["create", "read", "update", "delete", "export"], // PAS de validate
+    clients: ["create", "read", "update", "delete", "export"], // PAS de validate
     indexations: ["create", "read", "update", "delete", "export", "execute"], // PAS de validate
     amendments: ["create", "read", "update", "delete"], // PAS de validate
     invoices: ["create", "read", "update", "delete"],
@@ -37,6 +40,7 @@ export const rolePermissions = {
   contract_manager: {
     // Gestionnaire de contrat a des droits limités
     contracts: ["create", "read", "update", "export"], // Pas de delete ou validate
+    clients: ["create", "read", "update"], // Peut créer et modifier des clients
     terminations: ["create", "read", "update", "export"], // Pas de delete ou validate
     indexations: ["create", "read", "update"], // Pas de validation finale
     amendments: ["create", "read", "update"], // Pas de validation finale
