@@ -8,6 +8,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { ClientSelect } from "@/modules/clients/components/ClientSelect";
 
 import { WizardMode } from "../ContractWizard";
 import {
@@ -68,11 +69,18 @@ export default function Step1General({
         </div>
 
         <div className="w-full">
-          <Label>Nom du client *</Label>
-          <Input
-            placeholder="Nom du client"
-            value={data.clientName || ""}
-            onChange={(e) => setData({ ...data, clientName: e.target.value })}
+          <Label>Nom du Client</Label>
+          <ClientSelect
+            value={data.clientId || null}
+            onChange={(clientId, clientName) => {
+              setData({
+                ...data,
+                clientId: clientId || undefined,
+                clientName: clientName || "",
+              });
+            }}
+            label="Nom du client *"
+            placeholder="Rechercher un client..."
           />
         </div>
 

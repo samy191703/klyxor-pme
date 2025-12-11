@@ -255,7 +255,7 @@ export default function ContractsTable({
             {items.map((c) => (
               <TableRow key={c.id}>
                 {/* Core identifiers */}
-                <TableCell>{c.number}</TableCell>
+                <TableCell className="max-w-[220px] truncate">{c.number}</TableCell>
                 <TableCell className="max-w-[240px] truncate">
                   {c.title}
                 </TableCell>

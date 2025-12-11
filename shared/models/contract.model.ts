@@ -8,6 +8,7 @@ export type PatchStep1Payload = {
   // Required (as per your API typing)
   number: string; // if your API treats it optional, change to `number?: string`
   title: string;
+  clientId: string;
   clientName: string;
   type: ContractTypes | string; // keep `string` if your backend accepts it
   businessUnit: BusinessUnits | string; // keep `string` if your backend accepts it

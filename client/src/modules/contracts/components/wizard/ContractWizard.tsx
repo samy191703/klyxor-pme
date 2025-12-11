@@ -190,6 +190,7 @@ export default function ContractWizard({
 
     //if (!v.number) e.number = "N° contrat requis";
     if (!v.title) e.title = "Titre requis";
+    if (!v.clientId) e.clientId = "Client requis";
     if (!v.type) e.type = "Type requis";
     if (!v.businessUnit) e.businessUnit = "Business Unit requise";
     if (!v.clientName) e.clientName = "Client requis";
@@ -271,10 +272,39 @@ export default function ContractWizard({
   function buildPatchForStep1(d: Contract): PatchStep1Payload {
     const typeDef = contractTypeDefinitions.find((t) => t.value === d.type);
 
+    // Sanitize clientName to remove invalid characters
+    // Only allow: letters (including accented), spaces, hyphens, dots, apostrophes
+    const sanitizeClientName = (name: string | undefined | null): string => {
+      if (!name || !name.trim()) return "";
+      
+      // First, try to clean the name
+      const sanitized = name
+        .replace(/[^a-zA-ZÀ-ÿ\s\-'.]/g, "") // Remove invalid characters
+        .replace(/\s+/g, " ") // Replace multiple spaces with single space
+        .trim();
+      
+      // If sanitization resulted in a valid name (at least 2 characters with allowed chars), return it
+      if (sanitized.length >= 2 && /^[A-Za-zÀ-ÿ\s\-'.]+$/.test(sanitized)) {
+        return sanitized;
+      }
+      
+      // If the original name is valid, return it trimmed
+      const trimmed = name.trim();
+      if (trimmed.length >= 2 && /^[A-Za-zÀ-ÿ\s\-'.]+$/.test(trimmed)) {
+        return trimmed;
+      }
+      
+      // If invalid (e.g., only numbers), return the original name
+      // The backend validation will catch this and show a proper error message
+      // This prevents empty clientName which could cause 500 errors
+      return trimmed || name;
+    };
+
     const payload: PatchStep1Payload = {
       number: d.number ?? "", // or omit if truly optional in your API
       title: d.title,
-      clientName: d.clientName,
+      clientId: d.clientId,
+      clientName: sanitizeClientName(d.clientName),
       type: d.type,
       businessUnit: d.businessUnit,
       currency: d.currency || "EUR",
@@ -402,10 +432,30 @@ export default function ContractWizard({
     try {
       setSaving(true);
       setFormError(null);
+      
+      // Validate clientName before sending
+      if (!data.clientName || !data.clientName.trim()) {
+        setErrors((prev) => ({
+          ...prev,
+          clientName: "Le nom du client est requis",
+        }));
+        return false;
+      }
+      
       const draftPayload = {
         ...buildPatchForStep1(data),
         //status: ContractStatus.DRAFT,
       };
+      
+      // Double check clientName is not empty after sanitization
+      if (!draftPayload.clientName || !draftPayload.clientName.trim()) {
+        setErrors((prev) => ({
+          ...prev,
+          clientName: "Le nom du client contient des caractères non autorisés",
+        }));
+        return false;
+      }
+      
       const created = await createContractDraft(draftPayload);
       setData((prev: any) => ({
         ...prev,
@@ -414,14 +464,30 @@ export default function ContractWizard({
       }));
       return true;
     } catch (e: any) {
-      if (e?.status === 409 && e?.field === "number") {
+      // Handle validation errors (400)
+      if (e?.message?.includes("clientName") || e?.message?.includes("client")) {
+        const errorMsg = e?.message || "Le nom du client est invalide";
+        setErrors((prev) => ({
+          ...prev,
+          clientName: errorMsg.includes("caractères") 
+            ? "Le nom du client contient des caractères non autorisés"
+            : "Le nom du client est requis",
+        }));
+        setFormError(null);
+      } else if (e?.status === 409 && e?.field === "number") {
         setErrors((prev) => ({
           ...prev,
           number: e.message || "Numéro déjà utilisé",
         }));
         setFormError(null);
       } else {
-        setFormError(e?.message || "Échec création du brouillon.");
+        // For 500 errors, show a more helpful message
+        const errorMsg = e?.message || "Échec création du brouillon";
+        setFormError(
+          errorMsg.includes("500") 
+            ? "Erreur serveur. Veuillez vérifier que tous les champs sont correctement remplis."
+            : errorMsg
+        );
       }
       return false;
     } finally {
