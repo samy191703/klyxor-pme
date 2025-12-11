@@ -19,6 +19,9 @@ import {
   Visibility as EyeIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  ArrowUpward as ArrowUpIcon,
+  ArrowDownward as ArrowDownIcon,
+  UnfoldMore as UnfoldMoreIcon,
 } from "@mui/icons-material";
 
 import type { Client } from "../domain/types";
@@ -38,6 +41,14 @@ type Props = {
 };
 
 const COLS = [260, 160, 220, 160, 260, 140, 140, 130, 130];
+
+type SortField = "name" | "type" | "email" | "phone" | "city" | "createdAt" | "status" | null;
+type SortOrder = "asc" | "desc" | null;
+
+interface SortState {
+  field: SortField;
+  order: SortOrder;
+}
 
 function StatusChip({ isActive }: { isActive?: boolean | null }) {
   if (isActive) {
@@ -59,14 +70,97 @@ export function ClientsTable({
 }: Props) {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(25);
+  const [sort, setSort] = React.useState<SortState>({
+    field: null,
+    order: null,
+  });
 
-  const [openDelete, setOpenDelete] = React.useState(false);
-  const [target, setTarget] = React.useState<Client | null>(null);
+  // Tri des données
+  const sortedRows = React.useMemo(() => {
+    if (!sort.field || !sort.order) return rows;
+
+    return [...rows].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sort.field) {
+        case "name":
+          const nameA =
+            a.typeClient === "professionnel"
+              ? a.companyName || ""
+              : [a.lastName, a.firstName].filter(Boolean).join(" ");
+          const nameB =
+            b.typeClient === "professionnel"
+              ? b.companyName || ""
+              : [b.lastName, b.firstName].filter(Boolean).join(" ");
+          comparison = nameA.localeCompare(nameB, "fr", {
+            sensitivity: "base",
+          });
+          break;
+
+        case "type":
+          comparison = a.typeClient.localeCompare(b.typeClient);
+          break;
+
+        case "email":
+          comparison = (a.email || "").localeCompare(b.email || "");
+          break;
+
+        case "phone":
+          comparison = (a.phone || "").localeCompare(b.phone || "");
+          break;
+
+        case "city":
+          comparison = (a.city || "").localeCompare(b.city || "");
+          break;
+
+        case "createdAt":
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          comparison = dateA - dateB;
+          break;
+
+        case "status":
+          const statusA = a.isActive ? 1 : 0;
+          const statusB = b.isActive ? 1 : 0;
+          comparison = statusA - statusB;
+          break;
+
+        default:
+          return 0;
+      }
+
+      return sort.order === "asc" ? comparison : -comparison;
+    });
+  }, [rows, sort.field, sort.order]);
 
   const displayedRows = React.useMemo(() => {
     const start = page * rowsPerPage;
-    return rows.slice(start, start + rowsPerPage);
-  }, [rows, page, rowsPerPage]);
+    return sortedRows.slice(start, start + rowsPerPage);
+  }, [sortedRows, page, rowsPerPage]);
+
+  const handleSort = (field: SortField) => {
+    setSort((prev) => {
+      if (prev.field !== field) {
+        return { field, order: "asc" };
+      }
+      if (prev.order === "asc") {
+        return { field, order: "desc" };
+      }
+      return { field: null, order: null };
+    });
+    setPage(0); // Reset to first page when sorting
+  };
+
+  const renderSortIcon = (field: SortField) => {
+    if (sort.field !== field || !sort.order) {
+      return <UnfoldMoreIcon sx={{ fontSize: 16, opacity: 0.3 }} />;
+    }
+    return sort.order === "asc" ? (
+      <ArrowUpIcon sx={{ fontSize: 16 }} />
+    ) : (
+      <ArrowDownIcon sx={{ fontSize: 16 }} />
+    );
+  };
 
   const headerCellSx = {
     fontWeight: 600,
@@ -74,17 +168,6 @@ export function ClientsTable({
     whiteSpace: "nowrap",
   } as const;
   const bodyCellSx = { fontSize: 13, verticalAlign: "middle" } as const;
-
-  const handleAskDelete = (c: Client) => {
-    setTarget(c);
-    setOpenDelete(true);
-  };
-
-  const handleDeleted = (id: string) => {
-    onDelete(id);
-    setOpenDelete(false);
-    setTarget(null);
-  };
 
   return (
     <Paper
@@ -109,14 +192,105 @@ export function ClientsTable({
 
           <TableHead>
             <TableRow>
-              <TableCell sx={headerCellSx}>Nom / Raison sociale</TableCell>
-              <TableCell sx={headerCellSx}>Type</TableCell>
-              <TableCell sx={headerCellSx}>Email</TableCell>
-              <TableCell sx={headerCellSx}>Téléphone</TableCell>
+              <TableCell
+                sx={{
+                  ...headerCellSx,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+                onClick={() => handleSort("name")}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  Nom / Raison sociale
+                  {renderSortIcon("name")}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{
+                  ...headerCellSx,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+                onClick={() => handleSort("type")}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  Type
+                  {renderSortIcon("type")}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{
+                  ...headerCellSx,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+                onClick={() => handleSort("email")}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  Email
+                  {renderSortIcon("email")}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{
+                  ...headerCellSx,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+                onClick={() => handleSort("phone")}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  Téléphone
+                  {renderSortIcon("phone")}
+                </Box>
+              </TableCell>
               <TableCell sx={headerCellSx}>Adresse</TableCell>
-              <TableCell sx={headerCellSx}>Ville</TableCell>
-              <TableCell sx={headerCellSx}>Créé le</TableCell>
-              <TableCell sx={headerCellSx}>Statut</TableCell>
+              <TableCell
+                sx={{
+                  ...headerCellSx,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+                onClick={() => handleSort("city")}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  Ville
+                  {renderSortIcon("city")}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{
+                  ...headerCellSx,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+                onClick={() => handleSort("createdAt")}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  Créé le
+                  {renderSortIcon("createdAt")}
+                </Box>
+              </TableCell>
+              <TableCell
+                sx={{
+                  ...headerCellSx,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+                onClick={() => handleSort("status")}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  Statut
+                  {renderSortIcon("status")}
+                </Box>
+              </TableCell>
               <TableCell
                 sx={{
                   ...headerCellSx,
@@ -217,7 +391,7 @@ export function ClientsTable({
                         <Tooltip title="Supprimer">
                           <IconButton
                             size="small"
-                            onClick={() => handleAskDelete(c)}
+                            onClick={() => onDelete(c.id)}
                           >
                             <DeleteIcon
                               fontSize="small"
@@ -239,7 +413,7 @@ export function ClientsTable({
       <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
         <TablePagination
           component="div"
-          count={rows.length}
+          count={sortedRows.length}
           page={page}
           onPageChange={(_, newPage) => setPage(newPage)}
           rowsPerPage={rowsPerPage}
@@ -248,20 +422,13 @@ export function ClientsTable({
             setPage(0);
           }}
           rowsPerPageOptions={[5, 10, 25, 50, 100]}
-          labelRowsPerPage="Lignes par page"/>
+          labelRowsPerPage="Lignes par page"
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} sur ${count !== -1 ? count : `plus de ${to}`}`
+          }
+        />
       </Box>
 
-      {/* Dialog de suppression inline (comme pour les avenants) */}
-      {/* <DeleteClientDialog
-        open={openDelete}
-        onOpenChange={(v) => {
-          setOpenDelete(v);
-          if (!v) setTarget(null);
-        }}
-        client={target ?? undefined}
-        canDelete={Boolean(target && !target.activeContractsCount)}
-        onDeleted={(id) => handleDeleted(id)}
-      /> */}
     </Paper>
   );
 }

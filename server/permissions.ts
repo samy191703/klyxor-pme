@@ -40,6 +40,7 @@ export const rolePermissions = {
   contract_manager: {
     // Gestionnaire de contrat a des droits limités
     contracts: ["create", "read", "update", "export"], // Pas de delete ou validate
+    clients: ["create", "read", "update"], // Peut créer et modifier des clients
     terminations: ["create", "read", "update", "export"], // Pas de delete ou validate
     indexations: ["create", "read", "update"], // Pas de validation finale
     amendments: ["create", "read", "update"], // Pas de validation finale

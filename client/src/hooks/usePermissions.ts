@@ -190,7 +190,7 @@ export function usePermissions() {
   const canCreateContract = (): boolean =>
     !!user && ["manager", "contract_manager"].includes(user.role);
    const canCreateClient = (): boolean =>
-    !!user && ["manager", "admin","contract_manager"].includes(user.role);
+    !!user && ["manager", "admin", "business_unit_manager", "finance_manager", "validator","user", "contract_manager"].includes(user.role);
   
    const canEditClient = (): boolean =>
     !!user && ["manager", "admin","contract_manager"].includes(user.role);

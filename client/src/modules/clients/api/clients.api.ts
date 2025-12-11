@@ -43,9 +43,11 @@ export async function updateClient(
 }
 
 export async function deleteClient(
-  id: string
+  id: string,
+  force: boolean = false
 ): Promise<{ success: boolean }> {
-  const res = await apiRequest("DELETE", `/api/clients/${id}`);
+  const url = force ? `/api/clients/${id}?force=true` : `/api/clients/${id}`;
+  const res = await apiRequest("DELETE", url);
   const data = (await res.json()) as { success: boolean };
 
   queryClient.invalidateQueries({ queryKey: CLIENTS_QK.root });

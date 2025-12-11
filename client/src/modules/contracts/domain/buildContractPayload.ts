@@ -29,6 +29,33 @@ function toNum(v: any) {
   return isNaN(n) ? undefined : n;
 }
 
+function sanitizeClientName(name: string | undefined | null): string {
+  if (!name || !name.trim()) return "";
+  
+  // Remove characters that are not allowed by the regex: /^[A-Za-zÀ-ÿ\s\-'.]+$/
+  // Keep only: letters (including accented), spaces, hyphens, dots, apostrophes
+  const sanitized = name
+    .replace(/[^a-zA-ZÀ-ÿ\s\-'.]/g, "") // Remove invalid characters
+    .replace(/\s+/g, " ") // Replace multiple spaces with single space
+    .trim();
+  
+  // If sanitization resulted in a valid name (at least 2 characters with allowed chars), return it
+  if (sanitized.length >= 2 && /^[A-Za-zÀ-ÿ\s\-'.]+$/.test(sanitized)) {
+    return sanitized;
+  }
+  
+  // If the original name is valid, return it trimmed
+  const trimmed = name.trim();
+  if (trimmed.length >= 2 && /^[A-Za-zÀ-ÿ\s\-'.]+$/.test(trimmed)) {
+    return trimmed;
+  }
+  
+  // If invalid (e.g., only numbers), return the original name
+  // The backend validation will catch this and show a proper error message
+  // This prevents empty clientName which could cause 500 errors
+  return trimmed || name;
+}
+
 export function buildContractPayload(wd: any) {
   const fixed = toNum(wd.fixedAmount) ?? 0;
   const variable = toNum(wd.variableAmount) ?? 0;
@@ -60,7 +87,7 @@ export function buildContractPayload(wd: any) {
     title: wd.title,
     type,
     businessUnit,
-    clientName: wd.clientName,
+    clientName: sanitizeClientName(wd.clientName),
     amount,
     startDate,
     endDate,

@@ -226,8 +226,29 @@ export function registerContractRoutes(app: Express): void {
             detail: error?.detail,
           });
         }
-        console.error(error);
-        return res.status(500).json({ error: "Failed to create contract" });
+        
+        // Log the full error for debugging
+        console.error("Error creating contract:", {
+          message: error?.message,
+          code: error?.code,
+          detail: error?.detail,
+          stack: error?.stack,
+          body: req.body,
+        });
+        
+        // If it's a validation error that wasn't caught, return 400
+        if (error?.message?.includes("validation") || error?.name === "ZodError") {
+          return res.status(400).json({
+            error: "Données invalides",
+            message: error?.message || "Erreur de validation",
+            errors: error?.errors || [],
+          });
+        }
+        
+        return res.status(500).json({ 
+          error: "Failed to create contract",
+          message: process.env.NODE_ENV === "development" ? error?.message : undefined,
+        });
       }
     }
   );

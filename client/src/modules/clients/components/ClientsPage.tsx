@@ -13,20 +13,21 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useClients } from "../queries/useClients";
+import { useDeleteClient } from "../queries/useDeleteClient";
+import { ConfirmModal } from "@/components/common/confirm-modal";
 
 import type { Client } from "../domain/types";
 import ClientFilters, { ClientFiltersValue } from "./ClientFilters";
 import { ClientsTable } from "./ClientsTable";
 import { CreateClientDialog } from "./Dialogs/CreateClientDialog";
+import { ViewClientDialog } from "./Dialogs/ViewClientDialog";
 import { EditClientDialog } from "./Dialogs/EditClientDialog";
-// import { CreateClientDialog } from "./CreateClientDialog";
-// import { ViewClientDialog } from "./ViewClientDialog";
-// import { EditClientDialog } from "./EditClientDialog";
 
 export default function ClientsPage() {
   const { canCreateClient, canEditClient, canDeleteClient } =
     usePermissions();
   const { toast } = useToast();
+  const deleteMutation = useDeleteClient();
 
   const {
     data: clients = [],
@@ -45,6 +46,11 @@ export default function ClientsPage() {
   const [openCreate, setOpenCreate] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    open: boolean;
+    clientId: string | null;
+    force?: boolean;
+  }>({ open: false, clientId: null });
 
   // KPI visibility + table expansion (copié de AmendmentsPage)
   const [showKpis, setShowKpis] = useState(true);
@@ -85,29 +91,77 @@ export default function ClientsPage() {
     });
   }, [clients, filters]);
 
-  const handleDelete = async (id: string) => {
-    if (
-      !canDeleteClient() ||
-      !confirm("Êtes-vous sûr de vouloir supprimer ce client ?")
-    )
-      return;
-    try {
-      const res = await fetch(`/api/clients/${id}`, {
-        method: "DELETE",
-        credentials: "include",
+  const handleDelete = (id: string) => {
+    if (!canDeleteClient()) {
+      toast({
+        title: "Permission refusée",
+        description: "Vous n'avez pas les droits pour supprimer un client",
+        variant: "destructive",
       });
-      if (!res.ok) throw new Error("delete_failed");
+      return;
+    }
+
+    setDeleteConfirm({ open: true, clientId: id, force: false });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.clientId) return;
+
+    const id = deleteConfirm.clientId;
+    const force = deleteConfirm.force || false;
+
+    try {
+      await deleteMutation.mutateAsync({ id, force });
       toast({
         title: "Client supprimé",
         description: "Le client a été supprimé avec succès",
       });
+      setDeleteConfirm({ open: false, clientId: null });
       await refetch();
-    } catch {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le client",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Extraire le message d'erreur du format "400: {error: 'message'}" ou "400: message"
+      let errorMessage = "Impossible de supprimer le client";
+      if (error?.message) {
+        const match = error.message.match(/^\d+:\s*(.+)$/);
+        if (match) {
+          try {
+            const parsed = JSON.parse(match[1]);
+            errorMessage = parsed.error || parsed.message || match[1];
+          } catch {
+            errorMessage = match[1];
+          }
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      // Si le backend demande une confirmation pour les contrats clos
+      if (
+        !force &&
+        (errorMessage.includes("force=true") ||
+          errorMessage.includes("contrats clos") ||
+          errorMessage.includes("uniquement à des contrats clos"))
+      ) {
+        setDeleteConfirm({
+          open: true,
+          clientId: id,
+          force: true,
+        });
+      } else if (errorMessage.includes("contrat actif")) {
+        toast({
+          title: "Suppression impossible",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        setDeleteConfirm({ open: false, clientId: null });
+      } else {
+        toast({
+          title: "Erreur",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        setDeleteConfirm({ open: false, clientId: null });
+      }
     }
   };
 
@@ -262,18 +316,40 @@ export default function ClientsPage() {
         onOpenChange={setOpenCreate}
         canCreate={canCreateClient()}
       />
-      {/*<ViewClientDialog
+      <ViewClientDialog
         open={openView}
         onOpenChange={setOpenView}
         client={selected}
-      />*/}
+      />
       <EditClientDialog
         key={selected?.id || "edit-dialog"}
         open={openEdit}
         onOpenChange={setOpenEdit}
         client={selected}
         canEdit={canEditClient()}
-      /> 
+      />
+
+      <ConfirmModal
+        open={deleteConfirm.open}
+        onOpenChange={(open) =>
+          setDeleteConfirm({ open, clientId: deleteConfirm.clientId })
+        }
+        title={
+          deleteConfirm.force
+            ? "Confirmer la suppression forcée"
+            : "Supprimer le client"
+        }
+        description={
+          deleteConfirm.force
+            ? "Ce client est lié à des contrats clos. Voulez-vous vraiment le supprimer ? Cette action est irréversible."
+            : "Êtes-vous sûr de vouloir supprimer ce client ? Cette action est irréversible."
+        }
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        onConfirm={confirmDelete}
+        variant="destructive"
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }
