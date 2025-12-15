@@ -12,25 +12,25 @@ interface AppLayoutProps {
  * Layout global Klyxor :
  * - Sidebar à gauche (desktop)
  * - Nav mobile en haut (mobile)
- * - Contenu à droite qui occupe tout l'espace et laisse les pages gérer Header + main
+ * - Le contenu (pages) gère son propre header via KlyxorPageLayout
  */
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-klyxor-bg">
+    <div className="h-screen overflow-hidden bg-klyxor-bg">
       {/* Sidebar - visible sur desktop */}
       <div className="hidden lg:block">
         <SidebarWithSubmenu />
       </div>
 
       {/* Conteneur principal */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex h-full flex-col lg:pl-64 min-h-0">
         {/* Navigation mobile - visible uniquement sur mobile */}
         <div className="lg:hidden">
           <MobileNavWithSubmenu />
         </div>
 
-        {/* Zone de contenu */}
-        <main className="flex-1 overflow-auto">
+        {/* Zone de contenu - 1 seul scroll vertical */}
+        <main className="flex-1 min-h-0 overflow-y-auto">
           {children}
         </main>
       </div>
