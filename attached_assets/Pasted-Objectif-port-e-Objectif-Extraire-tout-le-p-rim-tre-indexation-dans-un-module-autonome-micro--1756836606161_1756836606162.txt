@@ -1,0 +1,314 @@
+Objectif & portée
+
+Objectif. Extraire tout le périmètre “indexation” dans un module autonome (micro-service ou package isolé dans un dossier / workspace dédié) afin de :
+
+performer (calculs en lot, cache d’indices, jobs asynchrones),
+
+scaler (workers parallèles, découplage des I/O réseau INSEE),
+
+sécuriser (idempotence, audit, rejouabilité),
+
+accélérer les tests “grandeur nature” sur 4 contrats et 3 formules (2.A, 2.B, 3) avec CAP/SEUIL/arrondis et indices INSEE (ICHT, CPI, FM0A/équivalent).
+
+Portée fonctionnelle (résumé).
+
+Détection des contrats à indexer à date (scheduler).
+
+Récupération & cache d’indices définitifs (INSEE) + fallback manuel.
+
+Calcul selon formule (librairie de formules) avec cap/seuil/arrondi.
+
+“Proposition d’indexation” (draft) → workflow de validation (décision externe).
+
+Application du nouveau montant (après validation) + rapport d’indexation (PDF/XLS).
+
+Historisation end-to-end (calcul, indices, décision, application).
+
+Ergonomie : recherche de rapports, retrait du “recalculer” côté UI, terminologie homogène (ex. “Formule d’indexation”), filtres persistants (“Enregistrer les filtres”), bouton “Réinitialiser” à droite.
+
+Architecture proposée (module séparé)
+1) Découpage interne
+
+IndexationScheduler
+
+Cron/worker déclenchant la détection journalière des contrats indexables (frequence/date d’indexation + statut ≠ résilié & ≠ clôturé).
+
+IndexSourceAdapter
+
+Adapte les séries INSEE (ICHT, CPI, FM0A/Proxy) pour récupérer la dernière valeur définitive (avec cache TTL/journal d’appels + fallback saisie manuelle).
+
+Stocke (clé indice, période, valeur, date de publication, source).
+
+FormulaEngine
+
+Librairie de formules paramétrables (2.A / 2.B / 3) + runtime pour CAP, SEUIL, arrondi et champ de base (P₀ ou Pₙ₋₁).
+
+Exemples à intégrer :
+
+2.A: OMSFn = OMSF0 * (0,15 + 0,55*(ICHTrev/ICHT0) + 0,3*(FM0Arev/FM0A0))
+
+2.B: OMSFn = OMSFn-1 * (0,15 + 0,55*(ICHTrev/ICHT0) + 0,3*(FM0Arev/FM0A0))
+
+3: OMSFn = OMSF0 * (1 + (CPI/CPI0))
+
+ProposalService
+
+Persiste les propositions d’indexation (draft) par contrat et par ligne budgétaire si nécessaire (fixe/variable). Support rétroactivité optionnelle.
+
+Publie un événement sortant “INDEXATION_PROPOSED” pour déclencher le workflow (qui vit hors module).
+
+ValidationBridge
+
+Écoute les événements “INDEXATION_VALIDATED/REJECTED” du workflow et renvoie la décision au module (idempotent).
+
+En cas de validation, appelle ApplyService.
+
+ApplyService
+
+Applique le nouveau montant sur le contrat (ou la ligne), génère le rapport d’indexation (PDF/XLS) et archive.
+
+Publie “INDEXATION_APPLIED”.
+
+Reporting & Audit
+
+Génère le rapport (contrat, formule, indices & sources, ancien/nouveau, Δ/Δ %), export PDF/XLS, et journal d’audit (traçabilité complète).
+
+2) Interfaces (I/O)
+
+Entrées
+
+Contrats (id, P₀/Pₙ₋₁, dates, frequence, formule, ICHT0/FM0A0/CPI0 ou dates des indices selon règle “soit la date, soit la valeur”), CAP, SEUIL, arrondi, devise.
+
+Indices (via IndexSourceAdapter) : clé, période, valeur, date de publication, source.
+
+Événements workflow: VALIDATED / REJECTED.
+
+Sorties
+
+Propositions d’indexation (statut = drafted / awaiting_validation).
+
+Événements : INDEXATION_PROPOSED, INDEXATION_VALIDATED, INDEXATION_APPLIED.
+
+Rapports (PDF/XLS) et journaux (calcul, source, décision).
+
+3) Modèle de données minimal (exemple)
+
+indexation_proposals : id, contrat_id, periode, formule_code, base_amount (P0/Pn-1), icht0, fmoa0, cpi0, icht_rev, fmoa_rev, cpi_rev, cap, seuil, rounding, new_amount, delta_abs, delta_pct, status, created_at, updated_at, trace_id.
+
+indices : key (ICHT/CPI/FM0A), period (YYYY-MM), value, source, published_at, definitive (bool), created_at.
+
+indexation_reports : id, proposal_id, contract_id, period, pdf_uri, xls_uri, checksum, generated_at.
+
+4) Scalabilité & performance
+
+Queue / Workers : chaque proposition est calculée via une file (ex. BullMQ/Sidekiq/RQ) pour paralléliser.
+
+Cache d’indices : TTL (ex. 24h), clé = (indice, période) pour éviter les hits INSEE répétés.
+
+Idempotence : clés idempotentes par (contrat_id, période, formule_code).
+
+Observabilité : métriques (nbr indexations calculées, taux d’erreur, latence API indices), logs structurés (trace_id), dashboard.
+
+Backpressure : pagination/lot (ex. 100 contrats/lot) + retry exponentiel des appels indices.
+
+Description fonctionnelle détaillée
+A. Détection (scheduler)
+
+Tous les jours à HH:MM, l’IndexationScheduler sélectionne les contrats éligibles (date d’indexation = aujourd’hui ± fenêtre, statut ≠ résilié/clos).
+
+Pour chaque contrat, le périmètre (fixe/variable/ligne) est extrait et le jeu d’indices requis est déterminé depuis la formule.
+
+Résultat : une tâche de calcul est publiée dans la queue.
+
+B. Récupération / Validation des indices
+
+Le module interroge les séries INSEE (ICHT, CPI, FM0A/équivalent) et n’accepte que des valeurs définitives (sinon statut “en attente d’indice” et relance différée).
+
+Si l’admin/gestionnaire a saisi soit la date d’indice d’origine, soit la valeur, le moteur résout le champ manquant (lookup par date ou par valeur).
+
+C. Calcul & business rules
+
+Application de la formule (2.A / 2.B / 3), puis SEUIL (ignorer si Δ% < seuil), puis CAP (plafonner Δ%), puis arrondi (règle paramétrable), sur P₀ ou Pₙ₋₁ suivant la formule.
+
+Gère les formules composites (ICHT + FM0A) et les formules mono-indice (CPI).
+
+Résultat : proposition d’indexation (draft) avec ancien/nouveau, Δ/Δ%, indices & source.
+
+D. Soumission & validation (intégration workflow)
+
+Le module publie INDEXATION_PROPOSED → le workflow assigne un valideur (hors module).
+
+À VALIDATION : INDEXATION_VALIDATED reçu → ApplyService met à jour le contrat (ou ligne) et déclenche la génération du rapport (PDF/XLS).
+
+À REJET : status = rejected, motif obligatoire stocké, proposition archivée (pas d’application).
+
+E. Rapport d’indexation (après validation)
+
+Contenu minimal : contrat, période, formule, indices utilisés (origine/révision + source/date), ancien/nouveau, Δ / Δ %, horodatage, décision & acteur.
+
+Format : PDF & Excel, archivage en GED et lien depuis la fiche contrat.
+
+F. Journalisation & audit
+
+Chaque étape (détection, récupération indices, calcul, proposition, validation/rejet, application, génération du rapport) crée une entrée d’audit (horodatage, acteur/système, données clés, trace_id).
+
+Conservation ≥ 1 an (règles conformité).
+
+Impacts UI/produit (raccourcis)
+
+Terminologie : remplacer “méthode” par “Formule d’indexation” ; préférer “Périodicité” à “fréquence”.
+
+Recherche dans Indexations : ajouter une barre de recherche (contrat/rapport) ; retirer le bouton “Recalculer” (non souhaité).
+
+Filtres : Réinitialiser (à droite) + Enregistrer les filtres (nommage uniforme) sur toutes les listes.
+
+Formulaire contrat : afficher Formule d’indexation + indice d’origine (règle “soit la date, soit la valeur”), indice de révision, valeurs P₀/Pₙ₋₁ ; afficher autant de lignes indice que nécessaire si formule composite.
+
+Plan de livraison (suggestion)
+
+Semaine 1 — Skeleton & I/O
+
+Créer workspace indexation/ avec FormulaEngine, IndexSourceAdapter, ProposalService, ApplyService, Reporting.
+
+Schémas DB et événements (topics/queues).
+
+Semaine 2 — INSEE & formules
+
+Intégrer les séries + cache + journal d’appels.
+
+Implémenter formules 2.A / 2.B / 3 + CAP/SEUIL/arrondi.
+
+Semaine 3 — Workflow & rapports
+
+Pont d’événements (proposer → valider/rejeter).
+
+Génération PDF/XLS + archives.
+
+Semaine 4 — QA & tests “grandeur nature”
+
+Rejouer les 4 contrats de tests, produire rapports, vérifier seuil/cap et Δ attendus.
+
+Bench (100, 1 000, 10 000 indexations) ; perf & observabilité.
+
+SLAs cibles. Détection < 1 min/lot 100 ; calcul < 50 ms/proposition ; génération rapport < 500 ms ; 0 data-loss (idempotence) ; retry avec backoff sur indices & stockage.
+
+Critères d’acceptation (extraits)
+
+Détection liste 100 % des contrats éligibles au jour J.
+
+Indices : la dernière valeur définitive est utilisée ; si indisponible, la proposition reste “en attente d’indice”.
+
+Formules 2.A / 2.B / 3 donnent les mêmes résultats que les fiches tests partagées (y c. CAP/SEUIL/arrondi).
+
+Validation obligatoire : aucune mise à jour de montant sans décision “validée”.
+
+Rapport d’indexation généré et archivé à chaque décision “validée”.
+
+Audit complet : chaque étape visible dans le journal (calcul, décision, source d’indice, rapport).
+
+UI : terminologie & filtres alignés ; recherche présente ; recalculer retiré.
+
+Notes & points à valider avec le client
+
+FM0A : confirmer la série INSEE exacte (le client cite FM0A ; un lien fourni pointe une “série arrêtée” PPI A10 BE). Mettre un mapping configurable pour changer de série sans code.
+
+Règle “date OU valeur” pour l’indice d’origine : si l’un est fourni, l’autre est résolu automatiquement ; documenter dans l’UI.
+
+SEUIL (ex. 2 %) : neutralise l’indexation si variation < seuil (confirmer le comportement attendu).
+
+Arrondi & devise : clarifier (banque/comptable) au moment de l’application.
+
+Ce brief vous donne le périmètre, l’architecture, les I/O, les règles et l’ergonomie pour isoler le module d’indexation, le performer et le scaler… tout en restant strictement conforme aux tests clients et aux modifications UI demandées.
+
+Exécuté en 5 minutes
+
+Voici un brief d’architecture et de description fonctionnelle pour isoler le module d’indexation dans votre solution Replit, suivi d’un rappel des droits des trois acteurs (Admin, Gestionnaire, Valideur).
+
+🎯 Brief Replit – Module « Indexation » séparé (performant et scalable)
+Pourquoi isoler le module ?
+
+L’indexation implique des calculs complexes, des récupérations de données externes (indices INSEE, Eurostat…), des validations métiers et des rapports. En l’extrayant dans un module autonome (microservice), on améliore :
+
+Performance : exécution en parallèle de lots, mise en cache des indices, délestage de la logique de calcul de l’application principale.
+
+Scalabilité : déploiement indépendant, mise à l’échelle horizontale selon le volume de contrats et de formules à traiter.
+
+Fiabilité : gestion idempotente (répétable sans conséquences), logs exhaustifs et rejouabilité en cas d’erreur de source.
+
+Observabilité : métriques dédiées, journal des indices, statistiques de variation et alertes.
+
+Fonctionnement proposé (macro-processus)
+
+Détection / Scheduler
+
+Un planificateur extrait chaque jour la liste des contrats à indexer à la date anniversaire (statut : actif, non résilié ni clôturé).
+
+Il publie une tâche de calcul par contrat (ou par ligne budgétaire si nécessaire), avec la formule et les paramètres enregistrés.
+
+Récupération des indices
+
+Un adaptateur interroge les séries officielles (ICHT, CPI, FM0A ou son équivalent) et met en cache la dernière valeur définitive (pas les données provisoires), avec la date de publication et la source
+s3.eu-central-1.amazonaws.com
+.
+
+Si l’indice est indisponible, la proposition reste « en attente d’indice » et sera relancée ultérieurement.
+
+Calcul via une “Formula Engine”
+
+Chaque formule (2.A, 2.B, 3) est implémentée comme fonction paramétrable :
+
+2.A : Montantₙ = Montant₀ × (0,15 + 0,55 × (ICHTₙ / ICHT₀) + 0,3 × (FM0Aₙ / FM0A₀))
+s3.eu-central-1.amazonaws.com
+.
+
+2.B : Montantₙ = Montantₙ₋₁ × (0,15 + 0,55 × (ICHTₙ / ICHT₀) + 0,3 × (FM0Aₙ / FM0A₀))
+s3.eu-central-1.amazonaws.com
+.
+
+3 : Montantₙ = Montant₀ × (1 + (CPIₙ / CPI₀))
+s3.eu-central-1.amazonaws.com
+.
+
+La librairie gère les CAP (plafonds de variation), SEUIL (seuil minimum) et règles d’arrondi (décimal, comptable).
+
+Proposition d’indexation
+
+À chaque calcul, le module stocke un « projet d’indexation » indiquant l’ancien montant, le nouveau montant, la variation absolue et relative, les indices utilisés et leurs dates.
+
+Il publie ensuite un événement “INDEXATION_PROPOSÉE” pour déclencher un workflow de validation dans l’application principale (là où se trouvent les Valideurs).
+
+Validation
+
+Le Valideur examine la proposition, vérifie le calcul et décide de valider ou de rejeter (avec motif).
+
+Le module reçoit l’événement “INDEXATION_VALIDÉE” ou “INDEXATION_REJETÉE” et applique la décision :
+
+En cas de validation, le contrat est mis à jour, et un rapport d’indexation (PDF et Excel) est généré puis archivé.
+
+En cas de rejet, le projet est historisé sans mise à jour.
+
+Historisation & Audit
+
+Chaque étape (détection, récupération d’indice, calcul, proposition, validation/rejet, mise à jour, génération du rapport) crée une entrée d’audit horodatée.
+
+Les rapports d’indexation contiennent les formules, les valeurs d’indices (origine/révision), le calcul du nouveau montant et la source officielle.
+
+Découplage technique recommandé
+
+Microservice dédié (ou package isolé) avec base de données propre (« indexation_proposals », « indices », « reports »).
+
+Files de messages (type RabbitMQ/BullMQ) pour publier les événements et déléguer le calcul.
+
+Cache (Redis) pour mémoriser les indices déjà récupérés.
+
+Endpoints API : création des propositions, consultation des indexations en attente, notifications de validation.
+
+Observabilité : exporter des métriques (temps de calcul, taux d’échec) et des logs structurés (trace ID).
+
+🧩 Rappel des droits et responsabilités par acteur
+Profil	Droits principaux	Restrictions clés
+Administrateur	- Paramétrer les rôles, formules d’indexation, indices officiels et cycles de vie. - Activer la récupération automatique des indices et gérer les seuils/arrondis. - Configurer le workflow (relances, assignations) et surveiller les opérations (audit complet). - Créer ou modifier des contrats en brouillon et les soumettre à validation. - Supprimer les pièces jointes (PJ) et gérer les imports/exports.	- Ne pas valider ni rejeter les contrats/indexations/avenants/résiliations (délégué au Valideur). - Ne pas se substituer au gestionnaire pour la saisie des données opérationnelles.
+Gestionnaire de contrat	- Créer les contrats (titre, type, dates, montants, périodicité, indexation). - Ajouter/éditer des avenants, des demandes de résiliation, des mises à jour manuelles de montant. - Préparer les indexations en saisissant les valeurs et dates de référence, vérifier les propositions et les soumettre au workflow de validation. - Ajouter et consulter des pièces jointes. - Consulter les échéances et les alertes.	- Ne pas valider ni rejeter (doit toujours passer par le workflow). - Ne pas modifier un contrat actif sans déclencher la soumission. - Ne pas supprimer une PJ (réservé à l’admin).
+Valideur	- Recevoir les demandes en file d’attente (contrats, indexations, avenants, résiliations). - Examiner les calculs, pièces et impacts ; valider ou rejeter (motif obligatoire en cas de refus). - Accéder aux rapports d’indexation et aux documents justificatifs. - Consulter l’historique de ses décisions et le journal d’audit.	- Ne pas créer ni modifier des contrats ou des indexations. - Ne pas gérer les rôles ou les paramètres d’indexation (réservé à l’admin). - Ne pas supprimer des données.
+
+Ce brief vous offre une architecture modulaire et un périmètre fonctionnel clair pour extraire le moteur d’indexation, ainsi qu’un rappel des rôles et droits de chacun. Cela facilitera la mise en œuvre sur Replit en organisant proprement votre code et vos workflows, tout en améliorant la performance, la scalabilité et la traçabilité de vos opérations d’indexation.

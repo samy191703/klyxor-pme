@@ -1,0 +1,166 @@
+Parfait — **Rubrique : Résiliations (Admin)**
+*(Pour chaque écran : **Contenu & composants** uniquement → puis **Actions disponibles sur cet écran**. Pas de tableaux de prose.)*
+
+---
+
+## Écran **RE‑1 — Résiliations : Liste globale**
+
+### Contenu & composants
+
+* **Titre** : « Résiliations ».
+* **Tuiles KPI** sous le titre : *Brouillons*, *À valider*, *Validées (30 j)*, *Rejetées*.
+
+  > Rappel visible : *“Toute résiliation **nécessite une validation** avant application. **Motif obligatoire.**”*&#x20;
+* **Barre de filtres** (horizontale) :
+
+  * **Période de demande**, **Période d’effet**, **Statut** (*Brouillon / À valider / Validée / Rejetée*),
+  * **Contrat** (N° + intitulé), **Demandeur**, **Valideur assigné**, **Recherche** (ID résiliation, mot‑clé du motif).&#x20;
+* **Liste (tableau)** — colonnes visibles :
+
+  * **ID demande** (lien), **Contrat** (N° + intitulé), **Motif (extrait)**, **Date d’effet**, **Statut**, **Valideur assigné**, **Dernière MàJ**.
+
+  > La visibilité des lignes/colonnes est **restreinte par rôle (RBAC)**.&#x20;
+* **Encart d’impact** (sous la barre de filtres) : *“Une résiliation **validée** passe le contrat à l’état **Résilié** (cycle de vie), met à jour les systèmes connectés (ex. SAP) et est **historisée**.”*
+* **Pied de liste** : pagination 25/50/100 + compteur.
+
+### Actions disponibles sur cet écran
+
+* **Créer une demande** (ouvre RE‑3).&#x20;
+* **Ouvrir le détail** (panneau RE‑2).
+* **Valider / Rejeter** directement (si habilité) avec **motif requis si rejet**.&#x20;
+* **Exporter** la liste filtrée (Excel/CSV).&#x20;
+
+---
+
+## Écran **RE‑2 — Détail d’une demande (panneau latéral)**
+
+### Contenu & composants
+
+* **En‑tête** : **Contrat** (N° + titre, lien fiche), **Statut** (badge), **Date d’effet**, **SLA** (si défini).
+* **Bloc “Demande”** (lecture seule) : **Motif de résiliation** (texte intégral), **Demandeur**, **Date de création**. *Le **motif est obligatoire***.&#x20;
+* **Bloc “Impact fonctionnel”** :
+
+  * *Cycle de vie* : le contrat passera à **Résilié** à la date d’effet (puis **Clôturé** selon processus).&#x20;
+  * *Échéances* : les échéances **postérieures** à la date d’effet sont retirées/neutralisées du tableau des échéances.&#x20;
+  * *Intégrations* : mise à jour du **statut dans SAP**.&#x20;
+* **Bloc “Workflow”** : **Valideur assigné**, **relances auto > 24 h** (indicateur), **journal des décisions**.&#x20;
+* **Bloc “Historisation”** : timeline *création → soumission → validation/rejet → application*, avec **auteur**, **horodatage**, **Trace‑ID** (non modifiable).&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Valider / Rejeter** (ouvre RE‑4).&#x20;
+* **Ouvrir la fiche contrat** (vue d’ensemble).&#x20;
+* **Fermer** le panneau.
+
+---
+
+## Écran **RE‑3 — Nouvelle demande de résiliation (Assistant)**
+
+### Contenu & composants
+
+* **En‑tête** : « Nouvelle résiliation » + barre de **progression** (Étapes 1→3).
+* **Étape 1 — Sélection du contrat**
+
+  * **Recherche** (N°, intitulé). **Seuls les contrats “Actifs” et non déjà résiliés** sont sélectionnables.
+* **Étape 2 — Paramètres de la demande**
+
+  * **Date d’effet** (jj‑mm‑aaaa) — contrôles : *≥ aujourd’hui* et *≥ date début*.
+  * **Motif de résiliation** (textarea, **obligatoire**).&#x20;
+  * **Aperçu d’impact** (lecture seule) : rappel des conséquences sur **échéances**, **statut**, **intégrations**.
+* **Étape 3 — Récapitulatif & soumission**
+
+  * Carte récap : contrat, date d’effet, motif, valideur assigné (si règles de routage).&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Suivant / Précédent**, **Enregistrer en brouillon**.
+* **Soumettre à validation** → statut **« À valider »**, déclenchement **workflow** et **notifications**.
+
+---
+
+## Écran **RE‑4 — Modale “Valider / Rejeter la résiliation”**
+
+### Contenu & composants
+
+* **Résumé** : Contrat (N° + titre), **Date d’effet**, **Motif**, **Demandeur**.&#x20;
+* **Zone décision** : boutons radio **Valider** / **Rejeter**.
+* **Champ “Motif du rejet”** : **obligatoire si Rejet**, aide contextuelle.&#x20;
+* **Notes** (texte discret) :
+
+  * *Si validée* : passage du contrat à **Résilié** selon le **cycle de vie** + **mise à jour SAP** + **historisation** + **notification**.
+
+### Actions disponibles sur cet écran
+
+* **Valider** (application à la date d’effet, transitions d’état, envoi de notifications).
+* **Rejeter** (motif requis, aucune application, journalisation).
+* **Fermer**.
+
+---
+
+## Écran **RE‑5 — Historique des résiliations (journal)**
+
+### Contenu & composants
+
+* **Titre** : « Historique des résiliations ».
+* **Filtres** : Période, Contrat, **Décision** (*Validée / Rejetée*), **Date d’effet**, **Auteur / Valideur**, Recherche.&#x20;
+* **Liste** (lecture seule) : **Date/heure**, **Contrat**, **Motif (extrait)**, **Décision** (badge), **Date d’effet**, **Demandeur**, **Valideur**, **Trace‑ID**.
+
+  > **Intégrité** : journaux **horodatés, non modifiables**, visibles **selon droits**.
+* **Pied** : pagination + **Export** (Excel/CSV) si autorisé.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Exporter** le journal filtré (Excel/CSV).&#x20;
+* **Ouvrir** le détail d’une occurrence (RE‑2).
+* **Ouvrir** la fiche contrat.
+
+---
+
+## Écran **RE‑6 — Paramétrage (routage, SLA, notifications)**
+
+### Contenu & composants
+
+* **Titre** : « Paramétrage résiliations ».
+* **Section “Routage de validation”** : règles d’affectation par **BU/entité / seuils / remplaçants**, **transfert** possible.&#x20;
+* **Section “SLA & relances”** : délai cible (ex. 24 h), relances automatiques, message type.&#x20;
+* **Section “Notifications”** : modèles d’alertes (soumise / validée / rejetée), canaux (in‑app / email / Teams), rétention **1 an** de l’historique.&#x20;
+* **Section “Intégrations”** : **synchronisation de statut** vers **SAP** lors des validations.&#x20;
+* **Encart RBAC** : accès **Admin uniquement**.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Créer / Modifier / Supprimer** une règle de routage.&#x20;
+* **Définir** SLA et **activer** les relances.&#x20;
+* **Éditer** les modèles de notification.&#x20;
+* **Enregistrer** (toutes les modifications sont **journalisées**).&#x20;
+
+---
+
+## Écran **RE‑7 — États vides & erreurs (Résiliations)**
+
+### Contenu & composants
+
+* **État vide (liste RE‑1)** : « Aucune demande ne correspond à vos filtres. »
+* **Bannière “Motif manquant”** (création) : *Le **motif** est obligatoire pour soumettre la demande.*&#x20;
+* **Bannière “Aucun valideur disponible”** : *Workflow en attente — **admin alerté**.*&#x20;
+* **Bannière “Échec d’enregistrement”** : *La décision n’a pas été enregistrée — la demande reste **À valider***.&#x20;
+* **Bannière “Erreur de notification”** : *L’envoi externe a échoué — l’alerte reste visible dans l’interface.*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Réinitialiser les filtres** (retour liste).
+* **Corriger** la demande (ajouter le motif) puis **soumettre**.&#x20;
+* **Notifier l’admin** (si incident persistant).&#x20;
+
+---
+
+### Rappels visibles pour le designer (non‑comportemental)
+
+* **Validation obligatoire & motif** : aucune résiliation n’est appliquée sans **validation** ; un **motif** est exigé dès la demande, et **journalisé**.
+* **Cycle de vie** : après validation, le contrat passe **Actif → Résilié** (puis **Clôturé** si applicable) avec **verrou** des actions selon l’état.&#x20;
+* **Échéances & alertes** : mise à jour du **tableau des échéances** et envoi de **notifications** selon préférences.
+* **RBAC partout** : listes, détails, décisions et exports **selon rôle**.&#x20;
+
+---
+
+Si ce format te convient, dis **« suivant »** et je passe à la rubrique de ton choix (ex. **Extraction** ou **Alertes/Notifications**) avec la même structure *Contenu & composants* → *Actions disponibles*.

@@ -1,0 +1,296 @@
+Ta mission : mettre à jour l’espace Admin selon les specs ci‑dessous (libellés FR, sous‑menus épinglés, écrans “contenu & composants” + “actions”). Respecter les règles métier : indexations automatiques, validation obligatoire, historisation complète, extraction filtrée, conformité RGPD/IFRS, sources d’indices officielles.
+
+Contraintes UI globales
+
+Barre latérale gauche fixe (toujours visible).
+
+Pour chaque rubrique, afficher un sous‑menu épinglé (scroll indépendant) avec les écrans listés ci‑après.
+
+Terminologie normalisée :
+
+« Périodicité » (remplace “fréquence”), « Formule d’indexation » (remplace “méthode”), « avance » (remplace “à échoir”).
+
+Boutons filtres : Réinitialiser (à droite) et Enregistrer les filtres (remplace “sauvegarder la vue”).
+
+Pièces jointes non obligatoires à la validation (elles peuvent venir d’un système tiers).
+
+Règles métier transverses (à appliquer partout)
+
+Indexation : détection automatique à date, calcul selon formules stockées, validation obligatoire, historisation (opération, décision, valeurs d’indices). Générer un rapport d’indexation exportable (PDF/XLS).
+
+Indices économiques : récupérer automatiquement la dernière valeur définitive depuis sources officielles (ex. INSEE), historiser valeur + date + source, éviter doublons. Prévoir journal/alertes en cas d’échec.
+
+Validation : aucun contrat/modification/indexation actif sans validation ; motif de rejet obligatoire ; séparations de rôles.
+
+Extraction : uniquement données accessibles selon droits, filtres dynamiques, formats CSV/XLSX.
+
+Conformité : logs d’audit horodatés, non modifiables, conservation légale, droits d’accès limités (RGPD), export/suppression sur demande.
+
+🧭 MENU LATÉRAL (Admin)
+
+Accueil (Admin) — Tableau de bord
+
+Contrats (Admin)
+
+Facturation (Admin)
+
+Plans de facturation
+
+Flux de paiement
+
+Preuves de paiement
+
+Indexations (Admin)
+
+Avenants (Admin)
+
+Échéances (Admin)
+
+Documents & GED (Admin)
+
+Alertes & notifications (Admin)
+
+Extraction (Admin)
+
+Import historique (Admin)
+
+Sécurité & conformité (Admin)
+
+Historique & audit (Admin)
+
+Chaque rubrique affiche un sous‑menu épinglé avec ses écrans (voir ci‑dessous).
+
+1) Accueil (Admin) — Tableau de bord
+
+Sous‑menu : [KPI globaux] · [Tâches bloquantes] · [Alertes critiques] · [Derniers exports]
+
+Écran AD‑1 — Accueil Admin (dashboard)
+Contenu & composants
+
+Titre : « Administration — Vue globale ».
+
+Tuiles KPI :
+
+Contrats à valider / Indexations à valider / Avenants à valider / Résiliations en cours.
+
+Échéances J‑30/J‑7/J‑1 (compteurs).
+
+Erreurs sources indices / Envois SAP en erreur (journal technique).
+
+Widget “Alertes critiques” (liste condensée, marquage “non lu”).
+
+Widget “Tâches bloquantes” (workflows > 24h, priorisation par date d’effet).
+
+Widget “Derniers rapports d’indexation” (lien view/export PDF/XLS).
+
+Actions disponibles
+
+Ouvrir filets de validation (contrats/indexations/avenants).
+
+Accéder au journal indices & relancer récupérations échouées.
+
+Ouvrir un rapport d’indexation, exporter.
+
+2) Contrats (Admin)
+
+Sous‑menu : [Liste] · [Fiche contrat] · [Paramètres types] · [Workflows & droits]
+
+Écran AD‑2 — Liste des contrats
+Contenu & composants
+
+Barre de filtres : Type (OMSA, LTSA, OMGC, Bail…), Statut, BU/Entité, Période, Recherche plein texte, Réinitialiser (à droite), Enregistrer les filtres.
+
+Tableau (colonnes principales) : N°/Intitulé, Type, Statut, Périodicité, Date début/fin, Type d’échéance à venir + J‑ (remplace colonne alerte), Responsable.
+
+Actions disponibles
+
+Ouvrir Fiche contrat (AD‑3) (en page dédiée, pas en pop‑up).
+
+Écran AD‑3 — Fiche contrat (page dédiée)
+Contenu & composants
+
+Onglet “Montants & facturation” : Montant initial (fixe/variable), Périodicité (trimestrielle/mensuelle/…), Plan de facturation (statut non validé ; récupéré d’un autre logiciel si applicable).
+
+Onglet “Indexation” : Formule d’indexation (select), champs Indice d’origine (date ou valeur — un seul requis), Indice de révision (date), Valeur d’origine et Valeur N visibles. Si formule composée (ICHT/FMOA…), afficher dynamiquement autant de lignes (origine + révision) que nécessaire.
+
+Onglet “Clauses/avenants” : capacité d’ajouter/modifier plusieurs clauses à la fois avec ancienne valeur grisée / nouvelle valeur. Sur avenants de montants, afficher TVA (taux, ancienne valeur grisée, nouvelle).
+
+Onglet “Échéances & alertes” : afficher type d’échéance (ex. Fin contrat) et J‑xx.
+
+Onglet “Pièces jointes (GED du contrat)” : PJ non obligatoire.
+
+Actions disponibles
+
+Soumettre la validation (contrat/modification). Motif de rejet obligatoire côté valideur.
+
+Écran AD‑4 — Paramètres des types de contrat
+Contenu & composants
+
+Configurer champs visibles/obligatoires selon type (OMSA, LTSA, OMGC, Bail). Ajouter Technologie (éolien/PV), Fournisseur auto si LTSA/OMGC = Contrat d’achat, Changements tarifaires multiples avec TVA.
+
+3) Facturation (Admin)
+
+Sous‑menu : [Plans de facturation] · [Flux de paiement] · [Preuves de paiement] · [Paramètres]
+
+Écran AD‑5 — Plans de facturation (liste)
+Contenu & composants
+
+Filtres (Type, Périodicité, Terme = avance, Période). Boutons Réinitialiser/Enregistrer les filtres.
+
+Tableau : Contrat, Montant périodique, Périodicité, Terme (avance), Statut plan (info : peut être non validé/récupéré d’un autre logiciel).
+
+Le bouton “Générer le plan” est supprimé ici ; le plan est généré automatiquement à la validation du contrat.
+
+Actions disponibles
+
+Ouvrir plan → détail.
+
+Écran AD‑6 — Flux de paiement
+Contenu & composants
+
+Liste des échéances de paiement, statuts, exports ERP/SAP, blocages éventuels (ex. changement de montant non approuvé). (Se caler sur la logique validation/blocage globale.)
+
+Écran AD‑7 — Preuves de paiement
+Contenu & composants
+
+Journal des preuves générées/relivrées et canaux d’envoi (si implémentés côté tiers), export.
+
+4) Indexations (Admin)
+
+Sous‑menu : [À calculer] · [À valider] · [Historique] · [Formules] · [Indices (sources)] · [Rapports]
+
+Écran AD‑8 — À calculer / À valider
+Contenu & composants
+
+Filtres (Période d’indexation, Type contrat, Formule, BU, Responsable, Recherche).
+
+Tableau : Contrat, Date d’indexation, Formule appliquée, Indices N‑0/N, Ancien/Nouveau montant, Statut (à calculer / à valider / validé / rejeté).
+
+Blocage : si non validé → non appliqué.
+
+Actions disponibles
+
+Ouvrir rapport provisoire (pré‑visualisation), envoyer en validation, consulter historique.
+
+Écran AD‑9 — Formules (bibliothèque)
+Contenu & composants
+
+Liste des formules paramétrables, ex.
+
+Type 2.A : Montant_n = Montant_0 × (0,15 + 0,55 × (ICHT_rev/ICHT_0) + 0,3 × (FMOA_rev/FMOA_0))
+
+Type 2.B : Montant_n = Montant_{n-1} × (0,15 + 0,55 × (ICHT_rev/ICHT_0) + 0,3 × (FMOA_rev/FMOA_0))
+
+Type 3 : Montant_n = Montant_0 × (1 + (CPI/CPI_0))
+(avec tests “grandeur nature” par parc/exemples.)
+
+Écran AD‑10 — Indices (sources officielles)
+Contenu & composants
+
+Tableau des indices surveillés (clé unique, ex. ICHT, FMOA, CPI), dernière valeur définitive + date, source.
+
+Journal de récupération automatique, relance, gestion erreurs (API/HTTP).
+
+Écran AD‑11 — Rapports d’indexation
+Contenu & composants
+
+Liste des rapports générés automatiquement après validation (contrat, période, indices, ancien/nouveau montant, % variation, source).
+
+Export PDF/XLSX et lien vers GED du contrat.
+
+5) Avenants (Admin)
+
+Sous‑menu : [À valider] · [Historique] · [Paramètres]
+
+Écran AD‑12 — Avenants à valider
+Contenu & composants
+
+Filtres (Type de modif : clause, durée, montant ; Contrat ; Période ; BU ; Recherche).
+
+Tableau : Contrat, Type modif, Détails (ancienne valeur grisée / nouvelle), TVA si montant, Statut (à valider/validé/rejeté).
+
+Actions disponibles
+
+Ouvrir détail, Valider / Rejeter (motif obligatoire), historiser.
+
+6) Échéances (Admin)
+
+Sous‑menu : [Liste globale] · [Paramètres de pré‑alerte]
+
+Écran AD‑13 — Liste globale
+Contenu & composants
+
+KPI J‑30/J‑7/J‑1, filtres période/type/BU/responsable/recherche.
+
+Tableau : Contrat, Type d’échéance, Date, J‑, Canal d’alerte (icône), Dernier envoi.
+
+Bandeau info : “Notifs générées X jours avant (paramétrable)”.
+(S’aligne avec module alertes et logique de validation.)
+
+7) Documents & GED (Admin)
+
+Sous‑menu : [GED par contrat] · [Historique documents]
+
+Écran AD‑14 — GED par contrat
+Contenu & composants
+
+Sélecteur contrat obligatoire pour déposer la pièce (depuis bouton “Ajouter un document”).
+
+Vue globale supprimée → recentrer sur GED du contrat (liste + versions).
+
+Boutons Enregistrer les filtres / Réinitialiser (à droite).
+
+8) Alertes & notifications (Admin)
+
+Sous‑menu : [Journal] · [Préférences par défaut]
+
+Écran AD‑15 — Journal des alertes
+Contenu & composants
+
+Liste des événements critiques (échéances, blocages workflow > 24h, erreurs SAP, validation acceptée/refusée, variation montant > seuil…).
+
+Filtres (Type événement, Période, Profil utilisateur, Statut lu/non‑lu), marquage comme lu.
+
+9) Extraction (Admin)
+
+Sous‑menu : [Exports] · [Historique d’exports]
+
+Écran AD‑16 — Exports
+Contenu & composants
+
+Filtres dynamiques (Type contrat, BU, Période, Statut, etc.).
+
+Choix format CSV/XLSX, rappel droits d’accès.
+
+Historique re‑téléchargeable.
+
+10) Import historique (Admin)
+
+Sous‑menu : [Importer Excel] · [Rapport d’erreurs]
+
+Écran AD‑17 — Import Excel
+Contenu & composants
+
+Drag‑and‑drop, mapping colonnes, rapport d’erreurs détaillé (lignes KO, cause), re‑tentative.
+
+11) Sécurité & conformité (Admin)
+
+Sous‑menu : [Profils & droits] · [Journal d’audit] · [RGPD (export/suppression)]
+
+Écran AD‑18 — Journal d’audit
+Contenu & composants
+
+Logs horodatés, inviolables, filtres multi‑critères, conservation légale.
+
+Actions : exporter logs, traiter demandes RGPD (export/suppression).
+
+12) Historique & audit (Admin)
+
+Sous‑menu : [Contrats] · [Indexations] · [Avenants] · [Facturation]
+
+Écran AD‑19 — Historisation complète
+Contenu & composants
+
+Pour chaque entité (contrat/indexation/avenant/facturation), timeline : qui/quand/quoi + ancienne/nouvelle valeur, source d’indices si indexation.
+
+Lien vers rapport d’indexation et GED.

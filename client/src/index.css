@@ -1,0 +1,479 @@
+@import "./styles/klyxor-ui.css";
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
+@import './styles/responsive-fixes.css';
+@import './styles/compact-layout.css';
+@import './styles/animations.css';
+
+
+@media (min-width: 1024px) {
+    .lg\:pl-64
+ {
+        padding-left: 17rem !important;
+    }
+}
+:root {
+  /* === KLYXOR Design System (Clean SaaS Modern) === */
+  --klyxor-primary: #2F80ED;
+  --klyxor-primary-dark: #0A2A43;
+  --klyxor-primary-accent: #1E3A56;
+
+  --klyxor-bg: #F5F6F7;        /* Main app background */
+  --klyxor-bg-subtle: #F9FAFB; /* Header / subtle sections */
+  --klyxor-card: #FFFFFF;      /* Cards, panels, tables */
+  --klyxor-border: #E5E7EB;    /* Neutral borders */
+
+  --klyxor-text: #1A1A1A;
+  --klyxor-text-muted: #6B7280;
+
+  --status-green: #16A34A;
+  --status-yellow: #D97706;
+  --status-red: #DC2626;
+  --status-blue: #2563EB;
+
+  /* Shadow system */
+  --klyxor-shadow-card: 0 4px 12px rgba(0,0,0,0.05);
+  --klyxor-shadow-hover: 0 6px 20px rgba(0,0,0,0.07);
+  --klyxor-shadow-modal: 0 12px 30px rgba(0,0,0,0.12);
+
+  /* === Legacy KLYXOR Variables (for backward compat) === */
+  --klyxor-bleu-nuit: #0F2A43;
+  --klyxor-or: #C9A646;
+  --klyxor-blanc: #FFFFFF;
+
+  /* === Thème global Shadcn adapté au mode KLYXOR bleu nuit === */
+
+  /* Fond global de l'app */
+  --background: var(--klyxor-bg);
+  /* Couleur de texte par défaut */
+  --foreground: var(--klyxor-text);
+
+  /* Cartes (cards, panneaux) */
+  --card: var(--klyxor-card);
+  --card-foreground: var(--klyxor-text);
+
+  /* Popovers, dropdowns, etc. */
+  --popover: var(--klyxor-card);
+  --popover-foreground: var(--klyxor-text);
+
+  /* Couleur primaire = Bleu KLYXOR (boutons principaux, liens importants) */
+  --primary: var(--klyxor-primary);
+  --primary-foreground: #FFFFFF;
+
+  /* Couleur secondaire = bleu foncé */
+  --secondary: var(--klyxor-primary-dark);
+  --secondary-foreground: #FFFFFF;
+
+  /* Muted = gris pour labels, placeholders */
+  --muted: #E5E7EB;
+  --muted-foreground: var(--klyxor-text-muted);
+
+  /* Accent = bleu primaire */
+  --accent: var(--klyxor-primary);
+  --accent-foreground: #FFFFFF;
+
+  /* Destructive (rouge) */
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+
+  /* Bordures / inputs / anneaux de focus */
+  --border: var(--klyxor-border);
+  --input: #F3F4F6;
+  --ring: rgba(47, 128, 237, 0.5);
+
+  /* Chart colors */
+  --chart-1: var(--klyxor-primary);
+  --chart-2: #0F172A;
+  --chart-3: #1E293B;
+  --chart-4: #64748B;
+  --chart-5: #94A3B8;
+
+  /* KLYXOR specific colors */
+  --success: var(--status-green);
+  --warning: var(--status-yellow);
+  --error: var(--status-red);
+  --info: var(--klyxor-primary);
+  --gold: #D8B24A;
+  --gold-light: #F4D073;
+  --gold-dark: #C9A646;
+
+  /* Sidebar (light design system) */
+  --sidebar-background: var(--klyxor-primary-dark);
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: var(--klyxor-primary);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--klyxor-primary-accent);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: rgba(47, 128, 237, 0.5);
+
+  --radius: 0.5rem;
+}
+
+
+/* Login page animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(2px);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.8s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.6s ease-out;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* KLYXOR Specific Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes float-delayed {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-30px);
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+@keyframes float-icon {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(5deg);
+  }
+}
+
+@keyframes rotate-slow {
+  from {
+    transform: rotate(45deg);
+  }
+  to {
+    transform: rotate(405deg);
+  }
+}
+
+@keyframes rotate-reverse {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(201, 166, 70, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(201, 166, 70, 0.5),
+                 0 0 30px rgba(201, 166, 70, 0.3);
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes sparkle-delayed {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 8s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+.animate-float-slow {
+  animation: float-slow 10s ease-in-out infinite;
+  animation-delay: 4s;
+}
+
+.animate-float-icon {
+  animation: float-icon 3s ease-in-out infinite;
+}
+
+.animate-rotate-slow {
+  animation: rotate-slow 20s linear infinite;
+}
+
+.animate-rotate-reverse {
+  animation: rotate-reverse 25s linear infinite;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.8s ease-out;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.animate-sparkle-delayed {
+  animation: sparkle-delayed 2s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+/* Custom font classes */
+.font-poppins {
+  font-family: 'Poppins', sans-serif;
+}
+
+.font-montserrat {
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Override default font */
+body {
+  font-family: 'Poppins', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', 'Poppins', sans-serif;
+  font-weight: 700;
+}
+
+/* Platform-wide animation improvements */
+button {
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(201, 166, 70, 0.2);
+}
+
+input:focus {
+  transition: all 0.3s ease;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(201, 166, 70, 0.15);
+}
+
+/* Table row hover */
+tbody tr {
+ /*  transition: all 0.2s ease; */
+}
+
+tbody tr:hover {
+  background-color: rgba(201, 166, 70, 0.05);
+  /* transform: translateX(5px); */
+}
+
+/* Badge animations */
+.badge {
+  transition: all 0.3s ease;
+}
+
+.badge:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(201, 166, 70, 0.3);
+}
+
+.dark {
+  --background: #0F2A43;
+  --foreground: #FFFFFF;
+  --card: hsl(206 50% 12%);
+  --card-foreground: #FFFFFF;
+  --popover: hsl(206 50% 12%);
+  --popover-foreground: #FFFFFF;
+  --primary: #C9A646;
+  --primary-foreground: #0F2A43;
+  --secondary: #0F2A43;
+  --secondary-foreground: #FFFFFF;
+  --muted: hsl(206 50% 18%);
+  --muted-foreground: hsl(44 20% 65%);
+  --accent: #C9A646;
+  --accent-foreground: #0F2A43;
+  --destructive: hsl(0 62.8% 30.6%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(206 50% 25%);
+  --input: hsl(206 50% 25%);
+  --ring: #C9A646;
+  --chart-1: #C9A646;
+  --chart-2: hsl(44 70% 55%);
+  --chart-3: hsl(44 60% 65%);
+  --chart-4: hsl(206 50% 45%);
+  --chart-5: hsl(206 40% 55%);
+  
+  --sidebar-background: #0F2A43;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #C9A646;
+  --sidebar-primary-foreground: #0F2A43;
+  --sidebar-accent: hsl(206 50% 18%);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: hsl(206 50% 25%);
+  --sidebar-ring: #C9A646;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Poppins', sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+  }
+}
+
+@layer components {
+  .text-primary {
+    color: var(--primary);
+  }
+  .text-secondary {
+    color: var(--secondary);
+  }
+  .text-success {
+    color: var(--success);
+  }
+  .text-warning {
+    color: var(--warning);
+  }
+  .text-error {
+    color: var(--error);
+  }
+  .text-info {
+    color: var(--info);
+  }
+  
+  .bg-primary {
+    background-color: var(--primary);
+  }
+  .bg-secondary {
+    background-color: var(--secondary);
+  }
+  .bg-success {
+    background-color: var(--success);
+  }
+  .bg-warning {
+    background-color: var(--warning);
+  }
+  .bg-error {
+    background-color: var(--error);
+  }
+  .bg-info {
+    background-color: var(--info);
+  }
+
+  .bg-primary\/10 {
+    background-color: hsl(207 100% 37% / 0.1);
+  }
+  .bg-success\/10 {
+    background-color: hsl(124 55% 24% / 0.1);
+  }
+  .bg-warning\/10 {
+    background-color: hsl(35 100% 47% / 0.1);
+  }
+  .bg-error\/10 {
+    background-color: hsl(354 70% 54% / 0.1);
+  }
+  .bg-info\/10 {
+    background-color: hsl(204 100% 37% / 0.1);
+  }
+}

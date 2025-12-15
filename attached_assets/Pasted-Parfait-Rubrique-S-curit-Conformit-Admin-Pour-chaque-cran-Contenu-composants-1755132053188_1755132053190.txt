@@ -1,0 +1,162 @@
+Parfait — **Rubrique : Sécurité & Conformité (Admin)**
+*(Pour chaque écran : **Contenu & composants** uniquement → puis **Actions disponibles sur cet écran**. Pas de tableaux de prose.)*
+
+---
+
+## Écran **SC‑1 — Rôles & accès (RBAC) — liste des utilisateurs**
+
+### Contenu & composants
+
+* **Titre** : « Rôles & accès ».
+* **Bandeau d’info** : *« Les modules, données et actions visibles dépendent strictement du rôle. Toutes les modifications de droits sont tracées. »*
+* **Barre de filtres** : **Rôle** (*Administrateur / Valideur / Opérateur*), **Statut** (*Actif / Désactivé*), **Périmètre** (entité/équipe si applicable), **Recherche** (nom, email).&#x20;
+* **Liste utilisateurs** — colonnes : **Nom & email**, **Rôles** (badges), **Modules autorisés** (extrait), **Dernière action** (horodatée, issue des logs), **Créé par / le** (lecture). *(La visibilité des colonnes respecte le RBAC.)*
+* **Encart rappel conformité** (sous la liste) : *« Toute action d’administration est **auditée**, horodatée et **non modifiable** (rétention légale). »*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Créer un utilisateur** / **modifier ses rôles** / **désactiver** un compte (admin uniquement).&#x20;
+* **Ouvrir le détail** d’un utilisateur (SC‑2).
+* **Voir l’historique** des actions de cet utilisateur (filtre pré‑appliqué dans SC‑3).&#x20;
+
+---
+
+## Écran **SC‑2 — Détail utilisateur & affectation des rôles**
+
+### Contenu & composants
+
+* **En‑tête** : Identité (nom, email), **Rôles attribués** (multi‑sélection).&#x20;
+* **Bloc “Modules & actions autorisés”** (cases à cocher par module/rubrique : *Contrats, Avenants, Indexations, Échéances, Exports, Alertes, Paramètres…* — **lecture/écriture/validation/suppression** selon rôle).&#x20;
+* **Bloc “Restrictions & visibilité des données”** : rappel *masquage des modules non autorisés* et **impossibilité de dépasser ses droits** (même via URL).&#x20;
+* **Bloc “Traçabilité”** (lecture seule) : dernière connexion connue (si exposée), dernières actions (extrait des logs).&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Enregistrer** les rôles/permissions (journalisation automatique).&#x20;
+* **Réinitialiser** les permissions au profil par défaut.&#x20;
+
+---
+
+## Écran **SC‑3 — Journal d’audit (historisation globale)**
+
+### Contenu & composants
+
+* **Titre** : « Journal d’audit ».
+* **Barre de filtres** : **Période**, **Utilisateur**, **Type d’action** (*Création / Modification / Validation / Rejet / Suppression / Paramétrage*), **Objet** (*Contrat / Avenant / Indexation / Droits / Document / Résiliation / Export…*), **Résultat** (*Succès / Échec*), **Recherche** (Trace‑ID, N° contrat).&#x20;
+* **Liste des logs** (lecture seule, **non modifiable**) — colonnes : **Horodatage**, **Utilisateur**, **Action**, **Objet & ID**, **Champs impactés**, **Avant → Après** (extrait), **Trace‑ID**. *(Conservation **durée légale**.)*
+* **Encart conformité** : *« Les logs sont horodatés, **non modifiables**, consultables par l’administrateur. »*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Ouvrir le détail** d’un log (SC‑4).
+* **Exporter** une sélection de logs pour audit (si habilité).&#x20;
+
+---
+
+## Écran **SC‑4 — Détail d’un log (panneau latéral)**
+
+### Contenu & composants
+
+* **En‑tête** : **Type d’action** + **Horodatage** + **Utilisateur** + **Trace‑ID**.&#x20;
+* **Bloc “Objet”** : *Type* (contrat, avenant, droits…), **Identifiant**, lien « Voir l’objet ».
+* **Bloc “Champs & valeurs”** : liste des champs, **valeur avant** / **valeur après**, **justification** s’il y en a (ex. MAJ montant).&#x20;
+* **Bloc “Chaîne de validation”** (si applicable) : décision, **motif de rejet** (obligatoire en cas de refus).&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Copier** le **Trace‑ID**.
+* **Ouvrir l’objet lié** (fiche contrat, règle RBAC appliquée).&#x20;
+* **Fermer** le panneau.
+
+---
+
+## Écran **SC‑5 — Registre des accès aux données sensibles (PII & financières)**
+
+### Contenu & composants
+
+* **Titre** : « Accès aux données sensibles ».
+* **Bandeau conformité** : *« Les accès aux données personnelles et financières sont **restreints et tracés**. »*&#x20;
+* **Filtres** : **Période**, **Type de donnée** (*PII / Financière / Document*), **Utilisateur**, **Objet** (contrat), **Action** (*lecture / export / téléchargement*).&#x20;
+* **Liste des accès** — colonnes : **Date/heure**, **Utilisateur**, **Type de donnée**, **Objet & ID**, **Action** (ex. *téléchargement document*), **Canal** (*UI/Export*). *(Dépend des règles d’accès documentaire.)*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Filtrer** / **effacer les filtres**.
+* **Exporter** le registre pour audit (si habilité).&#x20;
+
+---
+
+## Écran **SC‑6 — Demandes RGPD (export/suppression)**
+
+### Contenu & composants
+
+* **Titre** : « Demandes RGPD ».
+* **Barre de filtres** : **Type** (*Export / Suppression*), **Statut** (*À traiter / En cours / Terminé*), **Demandeur**, **Période**.&#x20;
+* **Liste des demandes** — colonnes : **Référence**, **Demandeur**, **Type**, **Portée** (périmètre), **Date limite légale**, **Statut**, **Traçabilité** (horodate, opérateur).&#x20;
+* **Encart “Mode opératoire”** : *export sécurisé* des données personnelles ou *suppression* contrôlée, avec **preuve d’exécution** dans les logs.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Nouvelle demande** (enregistrement managérial, si reçu hors outil).&#x20;
+* **Ouvrir** le détail d’une demande (panneau) → **générer l’export** / **marquer comme traité** (journalisé).&#x20;
+
+---
+
+## Écran **SC‑7 — Paramètres de conformité**
+
+### Contenu & composants
+
+* **Titre** : « Paramètres de conformité ».
+* **Section “Traçabilité & conservation”** : **rétention des logs (1 an)**, intégrité (non modifiables), **consultables par l’administrateur**.&#x20;
+* **Section “Accès aux données sensibles”** : rappel *contrôle par profils/permissions* (RBAC), restrictions de lecture/téléchargement.
+* **Section “Notifications de conformité”** : activation des **alertes critiques** (ex. accès refusé, workflow bloqué) & **rétention** de l’historique d’alerte.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Modifier** la durée de rétention (si paramétrable) et **Enregistrer** (avec log de configuration).
+* **Activer/Désactiver** les catégories d’alertes de conformité (journalisé).&#x20;
+
+---
+
+## Écran **SC‑8 — Alertes de sécurité & conformité**
+
+### Contenu & composants
+
+* **Titre** : « Alertes de sécurité & conformité ».
+* **Filtres** : **Type** (*Accès non autorisé / Échec d’envoi / Workflow > 24 h / Rejet de validation / Échéances critiques*), **Gravité** (*Critique / Majeure / Info*), **Statut** (*Non lue / Lue*), **Période**.&#x20;
+* **Timeline / tableau** — colonnes : **Horodatage**, **Type**, **Message** (court), **Objet** (contrat/avenant/indexation), **Canal** (*In‑app / Email / Teams*), **Statut d’envoi**, **Lecture**. *(Historisé 1 an, non ignorables pour les critiques.)*&#x20;
+* **Encart “Séparation des rôles”** (rappel) : un **valideur** ne peut pas valider ses **propres contrats** (contrôle interne).&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Marquer comme lue / non lue**, **Relancer l’envoi** (si échec et droit), **Ouvrir le contexte** (fiche, workflow, indexation).&#x20;
+
+---
+
+## Écran **SC‑9 — États vides & erreurs (Sécurité/Conformité)**
+
+### Contenu & composants
+
+* **État vide (SC‑3/SC‑5)** : *« Aucun événement de sécurité pour la période sélectionnée. »*
+* **Bannière “Tentative d’accès non autorisé”** : *Accès refusé, **événement consigné** et **admin notifié**.*&#x20;
+* **Bannière “Workflow en attente > 24 h”** : *alerte critique de conformité (escalade)*.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Réinitialiser** les filtres.
+* **Accéder** aux paramètres d’alertes (SC‑7) si habilité.&#x20;
+
+---
+
+### Rappels visibles pour le designer (non‑comportemental)
+
+* **RBAC strict** : masquage des modules/actions non autorisés, impossibilité de *dépasser ses droits*, affectation/édition de rôles par **Admin** uniquement.&#x20;
+* **Traçabilité exhaustive & non modifiable** : toute action (création, modification, validation/rejet, suppression, paramétrage) génère un **log** horodaté avec **avant/après** et **Trace‑ID**.&#x20;
+* **Conformité réglementaire** : conservation des logs **1 an**, accès **restreint et tracé** aux données personnelles/financières, **export/suppression RGPD** gérés et journalisés.&#x20;
+* **Séparation des rôles** : contrôle interne renforcé — un valideur ne peut pas valider ses propres contrats.&#x20;
+* **Alertes de conformité** : événements critiques (échéances J‑30/J‑7/J‑1, rejets, workflow > 24 h, erreurs d’envoi) **générés automatiquement**, préférences par canal, historique consultable **1 an**.&#x20;
+* **Accès documentaire** : pièces jointes visibles/téléchargeables **selon profil** uniquement (impact sur PII).&#x20;
+
+---
+
+Si ce format te convient, dis **« suivant »** et je déroulerai la **rubrique suivante** de ton choix avec la **même structure** (*Contenu & composants* → *Actions disponibles*).

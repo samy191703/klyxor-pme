@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan de facturation - {{id}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        .header {
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .title {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            color: #212529;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #e3f2fd !important;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            font-size: 11px;
+            color: #6c757d;
+            text-align: center;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-validated {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Plan de Facturation</h1>
+            <div class="info-grid">
+                <div class="info-box">
+                    <div class="info-label">Référence du plan</div>
+                    <div class="info-value">{{id}}</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Statut</div>
+                    <div class="info-value">
+                        <span class="status-badge status-{{status}}">{{status}}</span>
+                    </div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Contrat</div>
+                    <div class="info-value">{{contractName}} ({{contractId}})</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Type de contrat</div>
+                    <div class="info-value">{{contractType}}</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Période couverte</div>
+                    <div class="info-value">Du {{period.start}} au {{period.end}}</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Périodicité</div>
+                    <div class="info-value">{{periodicity}}</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Terme de facturation</div>
+                    <div class="info-value">{{term}}</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Montant total</div>
+                    <div class="info-value">{{totalAmount}} {{currency}}</div>
+                </div>
+            </div>
+        </div>
+
+        <h2>Lignes du plan de facturation</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>N°</th>
+                    <th>Période</th>
+                    <th>Date de facture</th>
+                    <th>Échéance</th>
+                    <th>Montant HT</th>
+                    <th>TVA (20%)</th>
+                    <th>Montant TTC</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each lines}}
+                <tr>
+                    <td>{{lineNumber}}</td>
+                    <td>{{period}}</td>
+                    <td>{{invoiceDate}}</td>
+                    <td>{{dueDate}}</td>
+                    <td>{{amountHT}} {{../currency}}</td>
+                    <td>{{vat}} {{../currency}}</td>
+                    <td>{{amountTTC}} {{../currency}}</td>
+                    <td>{{status}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td colspan="4">TOTAL</td>
+                    <td>{{totalHT}} {{currency}}</td>
+                    <td>{{totalVAT}} {{currency}}</td>
+                    <td>{{totalTTC}} {{currency}}</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+        {{#if indexationFormula}}
+        <div class="info-box" style="margin-top: 30px;">
+            <div class="info-label">Formule d'indexation appliquée</div>
+            <div class="info-value">{{indexationFormula}}</div>
+        </div>
+        {{/if}}
+
+        {{#if notes}}
+        <div class="info-box" style="margin-top: 20px;">
+            <div class="info-label">Notes</div>
+            <div class="info-value">{{notes}}</div>
+        </div>
+        {{/if}}
+
+        <div class="footer">
+            <p>Plan de facturation généré le {{generatedDate}}</p>
+            <p>Document à valider avant génération des flux de paiement</p>
+            <p>{{entityInfo.name}} - SIREN {{entityInfo.siren}}</p>
+        </div>
+    </div>
+</body>
+</html>

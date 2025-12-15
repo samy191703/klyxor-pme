@@ -1,0 +1,85 @@
+/* Unified Layout Structure */
+
+/* Main layout - proper height management */
+.h-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Headers - fixed height to prevent content push */
+header {
+  flex-shrink: 0;
+}
+
+/* Main content - fill remaining space with scroll */
+main.flex-1 {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Remove any top margin/padding that pushes content down */
+main > *:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Page headers - compact but visible */
+.page-header,
+header.bg-white {
+  @apply py-3 lg:py-4;
+  background-color: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Content containers - proper spacing without pushing down */
+.page-content {
+  @apply pt-4 pb-6;
+}
+
+/* Dashboard specific adjustments */
+#dashboard-main {
+  @apply p-4 lg:p-6;
+  background: transparent;
+}
+
+/* Card components - unified styling */
+.bg-white {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Ensure proper scrolling behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* Fix content positioning */
+.flex-1 {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive adjustments */
+@media (min-width: 1024px) {
+  /* Desktop: Content starts immediately after header */
+  .lg\:ml-64 {
+    margin-left: 17rem;
+  }
+  
+  main > *:first-child {
+    margin-top: 0;
+    padding-top: 1rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  /* Mobile: Account for sticky header */
+  main {
+    padding-top: 0;
+  }
+}

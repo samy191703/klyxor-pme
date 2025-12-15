@@ -1,0 +1,262 @@
+Rubrique : Plans de facturation
+Écran FA‑PF‑1 — Plans de facturation : Liste & file “à valider”
+
+Contenu & composants
+
+Titre : Plans de facturation.
+
+Bandeau règle : « Un plan passe en à valider à sa création. Sa validation génère les flux de paiement. »
+
+Filtres : Statut (à valider / validé / rejeté), Période couverte, Périodicité, Terme (à échoir / échu), Recherche (contrat/plan).
+
+Tableau : Plan ID, Contrat, Période (début–fin / horizon), Périodicité, Terme, Nb lignes, Montant total, Statut, Dernière action, Flux à créer (prévision).
+
+Actions disponibles sur cet écran
+
+Ouvrir le détail d’un plan (FA‑PF‑2).
+
+Valider en masse (si contrôles OK) / Rejeter (motif). La validation déclenche la création automatique des flux.
+
+Écran FA‑PF‑2 — Détail d’un plan (panneau latéral)
+
+Contenu & composants
+
+En‑tête : Plan ID, Contrat, Statut, Créateur, Horodatage.
+
+Bloc Paramètres du plan : Date début paiement, Fin ou Horizon, Périodicité, Terme (à échoir → date de facture en début de période ; échu → fin de période).
+
+Bloc Lignes (aperçu) : Période n..n+k, Date de facture (calculée selon le terme), Montant, Devise.
+
+Encadré Impact si validation : « Validation = 1 flux par ligne + export vers ERP. »
+
+Actions disponibles sur cet écran
+
+Valider le plan / Rejeter (motif obligatoire).
+
+Voir la simulation des flux (FA‑PF‑3).
+
+Écran FA‑PF‑3 — Simulation des flux générés (plein écran)
+
+Contenu & composants
+
+Tableau Flux simulés : Échéance, Montant, Devise, Réf. facture (si connue), Statut prévu, Destination ERP.
+
+Note UI : La validation du plan crée les flux correspondants et prépare l’export ERP.
+
+Actions disponibles sur cet écran
+
+Valider (créer les flux) / Annuler la simulation.
+
+Écran FA‑PF‑4 — États vides & erreurs (plans)
+
+Contenu & composants
+
+État vide : « Aucun plan à valider pour ces filtres. »
+
+Erreurs bloquantes (exemples) : fin < début, périodicité invalide, terme manquant (messages explicites).
+
+Actions disponibles sur cet écran
+
+Réinitialiser filtres / Revenir à la liste.
+
+Rubrique : Flux de paiement
+
+Les flux sont générés automatiquement à la validation du plan et exportés vers l’ERP (ex. SAP). Statuts clés exploitables dans l’UI : Généré → Exporté ERP → Effectué (cf. preuve) ; Bloqué si changement de montant non approuvé.
+
+Écran FA‑FX‑1 — Flux de paiement : Liste & suivi ERP
+
+Contenu & composants
+
+Titre : Flux de paiement.
+
+Filtres : Période d’échéance, Contrat, Statut (Généré / Exporté ERP / Effectué / Bloqué), Montant (min/max), Recherche (flow_id/invoice_id).
+
+Tableau : Flow ID, Plan ID, Contrat, Échéance, Montant/Devise, Réf. facture, Statut (badge), Dernier événement ERP (horodatage).
+
+Alerte en‑ligne (si bloqué) : PAYMENT_STATUS = BLOCKED (raison : montant modifié non approuvé).
+
+Actions disponibles sur cet écran
+
+Ouvrir le détail d’un flux (FA‑FX‑2).
+
+Relancer export ERP (si en erreur) / Marquer comme résolu après succès.
+
+Écran FA‑FX‑2 — Détail d’un flux (panneau latéral)
+
+Contenu & composants
+
+En‑tête : Flow ID, Statut, Montant, Devise, Échéance.
+
+Liens : Contrat, Plan d’origine, Réf. facture.
+
+Bloc Journal ERP : tentatives d’export, statuts, messages.
+
+Bloc Blocage (si présent) : motif, date de blocage, auteur, état de validation du déblocage.
+
+Actions disponibles sur cet écran
+
+Renvoyer à l’ERP (si export échoué).
+
+Accéder au blocage (ouvre FA‑BL‑2 si statut = Bloqué).
+
+Écran FA‑FX‑3 — États vides & erreurs (flux)
+
+Contenu & composants
+
+État vide : « Aucun flux pour la période sélectionnée. »
+
+Bannière erreur : « Échec d’export ERP » (détail technique + prochaine relance).
+
+Actions disponibles sur cet écran
+
+Changer les filtres / Relancer l’export défaillant.
+
+Rubrique : Blocages de paiement
+
+Tout changement de montant (avenant, MAJ manuelle, revalorisation) bloque automatiquement le flux jusqu’à validation ; statut synchronisé à l’ERP.
+
+Écran FA‑BL‑1 — Blocages : Liste des paiements bloqués
+
+Contenu & composants
+
+Titre : Blocages de paiement.
+
+Filtres : Raison (montant modifié), Date de blocage, Contrat, Statut de décision (à valider / validé / rejeté).
+
+Tableau : Flow ID, Contrat, Montant avant → après (si dispo), Date de blocage, Auteur modif, Décideur, Statut.
+
+Actions disponibles sur cet écran
+
+Ouvrir le détail (FA‑BL‑2).
+
+Valider en masse / Rejeter des déblocages (motif).
+
+Écran FA‑BL‑2 — Détail d’un blocage & décision
+
+Contenu & composants
+
+En‑tête : Flow ID, Statut = BLOQUÉ, Montant, Échéance.
+
+Bloc Motif & preuve : raison du blocage, changement détecté, auteur, horodatage.
+
+Bloc Traçabilité : date de blocage, date/acteur de décision, journal.
+
+Actions disponibles sur cet écran
+
+Valider le déblocage (passe le flux à Autorisé et permet l’export ERP).
+
+Rejeter (maintien le blocage). Journaliser la décision.
+
+Écran FA‑BL‑3 — États vides & erreurs (blocages)
+
+Contenu & composants
+
+État vide : « Aucun paiement bloqué. »
+
+Info : « Tout changement de montant entraîne un blocage automatique jusqu’à approbation. »
+
+Actions disponibles sur cet écran
+
+Accéder aux Flux (filtre “Bloqué”) / Revenir.
+
+Rubrique : Preuves de paiement
+
+Génération de preuve possible uniquement pour les paiements Effectués ; envoi automatique sur événement Paiement confirmé (PAYE) et rapproché à une facture. Relivraison manuelle possible.
+
+Écran FA‑PP‑1 — Preuves : Liste des paiements éligibles
+
+Contenu & composants
+
+Titre : Preuves de paiement.
+
+Filtres : Statut paiement (Effectué / PAYE), Contrat, Période de paiement, Client.
+
+Tableau : Payment ID, Invoice ID/Number, Date de paiement, Montant/Devise, Méthode, Bénéficiaire, Disponibilité preuve (oui/non), Dernier envoi.
+
+Actions disponibles sur cet écran
+
+Générer la preuve (PDF) pour un paiement Effectué.
+
+Ouvrir le détail (FA‑PP‑2).
+
+Écran FA‑PP‑2 — Détail & génération d’une preuve (panneau latéral)
+
+Contenu & composants
+
+En‑tête : Payment ID, Invoice (lien), Date, Montant, Devise, Méthode, Bénéficiaire.
+
+Pré‑visualisation contenu minimum du PDF : n° contrat, réf. paiement, n° facture, date paiement, montant, devise, bénéficiaire, mode de paiement.
+
+Options : Télécharger PDF, Archiver dans GED (automatique), Destinataires email (préremplis).
+
+Actions disponibles sur cet écran
+
+Générer la preuve (PDF horodaté) / Télécharger / Envoyer par email.
+
+Renvoyer la preuve (relivraison) si déjà envoyée.
+
+Écran FA‑PP‑3 — Envoi automatique : Journal & relivraison
+
+Contenu & composants
+
+Bandeau : Déclencheur automatique = paiement PAYE + rapproché à une facture.
+
+Tableau Historique des envois : Payment ID, Invoice, Destinataires, Statut d’envoi (succès/échec), Horodatage, Canal (Email/Portail).
+
+Détails d’un envoi : ID template/version, message SMTP/erreur, rebonds, trace relivraison.
+
+Actions disponibles sur cet écran
+
+Renvoyer la preuve (relivraison) à partir d’un envoi échoué ou sur demande.
+
+Ouvrir la preuve archivée / Copier le lien portail sécurisé.
+
+Écran FA‑PP‑4 — États vides & erreurs (preuves)
+
+Contenu & composants
+
+État vide : « Aucun paiement Effectué à la période sélectionnée. » (bouton Voir Flux).
+
+Bannière : « Aucune adresse email valide : preuve archivée sur portail, veuillez corriger les contacts. »
+
+Actions disponibles sur cet écran
+
+Naviguer vers Flux (filtre Effectué) / Relivrer après correction emails.
+
+Rubrique : Génération du plan (depuis un contrat) — (accès admin pour supervision)
+
+Pour mémoire, l’entrée “Générer plan” depuis une fiche contrat doit préremplir les champs, contrôler la cohérence et placer le plan en “à valider”.
+
+Écran FA‑GP‑1 — Modale “Générer le plan de facturation”
+
+Contenu & composants
+
+Champs obligatoires : Début paiement, Fin ou Horizon, Périodicité, Terme (à échoir / échu). Préremplissage si données du contrat.
+
+Résumé périodes calculées (lecture) : Périodes consécutives sans chevauchement, dates de facture selon le terme choisi.
+
+Actions disponibles sur cet écran
+
+Créer le plan (statut à valider) / Annuler.
+
+Écran FA‑GP‑2 — Échec de génération (contrôles)
+
+Contenu & composants
+
+Messages d’erreur explicites : champs manquants, fin < début, périodicité invalide.
+
+Actions disponibles sur cet écran
+
+Corriger les champs / Fermer.
+
+Raccourcis de navigation (entre rubriques)
+
+Plan validé → Flux (filtre Généré) ; Flux Bloqué → Blocages ; Flux Effectué → Preuves (génération/envoi).
+
+Ce que l’Admin peut faire dans “Facturation” (synthèse)
+
+Superviser/valider les plans et créer les flux (via la validation).
+
+Suivre/exporter les flux vers l’ERP et les statuts.
+
+Décider sur les blocages (déblocage/rejet) liés aux montants.

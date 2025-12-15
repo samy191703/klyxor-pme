@@ -1,0 +1,131 @@
+Super—on repart sur **“Gestion documentaire (GED)”** en format **UX‑pilot‑ready** :
+pour **chaque écran** 👉 *“Contenu & composants”* uniquement, puis **“Actions disponibles sur cet écran”** en fin de bloc.
+
+---
+
+## Écran **GD‑1 — GED : Liste globale des documents**
+
+### Contenu & composants (à afficher)
+
+* **En‑tête de page** : Titre « Documents ».
+* **Barre d’outils** (horizontale, sous le titre) :
+
+  * Champ **Rechercher un document** (par nom de fichier).
+  * Filtres : **Type de document** (Contrat, Avenant, Justificatif…), **Format** (PDF, DOCX, XLSX, ODT, JPG, PNG), **Période** (date d’ajout), **Contrat** (N°/titre), **Auteur**.&#x20;
+* **Zone liste (table)** :
+
+  * **Nom du fichier** (icône selon format + nom + extension).
+  * **Type** (Contrat / Avenant / Justificatif…).
+  * **Contrat** (N° + intitulé).
+  * **Ajouté le** (horodatage).
+  * **Ajouté par** (utilisateur).
+
+  > Affichage filtré par **droits** : on ne voit que les documents accessibles au profil. Chaque ligne renvoie au **détail du document**.
+* **Rappels UI (sous la barre d’outils)** : encart discret « **Formats autorisés** : PDF, DOCX, **XLSX**, ODT, JPG, PNG ».
+* **Pied de liste** : pagination (25/50/100), compteur « x–y sur N ».
+
+### Actions disponibles sur cet écran
+
+* **Ajouter un document** (ouvre la modale GD‑3).
+* **Ouvrir le détail** (panneau latéral GD‑4).
+* **Prévisualiser** (PDF/Images → GD‑5).
+* **Télécharger**.
+* **Supprimer** (uniquement profils **Admin**, action tracée).
+
+---
+
+## Écran **GD‑2 — Fiche contrat → Onglet « Documents »**
+
+### Contenu & composants (à afficher)
+
+* **Onglet « Documents »** dans la fiche contrat.
+* **Bannière d’alerte** (visible si PJ « Contrat signé » absente) : « **Pièce jointe obligatoire pour valider le contrat** ».&#x20;
+* **Barre d’outils locale** : Rechercher dans les PJ du contrat, **Filtre Type**.
+* **Liste des PJ du contrat** :
+
+  * **Nom du fichier** (icône + nom + extension).
+  * **Type** (Contrat / Avenant / Justificatif…).
+  * **Ajouté le** (horodatage).
+  * **Ajouté par** (utilisateur).
+
+  > Chaque ligne permet **Prévisualiser**, **Télécharger**, **Détail** (GD‑4). Toutes les actions sont **historisées**.
+
+### Actions disponibles sur cet écran
+
+* **Ajouter une pièce jointe** (ouvre GD‑3).
+* **Prévisualiser** (→ GD‑5).
+* **Télécharger**.
+* **Supprimer** (Admin uniquement, journalisée).
+
+---
+
+## Écran **GD‑3 — Modale « Ajouter un document »**
+
+### Contenu & composants (à afficher)
+
+* **Titre modale** : « Ajouter un document ».
+* **Champ “Type de document”** (liste obligatoire) : Contrat / Avenant / Justificatif…&#x20;
+* **Zone de dépôt de fichier** (drag & drop + bouton « Parcourir ») :
+
+  * **Formats acceptés** affichés sous la zone : PDF, DOCX, **XLSX**, ODT, JPG, PNG.
+  * **Règles** (ligne d’aide) : « Le fichier sera **horodaté** et **non modifiable** après upload. Suppression **réservée à l’admin**. »
+* **Champs facultatifs** : **Libellé** (texte court), **Description** (texte long).
+* **Pied de modale** : boutons **Annuler** | **Téléverser**.
+* **Messages d’état (inline)** :
+
+  * **Erreur format non autorisé** (blocage, message explicite).&#x20;
+  * **Erreur technique d’upload** (blocage, alerte, pas de création de ligne).&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Téléverser** (création de l’entrée documentaire + rattachement au contrat + log).
+* **Annuler**.
+
+---
+
+## Écran **GD‑4 — Panneau latéral « Détails du document »**
+
+### Contenu & composants (à afficher)
+
+* **En‑tête** : icône de format + **Nom du fichier** + **Type**.&#x20;
+* **Métadonnées** (liste à plat) :
+
+  * **Contrat lié** (N° + titre).
+  * **Ajouté le** (date/heure).
+  * **Ajouté par** (utilisateur).
+  * **Type** (Contrat/Avenant/Justificatif…).
+  * (Lien) **Voir l’historique** des actions du document/contrat.
+* **Zone d’aide** : rappel « Accès selon **rôle** ; opérations tracées. »&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Télécharger**.
+* **Prévisualiser** (→ GD‑5).
+* **Supprimer** (Admin uniquement, journalisée).
+
+---
+
+## Écran **GD‑5 — Prévisualisation / Visualisation du document**
+
+### Contenu & composants (à afficher)
+
+* **Viewer intégré** pour **PDF** et **images** (toolbar : zoom ±, pages, plein écran).
+* **Fichiers Office (DOCX/XLSX/ODT)** : zone de contenu avec **message** « Aperçu non disponible — **Télécharger** pour ouvrir dans votre application ».&#x20;
+* **Bandeau d’information** : rappel du **type**, **contrat lié**, **date d’ajout**.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Télécharger**.
+* **Fermer l’aperçu** (retour vers la liste ou la fiche contrat).
+
+---
+
+### Notes transverses à la rubrique (affordances visibles dans l’UI)
+
+* **Pièce jointe obligatoire** pour pouvoir **valider** un contrat : l’UI doit **signaler explicitement** l’absence de la PJ « Contrat signé » (bannière/label) et empêcher la validation tant qu’elle n’est pas présente.&#x20;
+* **Droits d’accès (RBAC)** : les boutons **Supprimer**, l’accès à certains documents et la visibilité même des fichiers sont **conditionnés au rôle**.&#x20;
+* **Traçabilité** : tout **ajout** ou **suppression** génère un **log horodaté** (auteur, type, fichier), **consultable** depuis l’historique.&#x20;
+
+---
+
+Si ce format te convient, dis **« suivant »** et je décline **la rubrique suivante** sur le même principe (écran par écran → *Contenu & composants* puis *Actions disponibles*).
