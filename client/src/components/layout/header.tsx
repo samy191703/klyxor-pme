@@ -42,10 +42,9 @@ import {
   menuItems,
   filterMenuItems,
   flattenLeaves,
-  LeafRoute,
+  type LeafRoute,
 } from "@/navigation/routes";
 import { cn } from "@/lib/utils";
-
 
 export default function Header() {
   const { user } = useAuth();
@@ -110,8 +109,17 @@ export default function Header() {
 
   return (
     <header
-      className="flex h-16 flex-shrink-0 items-center border-b border-klyxor-border bg-klyxor-subtle px-4 py-3 backdrop-blur lg:px-6"
       data-testid="header"
+      className={cn(
+        // IMPORTANT: header stabilisé en haut du scroll container
+        "sticky top-0 z-40 w-full",
+        // structure
+        "h-16 flex items-center border-b px-4 lg:px-6",
+        // visuel: fond opaque (évite l'impression de 'vide')
+        "bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70",
+        // thème klyxor (tes tokens)
+        "border-klyxor-border"
+      )}
     >
       <div className="flex h-full w-full items-center justify-between gap-4">
         {/* 🔎 Recherche globale */}
@@ -128,6 +136,7 @@ export default function Header() {
               onBlur={() => setTimeout(() => setOpenAuto(false), 120)}
               onKeyDown={(e) => {
                 if (!results.length) return;
+
                 if (e.key === "ArrowDown") {
                   e.preventDefault();
                   setActiveIndex((i) => Math.min(i + 1, results.length - 1));
@@ -171,7 +180,7 @@ export default function Header() {
                               "flex w-full items-center justify-between px-3 py-2 text-left text-sm transition",
                               isActive
                                 ? "bg-klyxor-primary/10 text-klyxor-text"
-                                : "text-klyxor-text hover:bg-klyxor-bg",
+                                : "text-klyxor-text hover:bg-klyxor-bg"
                             )}
                           >
                             <div className="flex items-center gap-3">
@@ -250,6 +259,7 @@ export default function Header() {
                 )}
               </Button>
             </SheetTrigger>
+
             <SheetContent className="border-l border-klyxor-border bg-klyxor-card">
               <SheetHeader>
                 <SheetTitle className="text-klyxor-text">
@@ -259,6 +269,7 @@ export default function Header() {
                   {unreadNotifications} non lues • Conservation 1 an
                 </SheetDescription>
               </SheetHeader>
+
               <ScrollArea className="mt-4 h-[calc(100vh-120px)]">
                 <div className="space-y-2">
                   {notifications.map((notif) => (
@@ -324,15 +335,12 @@ export default function Header() {
                         ? "bg-status-blue"
                         : user?.role === "validator"
                         ? "bg-status-green"
-                        : "bg-klyxor-muted",
+                        : "bg-klyxor-muted"
                     )}
                   >
-                    {(
-                      user?.firstName?.[0] ||
-                      user?.username?.[0] ||
-                      "U"
-                    ).toUpperCase()}
+                    {(user?.firstName?.[0] || user?.username?.[0] || "U").toUpperCase()}
                   </div>
+
                   <div className="hidden flex-col items-start sm:flex">
                     <span className="text-sm font-medium text-klyxor-text">
                       {user?.firstName && user?.lastName
@@ -352,6 +360,7 @@ export default function Header() {
                 </div>
               </Button>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent
               align="end"
               className="w-64 border-klyxor-border bg-klyxor-card"
@@ -366,7 +375,9 @@ export default function Header() {
                   {user?.email || `${user?.username ?? "user"}@engie.com`}
                 </span>
               </DropdownMenuLabel>
+
               <DropdownMenuSeparator className="bg-klyxor-border" />
+
               <DropdownMenuItem className="flex cursor-pointer items-center justify-between text-klyxor-text hover:bg-klyxor-bg">
                 <div className="flex items-center">
                   <Shield className="mr-2 h-4 w-4" />
@@ -374,15 +385,19 @@ export default function Header() {
                 </div>
                 <Badge variant="secondary">{userRole || user?.role}</Badge>
               </DropdownMenuItem>
+
               <DropdownMenuItem className="cursor-pointer text-klyxor-text hover:bg-klyxor-bg">
                 <Activity className="mr-2 h-4 w-4" />
                 Permissions
               </DropdownMenuItem>
+
               <DropdownMenuItem className="cursor-pointer text-klyxor-text hover:bg-klyxor-bg">
                 <Settings className="mr-2 h-4 w-4" />
                 Paramètres du compte
               </DropdownMenuItem>
+
               <DropdownMenuSeparator className="bg-klyxor-border" />
+
               <DropdownMenuItem
                 onClick={async () => {
                   await fetch("/api/auth/logout", { method: "POST" });
