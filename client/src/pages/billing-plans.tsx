@@ -1,6 +1,9 @@
-import { useState } from "react";
+// client/src/pages/billing-plans.tsx
+
+import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +23,11 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
+import { PageHeaderKlyxor } from "@/components/layout/PageHeaderKlyxor";
+
 import {
   FileText,
   CheckCircle,
@@ -29,12 +35,10 @@ import {
   AlertCircle,
   Search,
   Info,
-  Link,
+  Link as LinkIcon,
   Receipt,
   AlertTriangle,
 } from "lucide-react";
-import Header from "@/components/layout/header";
-import { PageHeaderKlyxor } from "@/components/layout/PageHeaderKlyxor";
 
 interface BillingPlan {
   id: string;
@@ -49,12 +53,7 @@ interface BillingPlan {
   linesCount?: number;
   totalAmount?: number;
   currency?: string;
-  status?:
-    | "to_validate"
-    | "validated"
-    | "rejected"
-    | "sap_pending"
-    | "sap_error";
+  status?: "to_validate" | "validated" | "rejected" | "sap_pending" | "sap_error";
   lastAction?: string;
   flowsToCreate?: number;
   creator?: string;
@@ -81,19 +80,14 @@ export default function BillingPlans() {
   const canGenerateFlows = hasPermission("/payment-flows");
 
   // Récupération des plans de facturation depuis l'API
-  const { data: plansData = [], isLoading: plansLoading } = useQuery<
-    BillingPlan[]
-  >({
+  const { data: plansData = [], isLoading: plansLoading } = useQuery<BillingPlan[]>({
     queryKey: ["/api/admin/billing/plans"],
   });
 
   // Mutation pour générer les flux de paiement
   const generateFlowsMutation = useMutation({
     mutationFn: async (planId: string) => {
-      return await apiRequest(
-        "POST",
-        `/api/billing-plans/${planId}/generate-flows`
-      );
+      return await apiRequest("POST", `/api/billing-plans/${planId}/generate-flows`);
     },
     onSuccess: () => {
       toast({
@@ -142,7 +136,7 @@ export default function BillingPlans() {
         title: "Export réussi",
         description: "Les données ont été exportées",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Erreur",
         description: "Impossible d'exporter les données",
@@ -244,17 +238,25 @@ export default function BillingPlans() {
           },
         ];
 
-  const filteredPlans = plans.filter((plan) => {
-    const matchesStatus =
-      statusFilter === "all" || plan.status === statusFilter;
-    const contractDisplay = plan.contractName || plan.contractTitle || "";
-    const contractIdDisplay = plan.contractId || plan.contractNumber || "";
-    const matchesSearch =
-      contractDisplay.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (plan.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contractIdDisplay.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  const filteredPlans = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
+    return plans.filter((plan) => {
+      const matchesStatus = statusFilter === "all" || plan.status === statusFilter;
+
+      const contractDisplay = (plan.contractName || plan.contractTitle || "").toLowerCase();
+      const contractIdDisplay = (plan.contractId || plan.contractNumber || "").toLowerCase();
+      const planId = (plan.id || "").toLowerCase();
+
+      const matchesSearch =
+        !q ||
+        contractDisplay.includes(q) ||
+        planId.includes(q) ||
+        contractIdDisplay.includes(q);
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [plans, statusFilter, searchQuery]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -269,26 +271,38 @@ export default function BillingPlans() {
         );
       case "validated":
         return (
-          <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-300 border-emerald-400/60">
+          <Badge
+            variant="secondary"
+            className="bg-emerald-500/10 text-emerald-300 border-emerald-400/60"
+          >
             Validé
           </Badge>
         );
       case "rejected":
         return (
-          <Badge variant="destructive" className="bg-red-500/15 border-red-400 text-red-300">
+          <Badge
+            variant="destructive"
+            className="bg-red-500/15 border-red-400 text-red-300"
+          >
             Rejeté
           </Badge>
         );
       case "sap_pending":
         return (
-          <Badge variant="secondary" className="bg-sky-500/10 text-sky-300 border-sky-400/60">
+          <Badge
+            variant="secondary"
+            className="bg-sky-500/10 text-sky-300 border-sky-400/60"
+          >
             <AlertCircle className="w-3 h-3 mr-1" />
             SAP en cours
           </Badge>
         );
       case "sap_error":
         return (
-          <Badge variant="destructive" className="bg-red-500/15 border-red-400 text-red-300">
+          <Badge
+            variant="destructive"
+            className="bg-red-500/15 border-red-400 text-red-300"
+          >
             <AlertTriangle className="w-3 h-3 mr-1" />
             Erreur SAP
           </Badge>
@@ -298,525 +312,453 @@ export default function BillingPlans() {
     }
   };
 
+  /**
+   * IMPORTANT:
+   * - Le Header global est rendu dans AppLayout (une seule fois).
+   * - Ici on rend uniquement le contenu page.
+   * - AppLayout gère déjà le scroll et les paddings globaux.
+   */
   return (
-    <div className="flex flex-col h-full" data-testid="billing-plans-main">
-      <Header />
+    <div className="w-full" data-testid="billing-plans-main">
+      <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 lg:px-8 xl:px-12">
+        {/* Header de page */}
+        <PageHeaderKlyxor
+          title="Plans de facturation"
+          subtitle="Gestion et validation des plans de facturation pour chaque contrat."
+          actions={
+            <>
+              {canExportPlan && (
+                <Button variant="outline" className="kly-btn-outline" onClick={handleExport}>
+                  Exporter
+                </Button>
+              )}
+            </>
+          }
+        />
 
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto py-6 px-4 lg:px-8 xl:px-12 space-y-6 max-w-[1600px]">
-          {/* Header de page */}
-          <PageHeaderKlyxor
-            title="Plans de facturation"
-            subtitle="Gestion et validation des plans de facturation pour chaque contrat."
-            actions={
-              <>
-                {canExportPlan && (
-                  <Button
-                    variant="outline"
-                    className="kly-btn-outline"
-                    onClick={handleExport}
-                  >
-                    Exporter
-                  </Button>
-                )}
-              </>
-            }
-          />
+        {/* Bandeau règle */}
+        <Alert className="border-kly-border-soft bg-kly-surfaceSoft">
+          <Info className="h-4 w-4 text-kly-gold" />
+          <AlertDescription className="text-kly-text-primary text-sm">
+            Un plan passe en <strong>"À valider"</strong> à sa création. Sa validation génère les flux de paiement et prépare l’export SAP.
+          </AlertDescription>
+        </Alert>
 
-          {/* Bandeau règle */}
-          <Alert className="border-kly-border-soft bg-kly-surfaceSoft">
-            <Info className="h-4 w-4 text-kly-gold" />
-            <AlertDescription className="text-kly-text-primary text-sm">
-              Un plan passe en <strong>"À valider"</strong> à sa création. Sa
-              validation génère les flux de paiement et prépare l’export SAP.
-            </AlertDescription>
-          </Alert>
+        {/* Filtres */}
+        <Card className="kly-card">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+              {/* Statut */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="kly-select-trigger">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="to_validate">À valider</SelectItem>
+                  <SelectItem value="validated">Validé</SelectItem>
+                  <SelectItem value="rejected">Rejeté</SelectItem>
+                  <SelectItem value="sap_pending">SAP en cours</SelectItem>
+                  <SelectItem value="sap_error">Erreur SAP</SelectItem>
+                </SelectContent>
+              </Select>
 
-          {/* Filtres */}
-          <Card className="kly-card">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                {/* Statut */}
-                <Select
-                  value={statusFilter}
-                  onValueChange={setStatusFilter}
-                >
-                  <SelectTrigger className="kly-select-trigger">
-                    <SelectValue placeholder="Statut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous les statuts</SelectItem>
-                    <SelectItem value="to_validate">À valider</SelectItem>
-                    <SelectItem value="validated">Validé</SelectItem>
-                    <SelectItem value="rejected">Rejeté</SelectItem>
-                    <SelectItem value="sap_pending">SAP en cours</SelectItem>
-                    <SelectItem value="sap_error">Erreur SAP</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Période couverte (placeholder UI) */}
+              <Select>
+                <SelectTrigger className="kly-select-trigger">
+                  <SelectValue placeholder="Période couverte" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2025">2025</SelectItem>
+                  <SelectItem value="2024">2024</SelectItem>
+                  <SelectItem value="custom">Personnalisé</SelectItem>
+                </SelectContent>
+              </Select>
 
-                {/* Période couverte */}
-                <Select>
-                  <SelectTrigger className="kly-select-trigger">
-                    <SelectValue placeholder="Période couverte" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2025">2025</SelectItem>
-                    <SelectItem value="2024">2024</SelectItem>
-                    <SelectItem value="custom">Personnalisé</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Périodicité (placeholder UI) */}
+              <Select>
+                <SelectTrigger className="kly-select-trigger">
+                  <SelectValue placeholder="Périodicité" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensuel</SelectItem>
+                  <SelectItem value="quarterly">Trimestriel</SelectItem>
+                  <SelectItem value="annual">Annuel</SelectItem>
+                </SelectContent>
+              </Select>
 
-                {/* Périodicité */}
-                <Select>
-                  <SelectTrigger className="kly-select-trigger">
-                    <SelectValue placeholder="Périodicité" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Mensuel</SelectItem>
-                    <SelectItem value="quarterly">Trimestriel</SelectItem>
-                    <SelectItem value="annual">Annuel</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Terme (placeholder UI) */}
+              <Select>
+                <SelectTrigger className="kly-select-trigger">
+                  <SelectValue placeholder="Terme" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="advance">À échoir</SelectItem>
+                  <SelectItem value="arrears">Échu</SelectItem>
+                </SelectContent>
+              </Select>
 
-                {/* Terme */}
-                <Select>
-                  <SelectTrigger className="kly-select-trigger">
-                    <SelectValue placeholder="Terme" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="advance">À échoir</SelectItem>
-                    <SelectItem value="arrears">Échu</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* Recherche */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-kly-text-muted h-4 w-4" />
-                  <Input
-                    placeholder="Rechercher contrat/plan..."
-                    className="pl-10 kly-input"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
+              {/* Recherche */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-kly-text-muted" />
+                <Input
+                  placeholder="Rechercher contrat/plan..."
+                  className="pl-10 kly-input"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Actions en masse (optionnel) */}
-          {statusFilter === "to_validate" && filteredPlans.length > 0 && (
-            <div className="flex gap-2">
-              <Button className="kly-btn-secondary">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Valider la sélection
-              </Button>
-              <Button
-                variant="outline"
-                className="kly-btn-danger"
-              >
-                <XCircle className="w-4 h-4 mr-2" />
-                Rejeter la sélection
-              </Button>
             </div>
-          )}
+          </CardContent>
+        </Card>
 
-          {/* Tableau des plans */}
-          <Card className="kly-table-card">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-kly-text-primary">
-                  <thead className="kly-table-header">
-                    <tr>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Plan ID
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Contrat
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Type
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Période
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Périodicité
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Montant
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Indexation
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Statut
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        SAP
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Preuves
-                      </th>
-                      <th className="px-4 py-3 text-left uppercase">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPlans.map((plan) => (
-                      <tr
-                        key={plan.id}
-                        className="kly-table-row cursor-pointer"
-                      >
-                        <td className="px-4 py-3 font-medium text-kly-gold">
-                          {plan.id}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div>
-                            <div className="font-medium">
-                              {plan.contractId ||
-                                plan.contractNumber ||
-                                "N/A"}
-                            </div>
-                            <div className="text-xs text-kly-text-secondary">
-                              {plan.contractName ||
-                                plan.contractTitle ||
-                                "N/A"}
-                            </div>
+        {/* Actions en masse (optionnel) */}
+        {statusFilter === "to_validate" && filteredPlans.length > 0 && (
+          <div className="flex gap-2">
+            <Button className="kly-btn-secondary" disabled={!canValidatePlan}>
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Valider la sélection
+            </Button>
+            <Button variant="outline" className="kly-btn-danger" disabled={!canValidatePlan}>
+              <XCircle className="w-4 h-4 mr-2" />
+              Rejeter la sélection
+            </Button>
+          </div>
+        )}
+
+        {/* Tableau des plans */}
+        <Card className="kly-table-card">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-kly-text-primary">
+                <thead className="kly-table-header">
+                  <tr>
+                    <th className="px-4 py-3 text-left uppercase">Plan ID</th>
+                    <th className="px-4 py-3 text-left uppercase">Contrat</th>
+                    <th className="px-4 py-3 text-left uppercase">Type</th>
+                    <th className="px-4 py-3 text-left uppercase">Période</th>
+                    <th className="px-4 py-3 text-left uppercase">Périodicité</th>
+                    <th className="px-4 py-3 text-left uppercase">Montant</th>
+                    <th className="px-4 py-3 text-left uppercase">Indexation</th>
+                    <th className="px-4 py-3 text-left uppercase">Statut</th>
+                    <th className="px-4 py-3 text-left uppercase">SAP</th>
+                    <th className="px-4 py-3 text-left uppercase">Preuves</th>
+                    <th className="px-4 py-3 text-left uppercase">Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredPlans.map((plan) => (
+                    <tr key={plan.id} className="kly-table-row cursor-pointer">
+                      <td className="px-4 py-3 font-medium text-kly-gold">{plan.id}</td>
+
+                      <td className="px-4 py-3">
+                        <div>
+                          <div className="font-medium">
+                            {plan.contractId || plan.contractNumber || "N/A"}
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline">
-                            {plan.contractType || "N/A"}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          {plan.period?.start
-                            ? new Date(
-                                plan.period.start
-                              ).toLocaleDateString("fr-FR")
-                            : "N/A"}{" "}
-                          -{" "}
-                          {plan.period?.end
-                            ? new Date(plan.period.end).toLocaleDateString(
-                                "fr-FR"
-                              )
-                            : "N/A"}
-                        </td>
-                        <td className="px-4 py-3">
-                          {plan.periodicity || "N/A"}
-                        </td>
-                        <td className="px-4 py-3 font-medium">
-                          {(plan.totalAmount || 0).toLocaleString("fr-FR")}{" "}
-                          {plan.currency || "EUR"}
-                        </td>
-                        <td className="px-4 py-3">
-                          {plan.indexationFormula && (
-                            <Badge variant="secondary">
-                              {plan.indexationFormula}
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {getStatusBadge(plan.status || "to_validate")}
-                        </td>
-                        <td className="px-4 py-3">
-                          {plan.sapCode ? (
-                            <div className="flex items-center gap-1">
-                              <Link className="w-3 h-3 text-sky-400" />
-                              <span className="text-xs font-mono">
-                                {plan.sapCode}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-kly-text-muted">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {plan.paymentProofCount &&
-                          plan.paymentProofCount > 0 ? (
-                            <Badge variant="outline">
-                              <Receipt className="w-3 h-3 mr-1" />
-                              {plan.paymentProofCount}
-                            </Badge>
-                          ) : (
-                            <span className="text-kly-text-muted">0</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="kly-btn-outline"
-                            onClick={() => setSelectedPlan(plan)}
-                          >
-                            Détails
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          <div className="text-xs text-kly-text-secondary">
+                            {plan.contractName || plan.contractTitle || "N/A"}
+                          </div>
+                        </div>
+                      </td>
 
-              {filteredPlans.length === 0 && !plansLoading && (
-                <div className="text-center py-12">
-                  <FileText className="w-12 h-12 text-kly-text-muted mx-auto mb-4" />
-                  <p className="text-sm text-kly-text-secondary">
-                    Aucun plan trouvé pour ces filtres.
-                  </p>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline">{plan.contractType || "N/A"}</Badge>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {plan.period?.start
+                          ? new Date(plan.period.start).toLocaleDateString("fr-FR")
+                          : "N/A"}{" "}
+                        -{" "}
+                        {plan.period?.end
+                          ? new Date(plan.period.end).toLocaleDateString("fr-FR")
+                          : "N/A"}
+                      </td>
+
+                      <td className="px-4 py-3">{plan.periodicity || "N/A"}</td>
+
+                      <td className="px-4 py-3 font-medium">
+                        {(plan.totalAmount || 0).toLocaleString("fr-FR")}{" "}
+                        {plan.currency || "EUR"}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {plan.indexationFormula ? (
+                          <Badge variant="secondary">{plan.indexationFormula}</Badge>
+                        ) : (
+                          <span className="text-kly-text-muted">-</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {getStatusBadge(plan.status || "to_validate")}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {plan.sapCode ? (
+                          <div className="flex items-center gap-1">
+                            <LinkIcon className="w-3 h-3 text-sky-400" />
+                            <span className="text-xs font-mono">{plan.sapCode}</span>
+                          </div>
+                        ) : (
+                          <span className="text-kly-text-muted">-</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3 text-center">
+                        {plan.paymentProofCount && plan.paymentProofCount > 0 ? (
+                          <Badge variant="outline">
+                            <Receipt className="w-3 h-3 mr-1" />
+                            {plan.paymentProofCount}
+                          </Badge>
+                        ) : (
+                          <span className="text-kly-text-muted">0</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="kly-btn-outline"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedPlan(plan);
+                          }}
+                        >
+                          Détails
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredPlans.length === 0 && !plansLoading && (
+              <div className="py-12 text-center">
+                <FileText className="mx-auto mb-4 h-12 w-12 text-kly-text-muted" />
+                <p className="text-sm text-kly-text-secondary">
+                  Aucun plan trouvé pour ces filtres.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-4 kly-btn-outline"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                  }}
+                >
+                  Réinitialiser les filtres
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Panneau latéral de détail */}
+        <Sheet open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>
+          <SheetContent className="w-full border-l border-kly-border bg-white text-kly-text-primary sm:max-w-xl">
+            {selectedPlan && (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="text-kly-text-primary">
+                    Détail du plan {selectedPlan.id}
+                  </SheetTitle>
+                  <SheetDescription className="text-kly-text-secondary">
+                    Contrat {selectedPlan.contractId} – {selectedPlan.contractName}
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-6 space-y-6 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-kly-text-secondary">Statut</span>
+                      {getStatusBadge(selectedPlan.status || "to_validate")}
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-kly-text-secondary">Créateur</span>
+                      <span className="font-medium">{selectedPlan.creator}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-kly-text-secondary">Créé le</span>
+                      <span className="font-medium">{selectedPlan.createdAt}</span>
+                    </div>
+                  </div>
+
+                  <Card className="kly-card-soft">
+                    <CardHeader>
+                      <CardTitle className="text-sm">Paramètres du plan</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-kly-text-secondary">Date début paiement</span>
+                        <span className="font-medium">{selectedPlan.period?.start}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-kly-text-secondary">Date fin</span>
+                        <span className="font-medium">{selectedPlan.period?.end}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-kly-text-secondary">Périodicité</span>
+                        <span className="font-medium">{selectedPlan.periodicity}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-kly-text-secondary">Terme</span>
+                        <span className="font-medium">{selectedPlan.term}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="kly-card-soft">
+                    <CardHeader>
+                      <CardTitle className="text-sm">Aperçu des lignes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-3 gap-2 text-xs font-medium text-kly-text-secondary">
+                          <span>Période</span>
+                          <span>Date facture</span>
+                          <span className="text-right">Montant</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          <span>Jan 2025</span>
+                          <span>01/01/2025</span>
+                          <span className="text-right">20 000 EUR</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          <span>Fév 2025</span>
+                          <span>01/02/2025</span>
+                          <span className="text-right">20 000 EUR</span>
+                        </div>
+                        <div className="py-2 text-center text-xs text-kly-text-secondary">…</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {selectedPlan.status === "to_validate" && (
+                    <Alert className="border-kly-border-soft bg-kly-surfaceSoft">
+                      <AlertCircle className="h-4 w-4 text-kly-gold" />
+                      <AlertDescription className="text-sm text-kly-text-primary">
+                        <strong>Impact si validation :</strong> création de{" "}
+                        {selectedPlan.flowsToCreate} flux de paiement + export vers ERP.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {selectedPlan.status === "to_validate" && (
+                      <>
+                        <Button
+                          className="flex-1 kly-btn-secondary"
+                          onClick={() => setShowSimulation(true)}
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Voir simulation
+                        </Button>
+
+                        <Button variant="outline" className="flex-1 kly-btn-danger">
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Rejeter
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </SheetContent>
+        </Sheet>
+
+        {/* Modal de simulation */}
+        {showSimulation && selectedPlan && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+            <Card className="w-full max-h-[90vh] max-w-5xl overflow-auto border border-kly-border bg-white text-kly-text-primary">
+              <CardHeader>
+                <CardTitle className="text-lg">Simulation des flux générés</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-kly-text-primary">
+                    <thead className="kly-table-header">
+                      <tr>
+                        <th className="px-4 py-2 text-left uppercase text-xs">Échéance</th>
+                        <th className="px-4 py-2 text-left uppercase text-xs">Montant</th>
+                        <th className="px-4 py-2 text-left uppercase text-xs">Devise</th>
+                        <th className="px-4 py-2 text-left uppercase text-xs">Réf. facture</th>
+                        <th className="px-4 py-2 text-left uppercase text-xs">Statut prévu</th>
+                        <th className="px-4 py-2 text-left uppercase text-xs">Destination ERP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...Array(3)].map((_, i) => (
+                        <tr key={i} className="kly-table-row">
+                          <td className="px-4 py-2 text-sm">{`01/${String(i + 1).padStart(2, "0")}/2025`}</td>
+                          <td className="px-4 py-2 text-sm font-medium">20 000</td>
+                          <td className="px-4 py-2 text-sm">EUR</td>
+                          <td className="px-4 py-2 text-sm">-</td>
+                          <td className="px-4 py-2 text-sm">
+                            <Badge variant="outline">Généré</Badge>
+                          </td>
+                          <td className="px-4 py-2 text-sm">SAP</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <Alert className="mt-4 border-sky-400/60 bg-sky-500/10">
+                  <Info className="h-4 w-4 text-sky-300" />
+                  <AlertDescription className="text-sm text-kly-text-primary">
+                    La validation du plan créera les flux correspondants et préparera l&apos;export ERP.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="mt-6 flex gap-2">
                   <Button
-                    variant="outline"
-                    className="mt-4 kly-btn-outline"
+                    className="flex-1 kly-btn-primary"
+                    disabled={!canGenerateFlows || generateFlowsMutation.isPending}
                     onClick={() => {
-                      setSearchQuery("");
-                      setStatusFilter("all");
+                      if (!selectedPlan?.id) return;
+                      generateFlowsMutation.mutate(selectedPlan.id);
                     }}
                   >
-                    Réinitialiser les filtres
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Valider et créer les flux
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="flex-1 kly-btn-outline"
+                    onClick={() => setShowSimulation(false)}
+                  >
+                    Annuler
                   </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
 
-          {/* Panneau latéral de détail */}
-          <Sheet
-            open={!!selectedPlan}
-            onOpenChange={() => setSelectedPlan(null)}
-          >
-            <SheetContent className="w-full sm:max-w-xl bg-white text-kly-text-primary border-l border-kly-border">
-              {selectedPlan && (
-                <>
-                  <SheetHeader>
-                    <SheetTitle className="text-kly-text-primary">
-                      Détail du plan {selectedPlan.id}
-                    </SheetTitle>
-                    <SheetDescription className="text-kly-text-secondary">
-                      Contrat {selectedPlan.contractId} –{" "}
-                      {selectedPlan.contractName}
-                    </SheetDescription>
-                  </SheetHeader>
-
-                  <div className="mt-6 space-y-6 text-sm">
-                    {/* En-tête */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-kly-text-secondary">
-                          Statut
-                        </span>
-                        {getStatusBadge(selectedPlan.status || "to_validate")}
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-kly-text-secondary">
-                          Créateur
-                        </span>
-                        <span className="font-medium">
-                          {selectedPlan.creator}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-kly-text-secondary">
-                          Créé le
-                        </span>
-                        <span className="font-medium">
-                          {selectedPlan.createdAt}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Paramètres du plan */}
-                    <Card className="kly-card-soft">
-                      <CardHeader>
-                        <CardTitle className="text-sm">
-                          Paramètres du plan
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-kly-text-secondary">
-                            Date début paiement
-                          </span>
-                          <span className="font-medium">
-                            {selectedPlan.period?.start}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-kly-text-secondary">
-                            Date fin
-                          </span>
-                          <span className="font-medium">
-                            {selectedPlan.period?.end}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-kly-text-secondary">
-                            Périodicité
-                          </span>
-                          <span className="font-medium">
-                            {selectedPlan.periodicity}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-kly-text-secondary">
-                            Terme
-                          </span>
-                          <span className="font-medium">
-                            {selectedPlan.term}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Aperçu des lignes */}
-                    <Card className="kly-card-soft">
-                      <CardHeader>
-                        <CardTitle className="text-sm">
-                          Aperçu des lignes
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="grid grid-cols-3 gap-2 text-xs text-kly-text-secondary font-medium">
-                            <span>Période</span>
-                            <span>Date facture</span>
-                            <span className="text-right">Montant</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-sm">
-                            <span>Jan 2025</span>
-                            <span>01/01/2025</span>
-                            <span className="text-right">20 000 EUR</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-sm">
-                            <span>Fév 2025</span>
-                            <span>01/02/2025</span>
-                            <span className="text-right">20 000 EUR</span>
-                          </div>
-                          <div className="text-center text-xs text-kly-text-secondary py-2">
-                            …
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Impact si validation */}
-                    {selectedPlan.status === "to_validate" && (
-                      <Alert className="border-kly-border-soft bg-kly-surfaceSoft">
-                        <AlertCircle className="h-4 w-4 text-kly-gold" />
-                        <AlertDescription className="text-sm text-kly-text-primary">
-                          <strong>Impact si validation :</strong> création de{" "}
-                          {selectedPlan.flowsToCreate} flux de paiement +
-                          export vers ERP.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      {selectedPlan.status === "to_validate" && (
-                        <>
-                          <Button
-                            className="flex-1 kly-btn-secondary"
-                            onClick={() => setShowSimulation(true)}
-                          >
-                            <FileText className="w-4 h-4 mr-2" />
-                            Voir simulation
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="flex-1 kly-btn-danger"
-                          >
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Rejeter
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </SheetContent>
-          </Sheet>
-
-          {/* Modal de simulation */}
-          {showSimulation && selectedPlan && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-              <Card className="w-full max-w-5xl max-h-[90vh] overflow-auto bg-white text-kly-text-primary border border-kly-border">
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Simulation des flux générés
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-kly-text-primary">
-                      <thead className="kly-table-header">
-                        <tr>
-                          <th className="px-4 py-2 text-left uppercase text-xs">
-                            Échéance
-                          </th>
-                          <th className="px-4 py-2 text-left uppercase text-xs">
-                            Montant
-                          </th>
-                          <th className="px-4 py-2 text-left uppercase text-xs">
-                            Devise
-                          </th>
-                          <th className="px-4 py-2 text-left uppercase text-xs">
-                            Réf. facture
-                          </th>
-                          <th className="px-4 py-2 text-left uppercase text-xs">
-                            Statut prévu
-                          </th>
-                          <th className="px-4 py-2 text-left uppercase text-xs">
-                            Destination ERP
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...Array(3)].map((_, i) => (
-                          <tr key={i} className="kly-table-row">
-                            <td className="px-4 py-2 text-sm">{`01/${String(
-                              i + 1
-                            ).padStart(2, "0")}/2025`}</td>
-                            <td className="px-4 py-2 text-sm font-medium">
-                              20 000
-                            </td>
-                            <td className="px-4 py-2 text-sm">EUR</td>
-                            <td className="px-4 py-2 text-sm">-</td>
-                            <td className="px-4 py-2 text-sm">
-                              <Badge variant="outline">Généré</Badge>
-                            </td>
-                            <td className="px-4 py-2 text-sm">SAP</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <Alert className="mt-4 border-sky-400/60 bg-sky-500/10">
-                    <Info className="h-4 w-4 text-sky-300" />
-                    <AlertDescription className="text-sm text-kly-text-primary">
-                      La validation du plan créera les flux correspondants et
-                      préparera l&apos;export ERP.
-                    </AlertDescription>
-                  </Alert>
-                  <div className="flex gap-2 mt-6">
-                    <Button className="flex-1 kly-btn-primary">
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Valider et créer les flux
-                    </Button>
+                {selectedPlan?.status === "to_validate" && canValidatePlan && (
+                  <div className="mt-3">
                     <Button
                       variant="outline"
-                      className="flex-1 kly-btn-outline"
-                      onClick={() => setShowSimulation(false)}
+                      className="w-full kly-btn-outline"
+                      disabled={validatePlanMutation.isPending}
+                      onClick={() => {
+                        if (!selectedPlan?.id) return;
+                        validatePlanMutation.mutate(selectedPlan.id);
+                      }}
                     >
-                      Annuler
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Marquer comme validé
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

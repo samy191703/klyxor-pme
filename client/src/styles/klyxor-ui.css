@@ -1,196 +1,227 @@
-@layer components {
-  /* ===== Layout global ===== */
+/* client/src/styles/klyxor-ui.css */
 
-  .kly-page {
-    @apply min-h-screen text-kly-text-primary;
-    background:
-      radial-gradient(circle at top left, #1E3A5F 0, transparent 45%),
-      radial-gradient(circle at bottom right, #0B1727 0, transparent 55%),
-      #0D243D;
-  }
+/* NOTE:
+   - Suppression du wrapper @layer components (cause de l'erreur PostCSS/Tailwind)
+   - On conserve @apply : il est supporté par Tailwind sans @layer
+*/
 
-  /* ===== Cards / panneaux ===== */
+/* ===== Layout global ===== */
 
-  .kly-card {
-    @apply rounded-kly border border-kly-border-soft text-kly-text-primary shadow-kly-card;
-    background: linear-gradient(145deg, #142B46, #0F2239);
-    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out,
-      border-color 0.15s ease-out, background 0.2s ease-out;
-  }
+/* --- Klyxor wrapper: always top aligned (no vertical centering) --- */
+.kly-page {
+  @apply min-h-screen text-kly-text-primary;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  background:
+    radial-gradient(circle at top left, #1e3a5f 0, transparent 45%),
+    radial-gradient(circle at bottom right, #0b1727 0, transparent 55%),
+    #0d243d;
+}
 
-  .kly-card:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 22px 55px rgba(0, 0, 0, 0.6);
-    border-color: rgba(255, 255, 255, 0.24);
-  }
+/* Main must never center content vertically */
+.kly-page main {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
 
-  .kly-card-soft {
-    @apply rounded-kly border border-kly-border-soft text-kly-text-primary;
-    background: linear-gradient(150deg, #0F2A45, #0B1D32);
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
-  }
+/* ===== Cards / panneaux ===== */
 
-  /* ===== Boutons ===== */
+.kly-card {
+  @apply rounded-kly border border-kly-border-soft text-kly-text-primary shadow-kly-card;
+  background: linear-gradient(145deg, #142b46, #0f2239);
+  transition:
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    border-color 0.15s ease-out,
+    background 0.2s ease-out;
+}
 
-  /* CTA principal : or KLYXOR avec léger glow */
-  .kly-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full
-           text-sm font-semibold px-5 py-2 disabled:opacity-50 disabled:cursor-not-allowed;
-    background: radial-gradient(circle at 20% 0, #ffe9a6 0, #f4d073 28%, #d8b24a 70%);
-    color: #0d243d;
-    box-shadow: 0 10px 30px rgba(216, 178, 74, 0.55);
-    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
-      filter 0.12s ease-out, background 0.2s ease-out;
-  }
+.kly-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.24);
+}
 
-  .kly-btn-primary:hover {
-    background: radial-gradient(circle at 20% 0, #fff1b9 0, #ffe08a 30%, #e0ba4d 70%);
-    transform: translateY(-1px);
-    box-shadow: 0 14px 38px rgba(216, 178, 74, 0.65);
-  }
+.kly-card-soft {
+  @apply rounded-kly border border-kly-border-soft text-kly-text-primary;
+  background: linear-gradient(150deg, #0f2a45, #0b1d32);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+}
 
-  .kly-btn-primary:active {
-    transform: translateY(0);
-    box-shadow: 0 6px 20px rgba(216, 178, 74, 0.45);
-  }
+/* ===== Boutons ===== */
 
-  /* Bouton plein bleu (secondaire fort) */
-  .kly-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full
-           text-sm font-medium px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed;
-    background: linear-gradient(145deg, #0f2a43, #0b1d31);
-    color: #f9fafb;
-    border: 1px solid rgba(255, 255, 255, 0.26);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
-      border-color 0.12s ease-out, background 0.2s ease-out;
-  }
+/* CTA principal : or KLYXOR avec léger glow */
+.kly-btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-full
+         text-sm font-semibold px-5 py-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  background: radial-gradient(circle at 20% 0, #ffe9a6 0, #f4d073 28%, #d8b24a 70%);
+  color: #0d243d;
+  box-shadow: 0 10px 30px rgba(216, 178, 74, 0.55);
+  transition:
+    transform 0.12s ease-out,
+    box-shadow 0.12s ease-out,
+    filter 0.12s ease-out,
+    background 0.2s ease-out;
+}
 
-  .kly-btn-secondary:hover {
-    background: linear-gradient(145deg, #163255, #0f243b);
-    border-color: rgba(255, 255, 255, 0.4);
-    transform: translateY(-1px);
-  }
+.kly-btn-primary:hover {
+  background: radial-gradient(circle at 20% 0, #fff1b9 0, #ffe08a 30%, #e0ba4d 70%);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 38px rgba(216, 178, 74, 0.65);
+}
 
-  /* Bouton outline clair (Colonnes, Exporter, Voir…) */
-  .kly-btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-full
-           text-sm font-medium px-4 py-2 border disabled:opacity-40 disabled:cursor-not-allowed;
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: #f9fafb;
-    transition: background 0.15s ease-out, border-color 0.15s ease-out,
-      transform 0.1s ease-out;
-  }
+.kly-btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 20px rgba(216, 178, 74, 0.45);
+}
 
-  .kly-btn-outline:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.32);
-    transform: translateY(-0.5px);
-  }
+/* Bouton plein bleu (secondaire fort) */
+.kly-btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-full
+         text-sm font-medium px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  background: linear-gradient(145deg, #0f2a43, #0b1d31);
+  color: #f9fafb;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  transition:
+    transform 0.12s ease-out,
+    box-shadow 0.12s ease-out,
+    border-color 0.12s ease-out,
+    background 0.2s ease-out;
+}
 
-  /* Bouton ghost (liens d’action légers : Réinitialiser…) */
-  .kly-btn-ghost {
-    @apply inline-flex items-center justify-center gap-1 rounded-full
-           text-sm px-2 py-1;
-    background: transparent;
-    color: #cbd5f5;
-    transition: background 0.15s ease-out, color 0.15s ease-out;
-  }
+.kly-btn-secondary:hover {
+  background: linear-gradient(145deg, #163255, #0f243b);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
 
-  .kly-btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: #f9fafb;
-  }
+/* Bouton outline clair (Colonnes, Exporter, Voir…) */
+.kly-btn-outline {
+  @apply inline-flex items-center justify-center gap-2 rounded-full
+         text-sm font-medium px-4 py-2 border disabled:opacity-40 disabled:cursor-not-allowed;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f9fafb;
+  transition:
+    background 0.15s ease-out,
+    border-color 0.15s ease-out,
+    transform 0.1s ease-out;
+}
 
-  /* Bouton destructive (résiliation, suppression) */
-  .kly-btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-full
-           text-sm font-medium px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed;
-    background: linear-gradient(145deg, #f97373, #f87171);
-    color: #ffffff;
-    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.55);
-    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
-  }
+.kly-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.32);
+  transform: translateY(-0.5px);
+}
 
-  .kly-btn-danger:hover {
-    background: linear-gradient(145deg, #fb8585, #f87171);
-    transform: translateY(-1px);
-    box-shadow: 0 15px 32px rgba(239, 68, 68, 0.65);
-  }
+/* Bouton ghost (liens d’action légers : Réinitialiser…) */
+.kly-btn-ghost {
+  @apply inline-flex items-center justify-center gap-1 rounded-full
+         text-sm px-2 py-1;
+  background: transparent;
+  color: #cbd5f5;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
+}
 
-  /* ===== Inputs & selects ===== */
+.kly-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f9fafb;
+}
 
-  .kly-input {
-    @apply w-full rounded-lg border text-sm px-3 py-2
-           focus:outline-none focus:ring-2 focus:ring-kly-gold/40 focus:border-kly-gold
-           disabled:cursor-not-allowed disabled:opacity-50;
-    background-color: #1a314e;
-    border-color: #274468;
-    color: #f9fafb;
-  }
+/* Bouton destructive (résiliation, suppression) */
+.kly-btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-full
+         text-sm font-medium px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  background: linear-gradient(145deg, #f97373, #f87171);
+  color: #ffffff;
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.55);
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
 
-  .kly-input::placeholder {
-    color: #9ca3c7;
-  }
+.kly-btn-danger:hover {
+  background: linear-gradient(145deg, #fb8585, #f87171);
+  transform: translateY(-1px);
+  box-shadow: 0 15px 32px rgba(239, 68, 68, 0.65);
+}
 
-  .kly-select-trigger {
-    @apply rounded-lg border text-sm px-3 py-2
-           focus:outline-none focus:ring-2 focus:ring-kly-gold/40 focus:border-kly-gold;
-    background-color: #1a314e;
-    border-color: #274468;
-    color: #f9fafb;
-  }
+/* ===== Inputs & selects ===== */
 
-  /* ===== Tableaux ===== */
+.kly-input {
+  @apply w-full rounded-lg border text-sm px-3 py-2
+         focus:outline-none focus:ring-2 focus:ring-kly-gold/40 focus:border-kly-gold
+         disabled:cursor-not-allowed disabled:opacity-50;
+  background-color: #1a314e;
+  border-color: #274468;
+  color: #f9fafb;
+}
 
-  .kly-table-card {
-    @apply kly-card p-0;
-  }
+.kly-input::placeholder {
+  color: #9ca3c7;
+}
 
-  .kly-table-header {
-    @apply text-kly-text-secondary text-xs font-medium;
-    background: rgba(255, 255, 255, 0.06);
-  }
+.kly-select-trigger {
+  @apply rounded-lg border text-sm px-3 py-2
+         focus:outline-none focus:ring-2 focus:ring-kly-gold/40 focus:border-kly-gold;
+  background-color: #1a314e;
+  border-color: #274468;
+  color: #f9fafb;
+}
 
-  .kly-table-row {
-    @apply text-kly-text-primary border-b border-white/5 transition-colors;
-  }
+/* ===== Tableaux ===== */
 
-  .kly-table-row:hover {
-    background: rgba(255, 255, 255, 0.06);
-  }
+.kly-table-card {
+  @apply kly-card p-0;
+}
 
-  /* ===== Badges de statut ===== */
+.kly-table-header {
+  @apply text-kly-text-secondary text-xs font-medium;
+  background: rgba(255, 255, 255, 0.06);
+}
 
-  .kly-badge {
-    @apply inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium;
-  }
+.kly-table-row {
+  @apply text-kly-text-primary border-b border-white/5 transition-colors;
+}
 
-  .kly-badge-actif {
-    @apply kly-badge border-emerald-400 bg-emerald-500/15 text-emerald-300;
-  }
+.kly-table-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
 
-  .kly-badge-a-valider {
-    @apply kly-badge border-amber-400 bg-amber-500/15 text-amber-300;
-  }
+/* ===== Badges de statut ===== */
 
-  .kly-badge-brouillon {
-    @apply kly-badge border-slate-400 bg-slate-500/20 text-slate-200;
-  }
+.kly-badge {
+  @apply inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium;
+}
 
-  .kly-badge-resilie {
-    @apply kly-badge border-red-400 bg-red-500/15 text-red-300;
-  }
+.kly-badge-actif {
+  @apply kly-badge border-emerald-400 bg-emerald-500/15 text-emerald-300;
+}
 
-  .kly-badge-cloture {
-    @apply kly-badge border-slate-300 bg-slate-200/10 text-slate-100;
-  }
+.kly-badge-a-valider {
+  @apply kly-badge border-amber-400 bg-amber-500/15 text-amber-300;
+}
 
-  /* ===== Petites adaptations “muted” dans les cards ===== */
+.kly-badge-brouillon {
+  @apply kly-badge border-slate-400 bg-slate-500/20 text-slate-200;
+}
 
-  .kly-card .text-muted-foreground,
-  .kly-card-soft .text-muted-foreground {
-    color: #cbd5f5;
-  }
+.kly-badge-resilie {
+  @apply kly-badge border-red-400 bg-red-500/15 text-red-300;
+}
+
+.kly-badge-cloture {
+  @apply kly-badge border-slate-300 bg-slate-200/10 text-slate-100;
+}
+
+/* ===== Petites adaptations “muted” dans les cards ===== */
+
+.kly-card .text-muted-foreground,
+.kly-card-soft .text-muted-foreground {
+  color: #cbd5f5;
 }

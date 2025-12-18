@@ -1,85 +1,99 @@
-/* Unified Layout Structure */
+/* =========================================================
+   KLYXOR – Compact Layout (SAFE & NEUTRAL)
+   Ce fichier NE DOIT PAS gérer la hauteur ou le scroll global
+   ========================================================= */
 
-/* Main layout - proper height management */
-.h-screen {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Headers - fixed height to prevent content push */
-header {
-  flex-shrink: 0;
-}
-
-/* Main content - fill remaining space with scroll */
-main.flex-1 {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-/* Remove any top margin/padding that pushes content down */
-main > *:first-child {
-  margin-top: 0;
-  padding-top: 0;
-}
-
-/* Page headers - compact but visible */
-.page-header,
-header.bg-white {
-  @apply py-3 lg:py-4;
-  background-color: white;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-/* Content containers - proper spacing without pushing down */
-.page-content {
-  @apply pt-4 pb-6;
-}
-
-/* Dashboard specific adjustments */
-#dashboard-main {
-  @apply p-4 lg:p-6;
-  background: transparent;
-}
-
-/* Card components - unified styling */
-.bg-white {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-/* Ensure proper scrolling behavior */
-html {
-  scroll-behavior: smooth;
-}
+/* ---------------------------------------------------------
+   Sécurité globale
+--------------------------------------------------------- */
 
 body {
   overflow-x: hidden;
 }
 
-/* Fix content positioning */
-.flex-1 {
-  display: flex;
-  flex-direction: column;
+/* ---------------------------------------------------------
+   Headers
+--------------------------------------------------------- */
+
+/* Les headers ne doivent jamais rétrécir */
+header {
+  flex-shrink: 0;
 }
 
-/* Responsive adjustments */
+/* Header visuel compact (sans pousser le contenu) */
+.page-header,
+header.bg-white {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
 @media (min-width: 1024px) {
-  /* Desktop: Content starts immediately after header */
+  .page-header,
+  header.bg-white {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+}
+
+/* ---------------------------------------------------------
+   Contenu de page (OPTIONNEL)
+   Ces classes ne gèrent PAS la hauteur
+--------------------------------------------------------- */
+
+.page-content {
+  padding-top: 1rem;
+  padding-bottom: 1.5rem;
+}
+
+/* ---------------------------------------------------------
+   Dashboard spécifique
+--------------------------------------------------------- */
+
+#dashboard-main {
+  padding: 1rem;
+  background: transparent;
+}
+
+@media (min-width: 1024px) {
+  #dashboard-main {
+    padding: 1.5rem;
+  }
+}
+
+/* ---------------------------------------------------------
+   Cards (purement visuel)
+--------------------------------------------------------- */
+
+.bg-white {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* ---------------------------------------------------------
+   Sidebar legacy offsets (si encore utilisés)
+--------------------------------------------------------- */
+
+@media (min-width: 1024px) {
   .lg\:ml-64 {
     margin-left: 17rem;
   }
-  
-  main > *:first-child {
-    margin-top: 0;
-    padding-top: 1rem;
-  }
 }
 
-@media (max-width: 1023px) {
-  /* Mobile: Account for sticky header */
-  main {
-    padding-top: 0;
-  }
-}
+/* ---------------------------------------------------------
+   AUCUNE règle de hauteur / scroll ici
+--------------------------------------------------------- */
+/*
+  ❌ PAS de :
+  - main { ... }
+  - main.flex-1 { ... }
+  - .flex-1 { ... }
+  - .h-screen { ... }
+  - min-height / height / overflow
+*/
+
+/* Ce fichier est volontairement NEUTRE
+   Le layout est piloté UNIQUEMENT par AppLayout.tsx
+*/
