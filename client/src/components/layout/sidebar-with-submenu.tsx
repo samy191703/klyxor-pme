@@ -312,7 +312,8 @@ export default function SidebarWithSubmenu() {
         "hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-50",
         "flex-col overflow-hidden relative",
         "bg-white",
-        "border-r border-slate-200"
+        "border-r border-slate-200",
+        "text-slate-800"
       )}
     >
       {/* Header */}
