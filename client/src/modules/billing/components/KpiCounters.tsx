@@ -189,9 +189,6 @@ export const KpiCounters: React.FC<KpiCountersProps> = ({
         <Card className="p-6 bg-white rounded-lg shadow-md">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800">Résultats mensuels</h3>
-            <button className="px-4 py-2 bg-[var(--klyxor-or)] text-white rounded-md text-sm font-medium hover:opacity-90 transition-colors">
-              Voir détails
-            </button>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyData}>
@@ -224,9 +221,6 @@ export const KpiCounters: React.FC<KpiCountersProps> = ({
         <Card className="p-6 bg-white rounded-lg shadow-md">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800">Statut des plans</h3>
-            <button className="px-4 py-2 bg-[var(--klyxor-or)] text-white rounded-md text-sm font-medium hover:opacity-90 transition-colors">
-              Voir détails
-            </button>
           </div>
           <div className="relative flex items-center justify-center h-[300px]">
             <ResponsiveContainer width="100%" height={300}>

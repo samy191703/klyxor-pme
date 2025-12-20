@@ -1,5 +1,5 @@
 // components/KpiDashboard.tsx
-import { Card, CardContent } from "@mui/material";
+import { Card, CardContent, FormControl, InputLabel, MenuItem, Select, TextField, SelectChangeEvent } from "@mui/material";
 import { User } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -46,7 +46,7 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({
   customerOptions,
   showKpiFilters = true,
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
   const [highlightIndex, setHighlightIndex] = useState<number>(-1);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("custom");
 
@@ -138,6 +138,7 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({
     if (detected !== periodPreset) {
       setPeriodPreset(detected);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kpiFilters.from, kpiFilters.to]);
 
   const filteredCustomers = customerOptions
@@ -175,106 +176,83 @@ export const KpiDashboard: React.FC<KpiDashboardProps> = ({
           <CardContent className="p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Période prédéfinie */}
             <div className="flex flex-col">
-              <label className="text-sm text-gray-600 mb-1">Période</label>
-              <select
-                className="border rounded px-2 py-1"
-                value={periodPreset}
-                onChange={(e) => handlePeriodPresetChange(e.target.value as PeriodPreset)}
-              >
-                <option value="month">Mois en cours</option>
-                <option value="quarter">Trimestre en cours</option>
-                <option value="year">Année en cours</option>
-                <option value="custom">Personnalisé</option>
-              </select>
+              <FormControl size="small" fullWidth>
+                <InputLabel>Période</InputLabel>
+                <Select
+                  value={periodPreset}
+                  onChange={(e: SelectChangeEvent<PeriodPreset>) => 
+                    handlePeriodPresetChange(e.target.value as PeriodPreset)
+                  }
+                  label="Période"
+                  displayEmpty
+                >
+                  <MenuItem value="" disabled>Période</MenuItem>
+                  <MenuItem value="month">Mois en cours</MenuItem>
+                  <MenuItem value="quarter">Trimestre en cours</MenuItem>
+                  <MenuItem value="year">Année en cours</MenuItem>
+                  <MenuItem value="custom">Personnalisé</MenuItem>
+                </Select>
+              </FormControl>
             </div>
 
             {/* Du */}
             <div className="flex flex-col">
-              <label className="text-sm text-gray-600 mb-1">Du</label>
-              <input
+              <TextField
+                label="Du"
                 type="date"
-                className="border rounded px-2 py-1"
+                variant="outlined"
+                size="small"
                 value={kpiFilters.from}
                 onChange={(e) => {
                   setKpiFilters(f => ({ ...f, from: e.target.value }));
                   setPeriodPreset("custom");
+                }}
+                InputLabelProps={{
+                  shrink: true,
                 }}
               />
             </div>
 
             {/* Au */}
             <div className="flex flex-col">
-              <label className="text-sm text-gray-600 mb-1">Au</label>
-              <input
+              <TextField
+                label="Au"
                 type="date"
-                className="border rounded px-2 py-1"
+                variant="outlined"
+                size="small"
                 value={kpiFilters.to}
                 onChange={(e) => {
                   setKpiFilters(f => ({ ...f, to: e.target.value }));
                   setPeriodPreset("custom");
                 }}
+                InputLabelProps={{
+                  shrink: true,
+                }}
               />
             </div>
 
             {/* Client */}
-            <div className="flex flex-col relative" ref={inputRef}>
-              <label className="text-xs text-gray-600 mb-1">Client</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-2 flex items-center text-gray-400 pointer-events-none">
-                  <User className="w-4 h-4" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Nom du client"
-                  className="border rounded pl-8 pr-2 py-1 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  value={kpiFilters.customer || ""}
-                  onChange={(e) => {
-                    setKpiFilters((f) => ({ ...f, customer: e.target.value }));
-                    setShowCustomerList(true);
-                  }}
-                  onFocus={() => setShowCustomerList(true)}
-                  onKeyDown={handleKeyDown}
-                />
-              </div>
-
-              {/* Dropdown avec clavier */}
-              {showCustomerList && filteredCustomers.length > 0 && inputRef.current &&
-                createPortal(
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: inputRef.current.getBoundingClientRect().bottom + window.scrollY,
-                      left: inputRef.current.getBoundingClientRect().left + window.scrollX,
-                      width: inputRef.current.offsetWidth,
-                      maxHeight: 200,
-                      overflowY: "auto",
-                      background: "white",
-                      border: "1px solid #ccc",
-                      borderRadius: 4,
-                      zIndex: 9999,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
-                    }}
-                  >
-                    {filteredCustomers.map((c, i) => (
-                      <div
-                        key={c}
-                        className={`px-2 py-1 cursor-pointer text-sm ${
-                          i === highlightIndex ? "bg-blue-100" : "hover:bg-gray-100"
-                        }`}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setKpiFilters((f) => ({ ...f, customer: c }));
-                          setShowCustomerList(false);
-                          setHighlightIndex(-1);
-                        }}
-                      >
-                        {c}
-                      </div>
-                    ))}
-                  </div>,
-                  document.body
-                )
-              }
+            <div className="flex flex-col" ref={inputRef}>
+              <FormControl size="small" fullWidth>
+              <InputLabel>Client</InputLabel>
+              <Select
+               
+                value={kpiFilters.customer || ""}
+                onChange={(e) => {
+                setKpiFilters((f) => ({ ...f, customer: e.target.value }));
+                setCustomerSearch(e.target.value);
+                }}
+                onOpen={() => setShowCustomerList(true)}
+                onClose={() => setShowCustomerList(false)}
+                label="Client"
+              >
+                {customerOptions.map((c) => (
+                <MenuItem key={c} value={c}>
+                  {c}
+                </MenuItem>
+                ))}
+              </Select>
+              </FormControl>
             </div>
           </CardContent>
         </Card>
