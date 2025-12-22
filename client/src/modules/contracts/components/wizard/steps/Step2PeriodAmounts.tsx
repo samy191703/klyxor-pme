@@ -192,9 +192,9 @@ export default function Step2PeriodAmounts({
         </div>
 
         {/* BILLING TYPE (RADIO) */}
-        <div className="col-span-2">
+        <div className="w-full">
           <Label>Type de facturation</Label>
-          <div className="mt-2">
+          
             <RadioGroup
               className="grid grid-cols-2 gap-3"
               value={data.billingType || ""}
@@ -214,7 +214,7 @@ export default function Step2PeriodAmounts({
                 </div>
               ))}
             </RadioGroup>
-          </div>
+      
           <p className="text-xs text-gray-500 mt-1">
             « À échoir » : facturation avant l’échéance; « Terme échu » :
             facturation après la période.

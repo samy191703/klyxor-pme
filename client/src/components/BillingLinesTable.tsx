@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import type { BillingLine, BillingLineStatus } from "@/types/billing";
 
 export interface BillingLinesTableProps {
@@ -47,13 +48,18 @@ const currencyFormatter = new Intl.NumberFormat("fr-FR", {
   maximumFractionDigits: 2,
 });
 
+const BILLING_LINE_STATUS_LABELS: Record<BillingLineStatus, string> = {
+  A_FACTURER: "À facturer",
+  FACTUREE: "Facturée",
+};
+
 export function BillingLinesTable({
   lines,
   isLoading,
   error,
 }: BillingLinesTableProps) {
-  const [statusFilter, setStatusFilter] = useState<"ALL" | BillingLineStatus>(
-    "ALL",
+  const [selectedStatuses, setSelectedStatuses] = useState<BillingLineStatus[]>(
+    ["A_FACTURER", "FACTUREE"]
   );
   const [sort, setSort] = useState<SortState>({
     field: null,
@@ -67,10 +73,9 @@ export function BillingLinesTable({
 
   // Filter + sort
   const processedLines = useMemo(() => {
-    const filtered =
-      statusFilter === "ALL"
-        ? lines
-        : lines.filter((line) => line.status === statusFilter);
+    const filtered = lines.filter((line) =>
+      selectedStatuses.includes(line.status)
+    );
 
     if (!sort.field || !sort.order) return filtered;
 
@@ -89,7 +94,7 @@ export function BillingLinesTable({
     });
 
     return sorted;
-  }, [lines, statusFilter, sort.field, sort.order]);
+  }, [lines, selectedStatuses, sort.field, sort.order]);
 
   const totalAmount = useMemo(
     () =>
@@ -111,8 +116,18 @@ export function BillingLinesTable({
   const endIndex = startIndex + pagination.itemsPerPage;
   const paginatedLines = processedLines.slice(startIndex, endIndex);
 
-  const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value as "ALL" | BillingLineStatus);
+  const handleStatusToggle = (status: BillingLineStatus) => {
+    setSelectedStatuses((prev) => {
+      if (prev.includes(status)) {
+        return prev.filter((s) => s !== status);
+      }
+      return [...prev, status];
+    });
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+  };
+
+  const handleSelectAllStatuses = () => {
+    setSelectedStatuses(["A_FACTURER", "FACTUREE"]);
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
@@ -176,7 +191,7 @@ export function BillingLinesTable({
 
   // Error state
   if (error) {
-    // Cas fonctionnel : aucun échéancier actif pour ce contrat → même design que l’état vide
+    // Cas fonctionnel : aucun échéancier actif pour ce contrat → même design que l'état vide
     if (
       error instanceof Error &&
       error.message.includes("No active billing schedule found for this contract")
@@ -219,20 +234,36 @@ export function BillingLinesTable({
   if (!hasResults) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Select
-            value={statusFilter}
-            onValueChange={handleStatusFilterChange}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filtrer par statut" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Tous les statuts</SelectItem>
-              <SelectItem value="A_FACTURER">À facturer</SelectItem>
-              <SelectItem value="FACTUREE">Facturée</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-4 flex-wrap">
+          <Label className="text-xs font-medium text-gray-700">
+            Filtrer par statut:
+          </Label>
+          <div className="flex items-center gap-3 flex-wrap">
+            {(["A_FACTURER", "FACTUREE"] as BillingLineStatus[]).map((status) => (
+              <label
+                key={status}
+                className="flex items-center gap-1.5 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedStatuses.includes(status)}
+                  onChange={() => handleStatusToggle(status)}
+                  className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-gray-700">
+                  {BILLING_LINE_STATUS_LABELS[status]}
+                </span>
+              </label>
+            ))}
+            {selectedStatuses.length < 2 && (
+              <button
+                onClick={handleSelectAllStatuses}
+                className="text-xs text-blue-600 hover:text-blue-800 underline"
+              >
+                Tout sélectionner
+              </button>
+            )}
+          </div>
         </div>
         <div className="text-center py-12 text-muted-foreground">
           Aucune échéance ne correspond aux filtres
@@ -245,21 +276,36 @@ export function BillingLinesTable({
     <div className="space-y-4">
       {/* Filters & page size */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-muted-foreground">Filtrer:</span>
-          <Select
-            value={statusFilter}
-            onValueChange={handleStatusFilterChange}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filtrer par statut" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Tous les statuts</SelectItem>
-              <SelectItem value="A_FACTURER">À facturer</SelectItem>
-              <SelectItem value="FACTUREE">Facturée</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-4 flex-wrap">
+          <Label className="text-xs font-medium text-gray-700">
+            Filtrer par statut:
+          </Label>
+          <div className="flex items-center gap-3 flex-wrap">
+            {(["A_FACTURER", "FACTUREE"] as BillingLineStatus[]).map((status) => (
+              <label
+                key={status}
+                className="flex items-center gap-1.5 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedStatuses.includes(status)}
+                  onChange={() => handleStatusToggle(status)}
+                  className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-gray-700">
+                  {BILLING_LINE_STATUS_LABELS[status]}
+                </span>
+              </label>
+            ))}
+            {selectedStatuses.length < 2 && (
+              <button
+                onClick={handleSelectAllStatuses}
+                className="text-xs text-blue-600 hover:text-blue-800 underline"
+              >
+                Tout sélectionner
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -318,8 +364,6 @@ export function BillingLinesTable({
       </div>
 
       {/* Pagination summary & controls */}
-
-        {/* Center: range text */}
       <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
         <div>
           {startIndex + 1}–{Math.min(endIndex, totalItems)} sur {totalItems}
