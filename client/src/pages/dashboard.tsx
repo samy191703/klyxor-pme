@@ -108,7 +108,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Header from "@/components/layout/header";
+import { KlyxorPageLayout } from "@/components/layout/KlyxorPageLayout";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -784,9 +784,45 @@ export default function Dashboard() {
 
   return (
     <PageTransition>
-      <div className="flex flex-col h-screen bg-gray-50">
-        {/* Custom Header with Search and Notifications */}
-        <Header />
+      <KlyxorPageLayout
+        title="Tableau de bord"
+        subtitle={
+          user?.role === "admin"
+            ? "Vue complète avec accès total aux fonctionnalités d'administration"
+            : user?.role === "manager"
+            ? "Gestion des contrats et validation des demandes de votre périmètre"
+            : user?.role === "validator"
+            ? "Validation des demandes qui vous sont assignées"
+            : "Consultation des données selon vos permissions"
+        }
+        actions={() => (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowConfigModal(true)}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Configurer
+            </Button>
+            {canExportData() && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExportModal(true)}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exporter
+              </Button>
+            )}
+          </div>
+        )}
+      >
+        {() => (
+          <div className="flex flex-col h-screen bg-gray-50">
+            {/* Custom Header with Search and Notifications */}
+            {/* <Header /> supprimé : le header vient maintenant du KlyxorPageLayout */}
+
 
         <main
           className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50"
@@ -2802,6 +2838,8 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
       </div>
+        )}
+      </KlyxorPageLayout>
     </PageTransition>
   );
 }
