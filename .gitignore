@@ -6,3 +6,4 @@ vite.config.ts.*
 *.tar.gz
 server/uploads
 .env
+.config/.semgrep/semgrep_rules.json
