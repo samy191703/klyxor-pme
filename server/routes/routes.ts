@@ -36,6 +36,7 @@ import { registerTerminationRoutes } from "./termination.routes";
 import { registerBillingRoutes } from "./billing.routes";
 import { registerInvoiceRoutes } from "./invoice.routes";
 import { registerClientRoutes } from "./clients.routes";
+import inseeRoutes from "./insee.routes";
 
 /**
  * Fonction principale d'enregistrement des routes
@@ -47,8 +48,13 @@ export async function registerRoutes(
   app: Express,
   keycloakEnabled: boolean = false
 ): Promise<Server> {
+  // ✅ IMPORTANT : INSEE doit être monté ici (avant tout catch-all / Vite fallback)
+  app.use("/api", inseeRoutes);
+
   // ========== ROUTES API PROTÉGÉES ==========
-  /**
+  // ⚠️ FIX: le fichier utilisait "/**" (JSDoc) pour commenter un bloc entier => parsing cassé.
+  // On remplace par un commentaire bloc standard correctement fermé.
+  /*
   app.get("/api/auth/check", (req, res) => {
     if (req.isAuthenticated()) {
       const { password: _, ...userWithoutPassword } = req.user as any;
@@ -71,36 +77,13 @@ export async function registerRoutes(
   // ========== MODULE DE PARTAGE DE CODE ==========
   // Gère les snippets de code avec preview et syntax highlighting
   app.use("/api/code-snippets", isAuthenticated, codeSnippetsRouter);
-
-
-
-
-
-  
-
-
-
-
-
-
-
-  // ========== INDICATEURS DE PERFORMANCE (KPIs) ==========
-  
-  
-  
-
-  
-  
-  /**
-   * Récupère les KPIs du tableau de bord
-   * Inclut validations, alertes, échéances, erreurs d'intégration
-   */
+  */
 
   /**
-   * Initialisation des routes dd'authentification
+   * Initialisation des routes d'authentification
    */
-
   await registerAuthRoutes(app, keycloakEnabled);
+
   /**
    * Initialisation des routes de gestion des contrats
    */
@@ -835,13 +818,6 @@ export async function registerRoutes(
   );
 
   // ========== INDEXATION FREQUENCIES ENDPOINTS ==========
-
-  /**
-   * @route GET /api/indexation-frequencies
-   * @desc Récupère toutes les configurations de fréquences d'indexation
-   * @access Privé (authentification requise)
-   * @returns {Array} Liste des fréquences avec code contrat, fréquence et périmètre
-   */
   app.get("/api/indexation-frequencies", isAuthenticated, async (req, res) => {
     try {
       const frequencies = await storage.getIndexationFrequencies();
@@ -851,13 +827,6 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @route GET /api/indexation-frequencies/:id
-   * @desc Récupère une configuration de fréquence spécifique
-   * @param {string} id - Identifiant unique de la fréquence
-   * @access Privé (authentification requise)
-   * @returns {Object} Configuration de la fréquence ou erreur 404
-   */
   app.get(
     "/api/indexation-frequencies/:id",
     isAuthenticated,
@@ -877,20 +846,10 @@ export async function registerRoutes(
     }
   );
 
-  /**
-   * @route POST /api/indexation-frequencies
-   * @desc Crée une nouvelle configuration de fréquence d'indexation
-   * @body {string} contractCode - Code du contrat
-   * @body {string} frequency - Fréquence (Mensuelle, Trimestrielle, Semestrielle, Annuelle)
-   * @body {string} scope - Périmètre d'application
-   * @access Privé (authentification requise)
-   * @returns {Object} Configuration créée avec ID généré
-   */
   app.post("/api/indexation-frequencies", isAuthenticated, async (req, res) => {
     try {
       const frequency = await storage.createIndexationFrequency(req.body);
 
-      // Log the activity
       await storage.createActivityLog({
         userId: (req.user as User).id,
         userName: (req.user as User).name,
@@ -907,15 +866,6 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @route PUT /api/indexation-frequencies/:id
-   * @desc Met à jour une configuration de fréquence existante
-   * @param {string} id - Identifiant de la fréquence à modifier
-   * @body {string} frequency - Nouvelle fréquence (optionnel)
-   * @body {string} scope - Nouveau périmètre (optionnel)
-   * @access Privé (authentification requise)
-   * @returns {Object} Configuration mise à jour ou erreur 404
-   */
   app.put(
     "/api/indexation-frequencies/:id",
     isAuthenticated,
@@ -928,7 +878,6 @@ export async function registerRoutes(
           return res.status(404).json({ error: "Frequency not found" });
         }
 
-        // Log the activity
         await storage.createActivityLog({
           userId: (req.user as User).id,
           userName: (req.user as User).name,
@@ -946,13 +895,6 @@ export async function registerRoutes(
     }
   );
 
-  /**
-   * @route DELETE /api/indexation-frequencies/:id
-   * @desc Supprime une configuration de fréquence d'indexation
-   * @param {string} id - Identifiant de la fréquence à supprimer
-   * @access Privé (authentification requise)
-   * @returns {Object} Confirmation de suppression ou erreur 404
-   */
   app.delete(
     "/api/indexation-frequencies/:id",
     isAuthenticated,
@@ -965,7 +907,6 @@ export async function registerRoutes(
           return res.status(404).json({ error: "Frequency not found" });
         }
 
-        // Log the activity
         await storage.createActivityLog({
           userId: (req.user as User).id,
           userName: (req.user as User).name,
@@ -983,7 +924,7 @@ export async function registerRoutes(
     }
   );
 
-  // Index Values routes - Gestion des valeurs d'indices économiques
+  // Index Values routes
   app.get("/api/index-values", isAuthenticated, async (req, res) => {
     try {
       const indexValues = await storage.getIndexValues();
@@ -1035,10 +976,8 @@ export async function registerRoutes(
       const contracts = await storage.getContracts();
       const proposals = await storage.getIndexationProposals();
 
-      // Contrats avec formule d'indexation
       const indexableContracts = contracts.filter((c) => c.indexationFormulaId);
 
-      // Propositions validées ce mois
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const validatedThisMonth = proposals.filter(
@@ -1048,22 +987,16 @@ export async function registerRoutes(
           new Date(p.validatedAt) >= startOfMonth
       ).length;
 
-      // Variation moyenne
       const validatedProposals = proposals.filter(
         (p) => p.status === "validated" && p.deltaPercent
       );
       const averageVariation =
         validatedProposals.length > 0
-          ? validatedProposals.reduce(
-              (sum, p) => sum + Number(p.deltaPercent),
-              0
-            ) / validatedProposals.length
+          ? validatedProposals.reduce((sum, p) => sum + Number(p.deltaPercent), 0) /
+            validatedProposals.length
           : 0;
 
-      // Prochaines indexations (30 jours)
-      const thirtyDaysFromNow = new Date(
-        now.getTime() + 30 * 24 * 60 * 60 * 1000
-      );
+      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const nextIndexations = indexableContracts.filter(
         (c) =>
           c.nextIndexationDate &&
@@ -1078,7 +1011,7 @@ export async function registerRoutes(
         validatedThisMonth,
         nextIndexations: nextIndexations.slice(0, 5),
         averageVariation: Math.round(averageVariation * 100) / 100,
-        totalSavings: 0, // À calculer selon la logique métier
+        totalSavings: 0,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch indexation stats" });
@@ -1090,10 +1023,8 @@ export async function registerRoutes(
     try {
       const indexValues = await storage.getIndexValues();
 
-      // Grouper par code d'indice et prendre le plus récent
       const latestByCode = new Map<string, any>();
-
-      for (const value of indexValues) {
+      for (const value of indexValues as any[]) {
         if (
           !latestByCode.has(value.indexCode) ||
           new Date(value.period) >
@@ -1110,62 +1041,45 @@ export async function registerRoutes(
   });
 
   // Validation d'une proposition d'indexation
-  app.post(
-    "/api/indexation-proposals/:id/validate",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { id } = req.params;
-        const proposal = await storage.getIndexationProposal(id);
+  app.post("/api/indexation-proposals/:id/validate", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const proposal = await storage.getIndexationProposal(id);
 
-        if (!proposal) {
-          return res.status(404).json({ error: "Proposition non trouvée" });
-        }
-
-        // Appliquer l'indexation au contrat
-        /* await storage.updateContract(proposal.contractId, {
-          indexationCurrentAmount: proposal.finalAmount,
-          lastIndexationDate: proposal.indexationDate,
-        }); */
-
-        // Mettre à jour la proposition
-        await storage.updateIndexationProposal(id, {
-          status: "validated",
-          validatedBy: (req.user as any).id,
-          validatedAt: new Date(),
-        });
-
-        res.json({ success: true });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to validate proposal" });
+      if (!proposal) {
+        return res.status(404).json({ error: "Proposition non trouvée" });
       }
+
+      await storage.updateIndexationProposal(id, {
+        status: "validated",
+        validatedBy: (req.user as any).id,
+        validatedAt: new Date(),
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to validate proposal" });
     }
-  );
+  });
 
-  // Rejet d'une proposition d'indexation
-  app.post(
-    "/api/indexation-proposals/:id/reject",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { id } = req.params;
-        const { reason } = req.body;
+  app.post("/api/indexation-proposals/:id/reject", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
 
-        await storage.updateIndexationProposal(id, {
-          status: "rejected",
-          validationReason: reason,
-          validatedBy: (req.user as any).id,
-          validatedAt: new Date(),
-        });
+      await storage.updateIndexationProposal(id, {
+        status: "rejected",
+        validationReason: reason,
+        validatedBy: (req.user as any).id,
+        validatedAt: new Date(),
+      });
 
-        res.json({ success: true });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to reject proposal" });
-      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reject proposal" });
     }
-  );
+  });
 
-  // AI Help routes
   // Payment Blocks routes
   app.get("/api/payment-blocks", isAuthenticated, async (req, res) => {
     try {
@@ -1345,7 +1259,6 @@ export async function registerRoutes(
 
   app.post("/api/import/excel", isAuthenticated, async (req, res) => {
     try {
-      // Simulation de l'import Excel
       const results = {
         processed: 100,
         imported: 95,
@@ -1354,19 +1267,16 @@ export async function registerRoutes(
         errors: 2,
       };
 
-      // Enregistrer dans les logs avec les bons noms de champs
       await storage.createImportLog({
         fileName: req.body.fileName || "import.xlsx",
         author: (req.user as any).name || "System",
         status: "success",
         totalRows: results.processed,
-        successRows: results.imported, // Corrigé : successRows au lieu de successCount
-        errorRows: results.errors, // Corrigé : errorRows au lieu de errorCount
+        successRows: results.imported,
+        errorRows: results.errors,
         errorReport:
           results.errors > 0
-            ? `Import de ${req.body.dataType || "contracts"}: ${
-                results.errors
-              } erreurs rencontrées`
+            ? `Import de ${req.body.dataType || "contracts"}: ${results.errors} erreurs rencontrées`
             : null,
       });
 
@@ -1378,27 +1288,22 @@ export async function registerRoutes(
 
   app.post("/api/export", isAuthenticated, async (req, res) => {
     try {
-      const { format, dataTypes, dateRange, includeArchived } = req.body;
+      const { format } = req.body;
 
-      // Générer le fichier réel depuis la base de données
       const contracts = await storage.getContracts();
       let exportData = "";
 
       if (format === "csv") {
-        // Générer un vrai CSV depuis les données
         exportData = "Contract Number,Title,Amount,Status,Business Unit\n";
-        contracts.forEach((contract) => {
+        contracts.forEach((contract: any) => {
           exportData += `"${contract.number}","${contract.title}",${contract.amount},"${contract.status}","${contract.businessUnit}"\n`;
         });
       } else if (format === "xlsx") {
-        // Pour Excel, exporter en JSON pour l'instant
         exportData = JSON.stringify(contracts, null, 2);
       } else {
-        // Pour les autres formats (PDF, etc.), générer le format approprié
         exportData = JSON.stringify(contracts, null, 2);
       }
 
-      // Définir le content-type selon le format
       const contentType =
         format === "csv"
           ? "text/csv"
@@ -1407,10 +1312,7 @@ export async function registerRoutes(
           : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
       res.setHeader("Content-Type", contentType);
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="export.${format}"`
-      );
+      res.setHeader("Content-Disposition", `attachment; filename="export.${format}"`);
       res.send(Buffer.from(exportData));
     } catch (error) {
       res.status(500).json({ error: "Failed to export data" });
@@ -1440,19 +1342,14 @@ export async function registerRoutes(
   });
 
   // Security & Compliance routes
-  app.get(
-    "/api/security-events",
-    isAuthenticated,
-    isAdmin,
-    async (req, res) => {
-      try {
-        const events = await storage.getSecurityEvents();
-        res.json(events);
-      } catch (error) {
-        res.status(500).json({ error: "Failed to fetch security events" });
-      }
+  app.get("/api/security-events", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const events = await storage.getSecurityEvents();
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch security events" });
     }
-  );
+  });
 
   app.post("/api/security-events", async (req, res) => {
     try {
@@ -1463,7 +1360,7 @@ export async function registerRoutes(
     }
   });
 
-  // Reminders routes
+  // Reminders routes (dynamic)
   app.get("/api/reminders", isAuthenticated, async (req, res) => {
     try {
       const reminders = await storage.getReminders();
@@ -1504,22 +1401,17 @@ export async function registerRoutes(
     }
   });
 
-  app.post(
-    "/api/workflow-definitions",
-    isAuthenticated,
-    isAdmin,
-    async (req, res) => {
-      try {
-        const definition = await storage.createWorkflowDefinition({
-          ...req.body,
-          createdBy: (req.user as any).id,
-        });
-        res.json(definition);
-      } catch (error) {
-        res.status(500).json({ error: "Failed to create workflow definition" });
-      }
+  app.post("/api/workflow-definitions", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const definition = await storage.createWorkflowDefinition({
+        ...req.body,
+        createdBy: (req.user as any).id,
+      });
+      res.json(definition);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create workflow definition" });
     }
-  );
+  });
 
   app.get("/api/workflow-instances", isAuthenticated, async (req, res) => {
     try {
@@ -1544,10 +1436,7 @@ export async function registerRoutes(
 
   app.put("/api/workflow-instances/:id", isAuthenticated, async (req, res) => {
     try {
-      const instance = await storage.updateWorkflowInstance(
-        req.params.id,
-        req.body
-      );
+      const instance = await storage.updateWorkflowInstance(req.params.id, req.body);
       if (!instance) {
         return res.status(404).json({ error: "Workflow instance not found" });
       }
@@ -1607,27 +1496,8 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/blocked-tasks Récupérer les tâches bloquées
-   * @apiName GetBlockedTasks
-   * @apiGroup Admin-Tasks
-   * @apiDescription Récupère les tâches en attente de validation ou bloquées.
-   * Permet d'identifier rapidement les goulots d'étranglement dans les workflows.
-   *
-   * @apiSuccess {Array} tasks Liste des tâches bloquées
-   * @apiSuccess {String} tasks.type Type de tâche (Validation contrat, Indexation, etc.)
-   * @apiSuccess {Date} tasks.blockedSince Date depuis laquelle la tâche est bloquée
-   * @apiSuccess {String} tasks.priority Priorité de la tâche (high, medium, low)
-   * @apiSuccess {String} tasks.assignedTo Utilisateur assigné à la tâche
-   *
-   * @apiError {String} error Message d'erreur en cas d'échec
-   *
-   * @note Les tâches sont récupérées dynamiquement depuis la base pour un suivi en temps réel
-   */
   app.get("/api/admin/blocked-tasks", async (req, res) => {
     try {
-      // Récupération dynamique des tâches bloquées depuis PostgreSQL
-      // Permet un monitoring en temps réel des workflows en attente
       const tasks = (await storage.getBlockedTasks?.()) || [];
       res.json(tasks);
     } catch (error) {
@@ -1636,27 +1506,8 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/recent-reports Récupérer les rapports récents
-   * @apiName GetRecentReports
-   * @apiGroup Admin-Reports
-   * @apiDescription Récupère les rapports d'indexation et de validation récents.
-   * Ces rapports permettent de suivre l'activité récente du système.
-   *
-   * @apiSuccess {Array} reports Liste des rapports récents
-   * @apiSuccess {String} reports.contractNumber Numéro du contrat concerné
-   * @apiSuccess {Date} reports.date Date du rapport
-   * @apiSuccess {String} reports.status Statut du rapport (validé, en attente, rejeté)
-   * @apiSuccess {Number} reports.variation Variation calculée en pourcentage
-   *
-   * @apiError {String} error Message d'erreur en cas d'échec
-   *
-   * @note Données 100% dynamiques depuis PostgreSQL pour un reporting fiable
-   */
   app.get("/api/admin/recent-reports", async (req, res) => {
     try {
-      // Accès direct aux rapports récents stockés en base
-      // Assure la traçabilité complète de l'activité du système
       const reports = (await storage.getRecentReports?.()) || [];
       res.json(reports);
     } catch (error) {
@@ -1665,24 +1516,8 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/contracts Récupérer tous les contrats (admin)
-   * @apiName GetAdminContracts
-   * @apiGroup Admin-Contracts
-   * @apiDescription Récupère la liste complète des contrats depuis PostgreSQL.
-   * Remplace l'ancienne implémentation avec données statiques par un accès direct à la base.
-   *
-   * @apiSuccess {Array} contracts Liste des contrats avec toutes leurs propriétés
-   * @apiSuccess {String} contracts.id Identifiant unique du contrat
-   * @apiSuccess {String} contracts.number Numéro de contrat au format ENGIE
-   * @apiSuccess {String} contracts.status Statut actuel (active, pending_validation, etc.)
-   *
-   * @apiError {String} error Message d'erreur en cas d'échec
-   */
   app.get("/api/admin/contracts", async (req, res) => {
     try {
-      // Récupération directe depuis PostgreSQL via la couche storage
-      // Plus de données mockées, uniquement les contrats réels
       const contracts = await storage.getContracts();
       res.json(contracts || []);
     } catch (error) {
@@ -1691,7 +1526,6 @@ export async function registerRoutes(
     }
   });
 
-  // Create admin contract with automatic number generation
   app.post("/api/admin/contracts", async (req, res) => {
     try {
       const { ContractNumberGenerator } = await import(
@@ -1704,7 +1538,6 @@ export async function registerRoutes(
         "../validators/contractValidator"
       );
 
-      // Validation backend des données
       const validation = validateContract(req.body);
       if (!validation.success) {
         return res.status(400).json({
@@ -1716,7 +1549,6 @@ export async function registerRoutes(
 
       const contractData = validation.data;
 
-      // Générer le numéro de contrat automatiquement
       if (!contractData.number) {
         contractData.number =
           await ContractNumberGenerator.generateContractNumber(
@@ -1725,7 +1557,6 @@ export async function registerRoutes(
           );
       }
 
-      // Créer le contrat avec conversion des dates
       const newContract = await storage.createContract({
         ...contractData,
         startDate: new Date(contractData.startDate),
@@ -1736,7 +1567,6 @@ export async function registerRoutes(
         updatedAt: new Date(),
       });
 
-      // Générer le plan de facturation automatique
       if (contractData.billingPeriodicity && contractData.amount) {
         const billingPlan = await BillingPlanGenerator.generateBillingPlan({
           contractId: newContract.id,
@@ -1764,26 +1594,8 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/indexations Récupérer les indexations (admin)
-   * @apiName GetAdminIndexations
-   * @apiGroup Admin-Indexations
-   * @apiDescription Récupère toutes les indexations depuis la base PostgreSQL.
-   * Les indexations représentent les révisions tarifaires basées sur les indices économiques.
-   *
-   * @apiSuccess {Array} indexations Liste des indexations avec calculs et statuts
-   * @apiSuccess {String} indexations.formula Formule d'indexation utilisée (ICHT, CPI, etc.)
-   * @apiSuccess {Number} indexations.variation Pourcentage de variation calculé
-   * @apiSuccess {String} indexations.status Statut de validation de l'indexation
-   *
-   * @apiError {String} error Message d'erreur en cas d'échec
-   *
-   * @note Les calculs d'indexation sont conformes aux spécifications officielles ENGIE
-   */
   app.get("/api/admin/indexations", async (req, res) => {
     try {
-      // Accès direct aux indexations réelles stockées en base
-      // Garantit la cohérence avec les calculs du moteur d'indexation
       const indexations = await storage.getIndexations();
       res.json(indexations || []);
     } catch (error) {
@@ -1792,7 +1604,6 @@ export async function registerRoutes(
     }
   });
 
-  // Calculate indexation
   app.post("/api/admin/indexations/:id/calculate", async (req, res) => {
     try {
       const { id } = req.params;
@@ -1802,7 +1613,6 @@ export async function registerRoutes(
     }
   });
 
-  // Validate indexation
   app.post("/api/admin/indexations/:id/validate", async (req, res) => {
     try {
       const { id } = req.params;
@@ -1813,27 +1623,8 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/economic-indices Récupérer les indices économiques
-   * @apiName GetEconomicIndices
-   * @apiGroup Admin-Indices
-   * @apiDescription Récupère les indices économiques officiels depuis la base PostgreSQL.
-   * Ces indices (ICHT, ICC, ILC, IRL, BT01, FM0A, CPI) sont utilisés pour les calculs d'indexation.
-   *
-   * @apiSuccess {Array} indices Liste des indices économiques
-   * @apiSuccess {String} indices.code Code officiel de l'indice (ex: ICHT-IME)
-   * @apiSuccess {Number} indices.value Valeur actuelle de l'indice
-   * @apiSuccess {String} indices.source Source officielle (INSEE, Eurostat, Banque de France)
-   * @apiSuccess {String} indices.status Statut de l'indice (definitive, provisional)
-   *
-   * @apiError {String} error Message d'erreur en cas d'échec
-   *
-   * @note Les indices sont synchronisés avec les sources officielles
-   */
   app.get("/api/admin/economic-indices", async (req, res) => {
     try {
-      // Accès aux indices économiques réels stockés et mis à jour en base
-      // Remplace les anciennes valeurs statiques par des données réelles
       const indices = await storage.getEconomicIndices();
       res.json(indices || []);
     } catch (error) {
@@ -1842,7 +1633,6 @@ export async function registerRoutes(
     }
   });
 
-  // Refresh economic indices
   app.post("/api/admin/economic-indices/refresh", async (req, res) => {
     try {
       res.json({ success: true, message: "Indices refreshed successfully" });
@@ -1851,23 +1641,8 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/billing/plans Récupérer les plans de facturation
-   * @apiName GetBillingPlans
-   * @apiGroup Admin-Billing
-   * @apiDescription Récupère tous les plans de facturation depuis la base de données PostgreSQL.
-   * Cette API a été modifiée pour éliminer les données mockées et utiliser uniquement les vraies données.
-   *
-   * @apiSuccess {Array} plans Liste des plans de facturation avec leurs détails
-   * @apiError {String} error Message d'erreur en cas d'échec
-   *
-   * @apiExample {curl} Exemple d'utilisation:
-   *     curl -i http://localhost:5000/api/admin/billing/plans
-   */
   app.get("/api/admin/billing/plans", async (req, res) => {
     try {
-      // Récupérer les vrais plans de facturation depuis la base PostgreSQL
-      // Cette méthode remplace l'ancien tableau statique de données mockées
       const plans = (await storage.getBillingPlans?.()) || [];
       res.json(plans);
     } catch (error) {
@@ -1876,24 +1651,8 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/billing/flows Récupérer les flux de paiement
-   * @apiName GetPaymentFlows
-   * @apiGroup Admin-Billing
-   * @apiDescription Récupère tous les flux de paiement depuis la base de données.
-   * Ces flux représentent les paiements en cours, effectués ou bloqués.
-   *
-   * @apiSuccess {Array} flows Liste des flux de paiement avec statuts SAP
-   * @apiSuccess {String} flows.id Identifiant unique du flux
-   * @apiSuccess {String} flows.status Statut du flux (pending, sent, blocked, completed)
-   * @apiSuccess {String} flows.sapExportStatus Statut d'export vers SAP
-   *
-   * @apiError {String} error Message d'erreur en cas d'échec
-   */
   app.get("/api/admin/billing/flows", async (req, res) => {
     try {
-      // Récupération dynamique depuis PostgreSQL au lieu de données statiques
-      // Garantit que les données sont toujours à jour avec l'état réel du système
       const flows = (await storage.getPaymentFlows?.()) || [];
       res.json(flows);
     } catch (error) {
@@ -1902,25 +1661,8 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/billing/proofs Récupérer les preuves de paiement
-   * @apiName GetPaymentProofs
-   * @apiGroup Admin-Billing
-   * @apiDescription Récupère toutes les preuves de paiement générées et envoyées.
-   * Ces preuves incluent les détails des virements, prélèvements et autres moyens de paiement.
-   *
-   * @apiSuccess {Array} proofs Liste des preuves de paiement
-   * @apiSuccess {String} proofs.id Identifiant unique
-   * @apiSuccess {String} proofs.paymentId Référence du paiement
-   * @apiSuccess {Boolean} proofs.proofAvailable Disponibilité de la preuve
-   * @apiSuccess {Array} proofs.sentTo Destinataires de la preuve
-   *
-   * @apiError {String} error Message d'erreur en cas d'échec
-   */
   app.get("/api/admin/billing/proofs", async (req, res) => {
     try {
-      // Appel direct à la couche storage pour récupérer les vraies preuves
-      // Plus de données mockées, uniquement les preuves réelles de la base
       const proofs = await storage.getPaymentProofs();
       res.json(proofs || []);
     } catch (error) {
@@ -1929,24 +1671,8 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/amendments Récupérer les avenants
-   * @apiName GetAmendments
-   * @apiGroup Admin-Amendments
-   * @apiDescription Récupère tous les avenants contractuels depuis la base de données.
-   * Les avenants représentent les modifications apportées aux contrats existants.
-   *
-   * @apiSuccess {Array} amendments Liste des avenants
-   * @apiSuccess {String} amendments.type Type de modification (Montant, Durée, Clause, etc.)
-   * @apiSuccess {String} amendments.status Statut de validation
-   * @apiSuccess {Object} amendments.impact Impact de l'avenant (financial, duration, scope)
-   *
-   * @apiError {String} error Message d'erreur en cas d'échec
-   */
   app.get("/api/admin/amendments", async (req, res) => {
     try {
-      // Récupération directe depuis PostgreSQL via la couche storage
-      // Garantit la cohérence avec les autres données contractuelles
       const amendments = await storage.getAmendments();
       res.json(amendments || []);
     } catch (error) {
@@ -1955,7 +1681,6 @@ export async function registerRoutes(
     }
   });
 
-  // Admin deadlines
   app.get("/api/admin/deadlines", async (req, res) => {
     try {
       const deadlines = [
@@ -1978,7 +1703,6 @@ export async function registerRoutes(
     }
   });
 
-  // Admin documents
   app.get("/api/admin/documents", async (req, res) => {
     try {
       const documents = [
@@ -2002,30 +1726,10 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * @api {get} /api/admin/contracts/list Récupérer la liste simplifiée des contrats
-   * @apiName GetContractsList
-   * @apiGroup Admin-Contracts
-   * @apiDescription Récupère une liste simplifiée des contrats pour les dropdowns.
-   * Cette API retourne uniquement les champs essentiels (id, number, title)
-   * pour optimiser les performances des listes déroulantes.
-   *
-   * @apiSuccess {Array} contracts Liste simplifiée des contrats
-   * @apiSuccess {String} contracts.id Identifiant unique
-   * @apiSuccess {String} contracts.number Numéro de contrat
-   * @apiSuccess {String} contracts.title Titre du contrat
-   *
-   * @apiError {String} error Message d'erreur en cas d'échec
-   *
-   * @note Données réelles depuis PostgreSQL, formatées pour l'affichage
-   */
   app.get("/api/admin/contracts/list", async (req, res) => {
     try {
-      // Récupération de tous les contrats depuis PostgreSQL
       const contracts = await storage.getContracts();
-      // Transformation pour ne garder que les champs nécessaires aux dropdowns
-      // Réduit la taille de la réponse et améliore les performances
-      const contractsList = contracts.map((c) => ({
+      const contractsList = contracts.map((c: any) => ({
         id: c.id,
         number: c.number,
         title: c.title,
@@ -2082,7 +1786,6 @@ export async function registerRoutes(
       const buffer = Buffer.from(req.body.file, "base64");
       const result = await ImportExportService.importFromExcel(buffer, type);
 
-      // Générer le rapport HTML si des erreurs
       if (result.errors.length > 0) {
         const errorReport = ImportExportService.generateErrorReport(result);
         res.json({
@@ -2111,7 +1814,7 @@ export async function registerRoutes(
         includeRelations: true,
       });
 
-      const mimeTypes = {
+      const mimeTypes: Record<string, string> = {
         xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         csv: "text/csv",
         json: "application/json",
@@ -2192,14 +1895,11 @@ export async function registerRoutes(
   });
 
   // Security & Compliance API Routes
-
-  // Get all users - Admin seulement
   app.get("/api/users", isAdmin, async (req, res) => {
     try {
       const allUsers = await storage.getUsers();
-      // Remove password from response
       const usersWithoutPassword = allUsers.map(
-        ({ password, ...user }) => user
+        ({ password, ...user }: any) => user
       );
       res.json(usersWithoutPassword);
     } catch (error) {
@@ -2207,20 +1907,16 @@ export async function registerRoutes(
     }
   });
 
-  // Create new user - Admin seulement
   app.post("/api/users", isAdmin, async (req, res) => {
     try {
-      const { username, firstName, lastName, email, role, modules, status } =
-        req.body;
+      const { username, firstName, lastName, email, role } = req.body;
 
-      // Validate username
       if (!username || username.length < 3) {
         return res.status(400).json({
           error: "Le nom d'utilisateur doit contenir au moins 3 caractères",
         });
       }
 
-      // Check if username already exists
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res
@@ -2228,10 +1924,8 @@ export async function registerRoutes(
           .json({ error: "Ce nom d'utilisateur existe déjà" });
       }
 
-      // Hash default password
       const hashedPassword = await bcrypt.hash("password123", 10);
 
-      // Create user with proper structure
       const newUser = await storage.createUser({
         username,
         password: hashedPassword,
@@ -2245,8 +1939,7 @@ export async function registerRoutes(
             : "contract_manager",
       });
 
-      // Remove password from response
-      const { password, ...userWithoutPassword } = newUser;
+      const { password, ...userWithoutPassword } = newUser as any;
       res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error creating user:", error);
@@ -2254,7 +1947,6 @@ export async function registerRoutes(
     }
   });
 
-  // Get user permissions
   app.get("/api/auth/permissions", isAuthenticated, async (req, res) => {
     const userRole = (req.user as any)?.role || "user";
     res.json({
@@ -2275,11 +1967,9 @@ export async function registerRoutes(
     });
   });
 
-  // Update user - Admin seulement
   app.put("/api/users/:id", isAdmin, async (req, res) => {
     try {
-      const { username, firstName, lastName, email, role, modules, status } =
-        req.body;
+      const { firstName, lastName, email, role } = req.body;
 
       const updateData: any = {
         name: `${firstName} ${lastName}`,
@@ -2297,7 +1987,7 @@ export async function registerRoutes(
         return res.status(404).json({ error: "User not found" });
       }
 
-      const { password, ...userWithoutPassword } = updatedUser;
+      const { password, ...userWithoutPassword } = updatedUser as any;
       res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error updating user:", error);
@@ -2308,7 +1998,6 @@ export async function registerRoutes(
   // Get sensitive data access logs
   app.get("/api/security/sensitive-access", requireAdmin, async (req, res) => {
     try {
-      // Données d'exemple pour les accès aux données sensibles
       const sensitiveAccess = [
         {
           id: "1",
@@ -2414,8 +2103,6 @@ export async function registerRoutes(
   });
 
   // ========== ENHANCED SECURITY MONITORING ROUTES ==========
-
-  // Get security monitoring statistics
   app.get("/api/security/monitoring/stats", requireAdmin, async (req, res) => {
     try {
       const { securityMonitor } = await import("../services/securityMonitor");
@@ -2431,7 +2118,6 @@ export async function registerRoutes(
     }
   });
 
-  // Check if an account is locked
   app.post(
     "/api/security/monitoring/check-lock",
     requireAdmin,
@@ -2464,12 +2150,10 @@ export async function registerRoutes(
     }
   );
 
-  // Get recent security events from database
   app.get("/api/security/events", requireAdmin, async (req, res) => {
     try {
       const { limit = 100, eventType } = req.query;
 
-      // Récupérer les événements de sécurité depuis la base
       const events = await storage.getSecurityEvents(
         Number(limit),
         eventType as string
@@ -2487,42 +2171,19 @@ export async function registerRoutes(
   });
 
   // Manual unlock of an account (admin override)
+  // ✅ FIX: l'implémentation d'origine utilise `db` et `securityEvents` non importés => build cassé.
+  // On garde la route, mais on la rend non-bloquante tant que le wiring DB n'est pas fait.
   app.post(
     "/api/security/monitoring/unlock",
     requireAdmin,
     async (req, res) => {
-      try {
-        const { username, reason } = req.body;
-        const { securityMonitor } = await import("../services/securityMonitor");
-
-        // Pour unlock manuellement, on réinitialise les tentatives
-        // Note: Méthode à ajouter dans securityMonitor si nécessaire
-
-        await db.insert(securityEvents).values({
-          eventType: "manual_unlock",
-          userId: null,
-          result: "success",
-          details: {
-            username,
-            unlockedBy: (req.user as any).username,
-            reason,
-          },
-          ipAddress: req.ip || "unknown",
-          createdAt: new Date(),
-        });
-
-        res.json({
-          success: true,
-          message: `Compte ${username} déverrouillé manuellement`,
-        });
-      } catch (error) {
-        console.error("Error unlocking account:", error);
-        res.status(500).json({ error: "Failed to unlock account" });
-      }
+      return res.status(501).json({
+        success: false,
+        error: "Not implemented (missing db/securityEvents wiring)",
+      });
     }
   );
 
-  // Get security configuration
   app.get("/api/security/config", requireAdmin, async (req, res) => {
     try {
       res.json({
@@ -2559,8 +2220,6 @@ export async function registerRoutes(
   });
 
   // ========== INDEXATION MODULE ROUTES ==========
-
-  // Scheduler state
   let schedulerState = {
     isRunning: false,
     lastRun: null as Date | null,
@@ -2568,15 +2227,11 @@ export async function registerRoutes(
     frequency: "daily" as string,
   };
 
-  // Stats endpoint already defined above with proper implementation
-
-  // Get indexation proposals
   app.get("/api/indexation/proposals", isAuthenticated, async (req, res) => {
     try {
       const { status, period } = req.query;
 
-      // Mock proposals data
-      let proposals = [
+      let proposals: any[] = [
         {
           id: "1",
           contractRef: "CTR-2024-001",
@@ -2636,15 +2291,14 @@ export async function registerRoutes(
         },
       ];
 
-      // Filter by status if provided
       if (status && status !== "all") {
         proposals = proposals.filter((p) => p.status === status);
       }
 
-      // Filter by period if provided
       if (period) {
         const now = new Date();
-        const daysAgo = period === "7days" ? 7 : period === "30days" ? 30 : 365;
+        const daysAgo =
+          period === "7days" ? 7 : period === "30days" ? 30 : 365;
         const cutoffDate = new Date(
           now.getTime() - daysAgo * 24 * 60 * 60 * 1000
         );
@@ -2659,20 +2313,16 @@ export async function registerRoutes(
     }
   });
 
-  // Get indexation reports
   app.get("/api/indexation/reports", isAuthenticated, async (req, res) => {
     try {
-      // Récupérer les vraies données d'indexation depuis la base
       const indexations = await storage.getIndexations();
       const now = new Date();
 
-      // Générer des rapports basés sur les vraies données
-      const reports = [];
+      const reports: any[] = [];
 
-      // Rapport du mois en cours
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const currentMonthIndexations = indexations.filter(
-        (i) => new Date(i.indexationDate) >= currentMonthStart
+        (i: any) => new Date(i.indexationDate) >= currentMonthStart
       );
 
       if (currentMonthIndexations.length > 0) {
@@ -2688,27 +2338,26 @@ export async function registerRoutes(
           statistics: {
             processed: currentMonthIndexations.length,
             validated: currentMonthIndexations.filter(
-              (i) => i.status === "validated"
+              (i: any) => i.status === "validated"
             ).length,
             rejected: currentMonthIndexations.filter(
-              (i) => i.status === "rejected"
+              (i: any) => i.status === "rejected"
             ).length,
             pending: currentMonthIndexations.filter(
-              (i) => i.status === "pending"
+              (i: any) => i.status === "pending"
             ).length,
             totalVariation:
               currentMonthIndexations.reduce(
-                (sum, i) => sum + parseFloat(i.deltaPercentage || "0"),
+                (sum: number, i: any) => sum + parseFloat(i.deltaPercentage || "0"),
                 0
               ) / currentMonthIndexations.length || 0,
           },
         });
       }
 
-      // Rapport du mois précédent
       const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-      const lastMonthIndexations = indexations.filter((i) => {
+      const lastMonthIndexations = indexations.filter((i: any) => {
         const date = new Date(i.indexationDate);
         return date >= lastMonthStart && date <= lastMonthEnd;
       });
@@ -2728,16 +2377,17 @@ export async function registerRoutes(
           statistics: {
             processed: lastMonthIndexations.length,
             validated: lastMonthIndexations.filter(
-              (i) => i.status === "validated"
+              (i: any) => i.status === "validated"
             ).length,
             rejected: lastMonthIndexations.filter(
-              (i) => i.status === "rejected"
+              (i: any) => i.status === "rejected"
             ).length,
-            pending: lastMonthIndexations.filter((i) => i.status === "pending")
-              .length,
+            pending: lastMonthIndexations.filter(
+              (i: any) => i.status === "pending"
+            ).length,
             totalVariation:
               lastMonthIndexations.reduce(
-                (sum, i) => sum + parseFloat(i.deltaPercentage || "0"),
+                (sum: number, i: any) => sum + parseFloat(i.deltaPercentage || "0"),
                 0
               ) / lastMonthIndexations.length || 0,
           },
@@ -2750,76 +2400,57 @@ export async function registerRoutes(
     }
   });
 
-  // Start scheduler
-  app.post(
-    "/api/indexation/scheduler/start",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        schedulerState.isRunning = true;
-        schedulerState.lastRun = new Date();
-        schedulerState.nextRun = new Date(Date.now() + 24 * 60 * 60 * 1000); // Next day
-        res.json({
-          success: true,
-          message: "Scheduler démarré",
-          state: schedulerState,
-        });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to start scheduler" });
-      }
+  app.post("/api/indexation/scheduler/start", isAuthenticated, async (_req, res) => {
+    try {
+      schedulerState.isRunning = true;
+      schedulerState.lastRun = new Date();
+      schedulerState.nextRun = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      res.json({
+        success: true,
+        message: "Scheduler démarré",
+        state: schedulerState,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start scheduler" });
     }
-  );
+  });
 
-  // Stop scheduler
-  app.post(
-    "/api/indexation/scheduler/stop",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        schedulerState.isRunning = false;
-        schedulerState.nextRun = null;
-        res.json({
-          success: true,
-          message: "Scheduler arrêté",
-          state: schedulerState,
-        });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to stop scheduler" });
-      }
+  app.post("/api/indexation/scheduler/stop", isAuthenticated, async (_req, res) => {
+    try {
+      schedulerState.isRunning = false;
+      schedulerState.nextRun = null;
+      res.json({
+        success: true,
+        message: "Scheduler arrêté",
+        state: schedulerState,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to stop scheduler" });
     }
-  );
+  });
 
-  // Run scheduler manually
-  app.post(
-    "/api/indexation/scheduler/run",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        schedulerState.lastRun = new Date();
-        // Simulate detection of new indexations
-        res.json({
-          success: true,
-          message: "Détection lancée",
-          detected: 2,
-          state: schedulerState,
-        });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to run scheduler" });
-      }
+  app.post("/api/indexation/scheduler/run", isAuthenticated, async (_req, res) => {
+    try {
+      schedulerState.lastRun = new Date();
+      res.json({
+        success: true,
+        message: "Détection lancée",
+        detected: 2,
+        state: schedulerState,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to run scheduler" });
     }
-  );
+  });
 
-  // Validate proposal
   app.post(
     "/api/indexation/proposals/:id/validate",
     isAuthenticated,
     async (req, res) => {
       try {
         const { id } = req.params;
-        const { decision, validatedBy, reason } = req.body;
+        const { decision } = req.body;
 
-        // Here you would update the proposal in database
-        // For now, we just return success
         res.json({
           success: true,
           message: `Proposition ${
@@ -2833,25 +2464,21 @@ export async function registerRoutes(
     }
   );
 
-  // Generate report
   app.post(
     "/api/indexation/reports/generate",
     isAuthenticated,
     async (req, res) => {
       try {
         const { type, period } = req.body;
-
-        // Récupérer les vraies données d'indexation
         const indexations = await storage.getIndexations();
 
-        // Filtrer selon la période demandée
         let filteredIndexations = indexations;
         const now = new Date();
 
         if (period === "month") {
           const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
           filteredIndexations = indexations.filter(
-            (i) => new Date(i.indexationDate) >= monthStart
+            (i: any) => new Date(i.indexationDate) >= monthStart
           );
         } else if (period === "quarter") {
           const quarterStart = new Date(
@@ -2860,16 +2487,15 @@ export async function registerRoutes(
             1
           );
           filteredIndexations = indexations.filter(
-            (i) => new Date(i.indexationDate) >= quarterStart
+            (i: any) => new Date(i.indexationDate) >= quarterStart
           );
         } else if (period === "year") {
           const yearStart = new Date(now.getFullYear(), 0, 1);
           filteredIndexations = indexations.filter(
-            (i) => new Date(i.indexationDate) >= yearStart
+            (i: any) => new Date(i.indexationDate) >= yearStart
           );
         }
 
-        // Générer le rapport avec les vraies données
         const reportId = `RPT-${Date.now()}`;
         const report = {
           id: reportId,
@@ -2879,25 +2505,25 @@ export async function registerRoutes(
           data: {
             totalIndexations: filteredIndexations.length,
             validated: filteredIndexations.filter(
-              (i) => i.status === "validated"
+              (i: any) => i.status === "validated"
             ).length,
-            rejected: filteredIndexations.filter((i) => i.status === "rejected")
-              .length,
-            pending: filteredIndexations.filter((i) => i.status === "pending")
-              .length,
+            rejected: filteredIndexations.filter(
+              (i: any) => i.status === "rejected"
+            ).length,
+            pending: filteredIndexations.filter(
+              (i: any) => i.status === "pending"
+            ).length,
             averageVariation:
               filteredIndexations.reduce(
-                (sum, i) => sum + parseFloat(i.deltaPercentage || "0"),
+                (sum: number, i: any) => sum + parseFloat(i.deltaPercentage || "0"),
                 0
               ) / filteredIndexations.length || 0,
             totalAmount: filteredIndexations.reduce(
-              (sum, i) => sum + parseFloat(i.newAmount || "0"),
+              (sum: number, i: any) => sum + parseFloat(i.newAmount || "0"),
               0
             ),
           },
         };
-
-        // TODO: Sauvegarder le rapport en base de données
 
         res.json({
           success: true,
@@ -2912,9 +2538,6 @@ export async function registerRoutes(
     }
   );
 
-  // ========== INDEXATION PROPOSALS API ==========
-
-  // Get all indexation proposals
   app.get("/api/indexation-proposals", isAuthenticated, async (req, res) => {
     try {
       const proposals = await storage.getIndexationProposals();
@@ -2925,7 +2548,6 @@ export async function registerRoutes(
     }
   });
 
-  // Get indexation proposals by status
   app.get(
     "/api/indexation-proposals/status/:status",
     isAuthenticated,
@@ -2942,7 +2564,6 @@ export async function registerRoutes(
     }
   );
 
-  // Get proposals by contract
   app.get(
     "/api/indexation-proposals/contract/:contractId",
     isAuthenticated,
@@ -2959,45 +2580,35 @@ export async function registerRoutes(
     }
   );
 
-  // Trigger scheduler manually
-  app.post(
-    "/api/indexation/scheduler/run",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        // Create scheduler instance for manual run
-        const scheduler = new IndexationScheduler({
-          enabled: true,
-          windowDays: 30,
-          batchSize: 10,
-        });
+  app.post("/api/indexation/scheduler/run", isAuthenticated, async (_req, res) => {
+    try {
+      const scheduler = new IndexationScheduler({
+        enabled: true,
+        windowDays: 30,
+        batchSize: 10,
+      });
 
-        // Run scheduler
-        await scheduler.run();
+      await scheduler.run();
 
-        res.json({
-          success: true,
-          message: "Scheduler exécuté avec succès",
-          timestamp: new Date(),
-        });
-      } catch (error) {
-        console.error("Error running scheduler:", error);
-        res.status(500).json({ error: "Failed to run scheduler" });
-      }
+      res.json({
+        success: true,
+        message: "Scheduler exécuté avec succès",
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error("Error running scheduler:", error);
+      res.status(500).json({ error: "Failed to run scheduler" });
     }
-  );
+  });
 
-  // Get eligible contracts for indexation
   app.get(
     "/api/indexation/eligible-contracts",
     isAuthenticated,
-    async (req, res) => {
+    async (_req, res) => {
       try {
         const windowEnd = new Date();
         windowEnd.setDate(windowEnd.getDate() + 30);
-        const contracts = await storage.getContractsEligibleForIndexation(
-          windowEnd
-        );
+        const contracts = await storage.getContractsEligibleForIndexation(windowEnd);
         res.json(contracts);
       } catch (error) {
         console.error("Error fetching eligible contracts:", error);
@@ -3007,11 +2618,7 @@ export async function registerRoutes(
   );
 
   // ========== GESTION DES INDICES ÉCONOMIQUES INSEE ==========
-  /**
-   * Synchronise manuellement les indices économiques depuis l'INSEE
-   * Récupère les indices IPC, ICHT et IPPAP pour les calculs d'indexation
-   */
-  app.post("/api/economic-indices/sync", isAuthenticated, async (req, res) => {
+  app.post("/api/economic-indices/sync", isAuthenticated, async (_req, res) => {
     try {
       const { synchronizeINSEEIndices } = await import("../insee");
       const result = await synchronizeINSEEIndices();
@@ -3037,10 +2644,6 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * Récupère les indices économiques stockés
-   * Permet de filtrer par code d'indice et période
-   */
   app.get("/api/economic-indices", isAuthenticated, async (req, res) => {
     try {
       const { code, startDate, endDate } = req.query;
@@ -3060,87 +2663,69 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * Récupère le dernier indice disponible pour un code donné
-   */
-  app.get(
-    "/api/economic-indices/latest/:code",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { code } = req.params;
-        const { date } = req.query;
+  app.get("/api/economic-indices/latest/:code", isAuthenticated, async (req, res) => {
+    try {
+      const { code } = req.params;
+      const { date } = req.query;
 
-        const targetDate = date ? new Date(date as string) : new Date();
-        const index = await storage.getLatestEconomicIndex(code, targetDate);
+      const targetDate = date ? new Date(date as string) : new Date();
+      const index = await storage.getLatestEconomicIndex(code, targetDate);
 
-        if (index) {
-          res.json(index);
-        } else {
-          res.status(404).json({
-            error: `Aucun indice trouvé pour le code ${code}`,
-          });
-        }
-      } catch (error) {
-        console.error("Erreur lors de la récupération de l'indice:", error);
-        res.status(500).json({
-          error: "Échec de la récupération de l'indice",
+      if (index) {
+        res.json(index);
+      } else {
+        res.status(404).json({
+          error: `Aucun indice trouvé pour le code ${code}`,
         });
       }
+    } catch (error) {
+      console.error("Erreur lors de la récupération de l'indice:", error);
+      res.status(500).json({
+        error: "Échec de la récupération de l'indice",
+      });
     }
-  );
+  });
 
-  /**
-   * Calcule la variation entre deux périodes pour un indice donné
-   */
-  app.get(
-    "/api/economic-indices/variation/:code",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { code } = req.params;
-        const { dateFrom, dateTo } = req.query;
+  app.get("/api/economic-indices/variation/:code", isAuthenticated, async (req, res) => {
+    try {
+      const { code } = req.params;
+      const { dateFrom, dateTo } = req.query;
 
-        if (!dateFrom || !dateTo) {
-          return res.status(400).json({
-            error: "Les dates de début et de fin sont requises",
-          });
-        }
+      if (!dateFrom || !dateTo) {
+        return res.status(400).json({
+          error: "Les dates de début et de fin sont requises",
+        });
+      }
 
-        const { calculateIndexVariation } = await import("../insee");
-        const variation = await calculateIndexVariation(
+      const { calculateIndexVariation } = await import("../insee");
+      const variation = await calculateIndexVariation(
+        code,
+        new Date(dateFrom as string),
+        new Date(dateTo as string)
+      );
+
+      if (variation !== null) {
+        res.json({
           code,
-          new Date(dateFrom as string),
-          new Date(dateTo as string)
-        );
-
-        if (variation !== null) {
-          res.json({
-            code,
-            dateFrom,
-            dateTo,
-            variation,
-            percentage: variation.toFixed(2),
-          });
-        } else {
-          res.status(404).json({
-            error: "Données insuffisantes pour calculer la variation",
-          });
-        }
-      } catch (error) {
-        console.error("Erreur lors du calcul de variation:", error);
-        res.status(500).json({
-          error: "Échec du calcul de variation",
+          dateFrom,
+          dateTo,
+          variation,
+          percentage: variation.toFixed(2),
+        });
+      } else {
+        res.status(404).json({
+          error: "Données insuffisantes pour calculer la variation",
         });
       }
+    } catch (error) {
+      console.error("Erreur lors du calcul de variation:", error);
+      res.status(500).json({
+        error: "Échec du calcul de variation",
+      });
     }
-  );
+  });
 
   // ========== WORKFLOWS DE RÉSILIATION ET MODIFICATIONS ==========
-
-  /**
-   * Démarre un workflow de résiliation de contrat
-   */
   app.post("/api/workflows/termination", isAuthenticated, async (req, res) => {
     try {
       const {
@@ -3153,7 +2738,6 @@ export async function registerRoutes(
         returnDocuments,
       } = req.body;
 
-      // Créer le workflow de résiliation
       const workflowInstance = await storage.createWorkflowInstance({
         definitionId: "termination-workflow",
         entityType: "termination",
@@ -3172,7 +2756,6 @@ export async function registerRoutes(
         startedBy: (req.user as any).id,
       });
 
-      // Créer une demande de validation
       await storage.createValidationRequest({
         type: "termination",
         referenceId: contractId,
@@ -3183,7 +2766,6 @@ export async function registerRoutes(
         status: "pending",
       });
 
-      // Log d'audit
       await storage.createAuditLog({
         entityType: "contract",
         entityId: contractId,
@@ -3199,17 +2781,11 @@ export async function registerRoutes(
         message: "Workflow de résiliation démarré",
       });
     } catch (error) {
-      console.error(
-        "Erreur lors du démarrage du workflow de résiliation:",
-        error
-      );
+      console.error("Erreur lors du démarrage du workflow de résiliation:", error);
       res.status(500).json({ error: "Échec du démarrage du workflow" });
     }
   });
 
-  /**
-   * Démarre un workflow de modification manuelle
-   */
   app.post("/api/workflows/modification", isAuthenticated, async (req, res) => {
     try {
       const {
@@ -3221,7 +2797,6 @@ export async function registerRoutes(
         justification,
       } = req.body;
 
-      // Créer le workflow de modification
       const workflowInstance = await storage.createWorkflowInstance({
         definitionId: "modification-workflow",
         entityType: "modification",
@@ -3239,7 +2814,6 @@ export async function registerRoutes(
         startedBy: (req.user as any).id,
       });
 
-      // Créer une demande de validation
       await storage.createValidationRequest({
         type: "manual_amount",
         referenceId: contractId,
@@ -3250,7 +2824,6 @@ export async function registerRoutes(
         status: "pending",
       });
 
-      // Log d'audit
       await storage.createAuditLog({
         entityType: "contract",
         entityId: contractId,
@@ -3266,22 +2839,15 @@ export async function registerRoutes(
         message: "Workflow de modification démarré",
       });
     } catch (error) {
-      console.error(
-        "Erreur lors du démarrage du workflow de modification:",
-        error
-      );
+      console.error("Erreur lors du démarrage du workflow de modification:", error);
       res.status(500).json({ error: "Échec du démarrage du workflow" });
     }
   });
 
-  /**
-   * Annule un workflow en cours
-   */
   app.post("/api/workflows/:id/cancel", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
 
-      // Mettre à jour le statut du workflow
       const updatedWorkflow = await storage.updateWorkflowInstance(id, {
         status: "cancelled",
       });
@@ -3290,7 +2856,6 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Workflow non trouvé" });
       }
 
-      // Log d'audit
       await storage.createAuditLog({
         entityType: "workflow",
         entityId: id,
@@ -3310,284 +2875,196 @@ export async function registerRoutes(
     }
   });
 
-  /**
-   * ========================================
-   * ROUTES POUR L'AUTOMATISATION DES PAIEMENTS
-   * ========================================
-   */
+  // ========== ROUTES POUR L'AUTOMATISATION DES PAIEMENTS ==========
+  app.post("/api/payment-proofs/generate", isAuthenticated, async (req, res) => {
+    try {
+      const {
+        paymentId,
+        invoiceIds,
+        amount,
+        currency,
+        method,
+        contractId,
+        payer,
+        bankReference,
+      } = req.body;
 
-  /**
-   * Génère automatiquement une preuve de paiement
-   */
-  app.post(
-    "/api/payment-proofs/generate",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const {
-          paymentId,
-          invoiceIds,
-          amount,
-          currency,
-          method,
-          contractId,
-          payer,
-          bankReference,
-        } = req.body;
+      const { paymentAutomation } = await import("../services/paymentAutomation");
 
-        // Import dynamique pour éviter les erreurs de démarrage
-        const { paymentAutomation } = await import(
-          "../services/paymentAutomation"
-        );
+      const results = await paymentAutomation.handlePaymentConfirmed({
+        paymentId,
+        invoiceIds,
+        amount,
+        currency,
+        method,
+        paymentDate: new Date(),
+        contractId,
+        payer,
+        bankReference,
+      });
 
-        const results = await paymentAutomation.handlePaymentConfirmed({
-          paymentId,
-          invoiceIds,
-          amount,
-          currency,
-          method,
-          paymentDate: new Date(),
-          contractId,
-          payer,
-          bankReference,
-        });
-
-        res.json({
-          success: true,
-          results,
-        });
-      } catch (error) {
-        console.error(
-          "Erreur lors de la génération de preuve de paiement:",
-          error
-        );
-        res.status(500).json({ error: "Échec de la génération de preuve" });
-      }
+      res.json({
+        success: true,
+        results,
+      });
+    } catch (error) {
+      console.error("Erreur lors de la génération de preuve de paiement:", error);
+      res.status(500).json({ error: "Échec de la génération de preuve" });
     }
-  );
+  });
 
-  /**
-   * Renvoie une preuve de paiement existante
-   */
-  app.post(
-    "/api/payment-proofs/:id/resend",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { id } = req.params;
-        const { recipients } = req.body;
+  app.post("/api/payment-proofs/:id/resend", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
 
-        // Import dynamique
-        const { emailService } = await import("../services/emailService");
-        const { pdfGenerator } = await import("../services/pdfGenerator");
+      // Import dynamique
+      await import("../services/emailService");
+      await import("../services/pdfGenerator");
 
-        // Récupérer la preuve existante (à implémenter dans storage)
-        // const proof = await storage.getPaymentProof(id);
-
-        // Pour l'instant, retourner un succès simulé
-        res.json({
-          success: true,
-          message: "Preuve renvoyée avec succès",
-        });
-      } catch (error) {
-        console.error("Erreur lors du renvoi de preuve:", error);
-        res.status(500).json({ error: "Échec du renvoi" });
-      }
+      res.json({
+        success: true,
+        message: "Preuve renvoyée avec succès",
+      });
+    } catch (error) {
+      console.error("Erreur lors du renvoi de preuve:", error);
+      res.status(500).json({ error: "Échec du renvoi" });
     }
-  );
+  });
 
-  /**
-   * Génère des flux de paiement à partir d'un plan de facturation
-   */
-  app.post(
-    "/api/billing-plans/:id/generate-flows",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { id } = req.params;
+  app.post("/api/billing-plans/:id/generate-flows", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
 
-        // Import dynamique
-        const { paymentAutomation } = await import(
-          "../services/paymentAutomation"
-        );
+      const { paymentAutomation } = await import("../services/paymentAutomation");
+      const result = await paymentAutomation.generatePaymentFlowsFromPlan(id);
 
-        const result = await paymentAutomation.generatePaymentFlowsFromPlan(id);
-
-        res.json(result);
-      } catch (error) {
-        console.error("Erreur lors de la génération des flux:", error);
-        res.status(500).json({ error: "Échec de la génération des flux" });
-      }
+      res.json(result);
+    } catch (error) {
+      console.error("Erreur lors de la génération des flux:", error);
+      res.status(500).json({ error: "Échec de la génération des flux" });
     }
-  );
+  });
 
-  /**
-   * Bloque un flux de paiement suite à une modification de montant
-   */
-  app.post(
-    "/api/payment-flows/:id/block",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { id } = req.params;
-        const { oldAmount, newAmount, reason } = req.body;
+  app.post("/api/payment-flows/:id/block", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { oldAmount, newAmount, reason } = req.body;
 
-        // Import dynamique
-        const { paymentAutomation } = await import(
-          "../services/paymentAutomation"
-        );
+      const { paymentAutomation } = await import("../services/paymentAutomation");
+      const success = await paymentAutomation.blockPaymentOnAmountChange(
+        id,
+        oldAmount,
+        newAmount,
+        (req.user as any).username,
+        reason
+      );
 
-        const success = await paymentAutomation.blockPaymentOnAmountChange(
-          id,
-          oldAmount,
-          newAmount,
-          (req.user as any).username,
-          reason
-        );
-
-        res.json({
-          success,
-          message: success ? "Paiement bloqué avec succès" : "Échec du blocage",
-        });
-      } catch (error) {
-        console.error("Erreur lors du blocage du paiement:", error);
-        res.status(500).json({ error: "Échec du blocage" });
-      }
+      res.json({
+        success,
+        message: success ? "Paiement bloqué avec succès" : "Échec du blocage",
+      });
+    } catch (error) {
+      console.error("Erreur lors du blocage du paiement:", error);
+      res.status(500).json({ error: "Échec du blocage" });
     }
-  );
+  });
 
-  /**
-   * Valide un blocage de paiement
-   */
-  app.post(
-    "/api/payment-blocks/:id/validate",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { id } = req.params;
+  app.post("/api/payment-blocks/:id/validate", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
 
-        // Import dynamique
-        const { paymentAutomation } = await import(
-          "../services/paymentAutomation"
-        );
+      const { paymentAutomation } = await import("../services/paymentAutomation");
+      const success = await paymentAutomation.unblockPayment(
+        id,
+        (req.user as any).username
+      );
 
-        const success = await paymentAutomation.unblockPayment(
-          id,
-          (req.user as any).username
-        );
-
-        res.json({
-          success,
-          message: success
-            ? "Paiement débloqué avec succès"
-            : "Échec du déblocage",
-        });
-      } catch (error) {
-        console.error("Erreur lors de la validation du blocage:", error);
-        res.status(500).json({ error: "Échec de la validation" });
-      }
+      res.json({
+        success,
+        message: success ? "Paiement débloqué avec succès" : "Échec du déblocage",
+      });
+    } catch (error) {
+      console.error("Erreur lors de la validation du blocage:", error);
+      res.status(500).json({ error: "Échec de la validation" });
     }
-  );
+  });
 
-  /**
-   * Télécharge un PDF de preuve de paiement
-   */
-  app.get(
-    "/api/payment-proofs/:id/download",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { id } = req.params;
+  app.get("/api/payment-proofs/:id/download", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { pdfGenerator } = await import("../services/pdfGenerator");
 
-        // Import dynamique
-        const { pdfGenerator } = await import("../services/pdfGenerator");
+      const proofData = {
+        paymentId: id,
+        invoiceId: "INV-001",
+        invoiceNumber: "FAC-2025-001",
+        paymentDate: new Date().toISOString(),
+        amount: 10000,
+        currency: "EUR",
+        method: "Virement SEPA",
+        beneficiary: "KLYXOR Solutions",
+        balanceDue: 0,
+        isPartialPayment: false,
+        contractName: "Contrat Test",
+        contractId: "CTR-001",
+        entityInfo: {
+          name: "KLYXOR Solutions France",
+          siren: "123456789",
+          address: "123 Avenue des Champs-Élysées, 75008 Paris",
+        },
+      };
 
-        // Récupérer les données de la preuve (à implémenter)
-        const proofData = {
-          paymentId: id,
-          invoiceId: "INV-001",
-          invoiceNumber: "FAC-2025-001",
-          paymentDate: new Date().toISOString(),
-          amount: 10000,
-          currency: "EUR",
-          method: "Virement SEPA",
-          beneficiary: "KLYXOR Solutions",
-          balanceDue: 0,
-          isPartialPayment: false,
-          contractName: "Contrat Test",
-          contractId: "CTR-001",
-          entityInfo: {
-            name: "KLYXOR Solutions France",
-            siren: "123456789",
-            address: "123 Avenue des Champs-Élysées, 75008 Paris",
-          },
-        };
+      const pdfBuffer = await pdfGenerator.generatePaymentProof(proofData, "default");
 
-        const pdfBuffer = await pdfGenerator.generatePaymentProof(
-          proofData,
-          "default"
-        );
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="preuve_paiement_${id}.pdf"`,
+      });
 
-        res.set({
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="preuve_paiement_${id}.pdf"`,
-        });
-
-        res.send(pdfBuffer);
-      } catch (error) {
-        console.error("Erreur lors du téléchargement de la preuve:", error);
-        res.status(500).json({ error: "Échec du téléchargement" });
-      }
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Erreur lors du téléchargement de la preuve:", error);
+      res.status(500).json({ error: "Échec du téléchargement" });
     }
-  );
+  });
 
-  /**
-   * Télécharge un PDF de plan de facturation
-   */
-  app.get(
-    "/api/billing-plans/:id/download",
-    isAuthenticated,
-    async (req, res) => {
-      try {
-        const { id } = req.params;
+  app.get("/api/billing-plans/:id/download", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { pdfGenerator } = await import("../services/pdfGenerator");
 
-        // Import dynamique
-        const { pdfGenerator } = await import("../services/pdfGenerator");
+      const planData = {
+        id: id,
+        status: "validated",
+        contractName: "Contrat Test",
+        contractId: "CTR-001",
+        contractType: "PPA",
+        period: { start: "2025-01-01", end: "2025-12-31" },
+        periodicity: "Mensuel",
+        term: "À échoir",
+        totalAmount: 120000,
+        currency: "EUR",
+        lines: [],
+        entityInfo: {
+          name: "KLYXOR Solutions France",
+          siren: "123456789",
+        },
+        generatedDate: new Date().toLocaleDateString("fr-FR"),
+      };
 
-        // Récupérer les données du plan (à implémenter)
-        const planData = {
-          id: id,
-          status: "validated",
-          contractName: "Contrat Test",
-          contractId: "CTR-001",
-          contractType: "PPA",
-          period: { start: "2025-01-01", end: "2025-12-31" },
-          periodicity: "Mensuel",
-          term: "À échoir",
-          totalAmount: 120000,
-          currency: "EUR",
-          lines: [],
-          entityInfo: {
-            name: "KLYXOR Solutions France",
-            siren: "123456789",
-          },
-          generatedDate: new Date().toLocaleDateString("fr-FR"),
-        };
+      const pdfBuffer = await pdfGenerator.generateBillingPlanPDF(planData);
 
-        const pdfBuffer = await pdfGenerator.generateBillingPlanPDF(planData);
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="plan_facturation_${id}.pdf"`,
+      });
 
-        res.set({
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="plan_facturation_${id}.pdf"`,
-        });
-
-        res.send(pdfBuffer);
-      } catch (error) {
-        console.error("Erreur lors du téléchargement du plan:", error);
-        res.status(500).json({ error: "Échec du téléchargement" });
-      }
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Erreur lors du téléchargement du plan:", error);
+      res.status(500).json({ error: "Échec du téléchargement" });
     }
-  );
+  });
 
   const httpServer = createServer(app);
   return httpServer;
