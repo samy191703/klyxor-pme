@@ -1,0 +1,29 @@
+1) Audit rapide :
+- Détecte la stack (NestJS + TypeORM ? Prisma ? Autre ?).
+- Liste les services testés qui dépendent du repository/ORM.
+- Identifie les points de douleur (mocks de createQueryBuilder, PrismaClient, connexions non fermées, données qui fuient, tests “hanging”).
+
+2) Choix de stratégie et application :
+- STRATÉGIE A (par défaut) — Unit tests purs : isole la BD via ports/adapters ou via mock du Repository ORM ; fournis des implémentations InMemory pour les dépôts utilisés par les services (Map/Record).
+- STRATÉGIE B — Intégration légère : si nécessaire, configure une BD éphémère locale (SQLite in-memory pour TypeORM | SQLite provider pour Prisma). No Docker requis.
+- Évite absolument de mocker DataSource/connection bas niveau.
+
+3) Changes concrets à faire (commits/patchs) :
+- Crée un dossier `src/domain/ports/` avec interfaces de dépôts ; crée `test/fakes/*InMemory*.ts`.
+- Mets à jour les specs : injecte les fakes via tokens (TypeORM: getRepositoryToken(Entity)) ou via un token custom pour les ports.
+- Si du QueryBuilder est utilisé, soit le remplaces par des méthodes de repo testables, soit ajoutes un mock chaînable minimal (where/leftJoinAndSelect/orderBy -> return this).
+- Ajoute/valide `jest.config.(js|ts)` + `setupFilesAfterEnv` (clearAllMocks, timers) et scripts npm (`test`, `test:watch`, `test:cov`).
+- Ajoute un util de reset entre tests (réinit fakes ou rollback transaction si mode intégration).
+
+4) Exemples à produire :
+- Un fake repository générique (Map) + un test d’exemple “happy path” + un test d’erreur (ex : doublon email).
+- Si TypeORM QueryBuilder est encore utilisé quelque part, fournis un stub chaînable minimal.
+
+5) Critères d’acceptation :
+- `npm test` passe sans “open handles”.
+- Pas de mock de DataSource/connection.
+- Tests idempotents et rapides (< 2s pour le suite actuelle).
+- Couverture ≥ 70% sur les services ciblés.
+- Documentation courte `TESTING.md` expliquant comment lancer et étendre les tests.
+
+Commence par l’audit, propose la STRATÉGIE retenue en 3 puces, puis applique les changements et colle les patchs/fichiers complets.

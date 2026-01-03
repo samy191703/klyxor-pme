@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clm-app
+  namespace: NAMESPACE_PLACEHOLDER
+  labels:
+    app: clm-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clm-app
+  template:
+    metadata:
+      labels:
+        app: clm-app
+    spec:
+      containers:
+        - name: clm-app
+          image: IMAGE_PLACEHOLDER
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          env:
+            - name: NODE_ENV
+              value: production
+          envFrom:
+            - configMapRef:
+                name: clm-app-config
+          resources:
+            requests:
+              memory: "512Mi" # min garanti au scheduler
+              cpu: "500m"
+            limits:
+              memory: "1Gi" # max autorisé
+              cpu: "1"

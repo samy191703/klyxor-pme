@@ -1,0 +1,188 @@
+/* ===== RESPONSIVE FIXES FOR KLYXOR ===== */
+
+/* 1. Global Mobile Improvements */
+@media (max-width: 640px) {
+  /* Fix for modals on mobile */
+  .dialog-content,
+  .sheet-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: auto;
+  }
+  
+  /* Better spacing on mobile */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Fix table overflow on mobile */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Responsive cards */
+  .card {
+    border-radius: 0.5rem;
+  }
+  
+  /* Fix buttons on mobile */
+  .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  /* Better form layout on mobile */
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* 2. Tablet Improvements */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Adjust grid layouts for tablets */
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  /* Better modal width on tablets */
+  .dialog-content {
+    width: 85vw;
+    max-width: 85vw;
+  }
+}
+
+/* 3. Fix for overflow issues */
+.overflow-x-auto {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 4. Responsive typography */
+@media (max-width: 640px) {
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 1.125rem; }
+  .text-3xl { font-size: 1.5rem; }
+  .text-2xl { font-size: 1.25rem; }
+  .text-xl { font-size: 1.125rem; }
+}
+
+/* 5. Fix for AI Help Bubble on mobile */
+@media (max-width: 640px) {
+  .popover-content {
+    width: 90vw !important;
+    left: 5vw !important;
+    right: 5vw !important;
+  }
+}
+
+/* 6. Responsive KPI Cards */
+@media (max-width: 640px) {
+  .kpi-card {
+    min-height: 120px;
+  }
+  
+  .kpi-card .text-2xl {
+    font-size: 1.5rem;
+  }
+}
+
+/* 7. Sidebar responsiveness */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: -100%;
+    transition: left 0.3s ease;
+    z-index: 50;
+  }
+  
+  .sidebar.open {
+    left: 0;
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+  }
+}
+
+/* 8. Better scrolling on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 9. Fix for form inputs on iOS */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* 10. Responsive tables */
+@media (max-width: 768px) {
+  .responsive-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  .responsive-table table {
+    min-width: 600px;
+  }
+}
+
+/* 11. Modal responsive improvements */
+.modal-responsive {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .modal-responsive {
+    max-height: 85vh;
+    margin: 1rem;
+  }
+}
+
+/* 12. Fix for dropdown menus on mobile */
+@media (max-width: 640px) {
+  .dropdown-menu {
+    width: 90vw;
+    max-width: 90vw;
+  }
+}
+
+/* 13. Better touch targets for mobile */
+@media (max-width: 768px) {
+  button, a, .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .btn-sm {
+    padding: 0.5rem 1rem;
+    min-height: 40px;
+  }
+}
+
+/* 14. Responsive badges and pills */
+@media (max-width: 640px) {
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.375rem;
+  }
+}
+
+/* 15. Fix for floating action buttons */
+@media (max-width: 640px) {
+  .fab {
+    bottom: 1rem;
+    right: 1rem;
+  }
+}

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clm-app-config
+  namespace: clm
+data:
+  ENVIRONMENT: "DEV"
+  DATABASE_URL: "postgresql://neondb_owner:npg_ZNGeOwj95QUB@ep-withered-bonus-ad6coulm-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+  #DATABASE_URL: "postgresql://neondb_owner:npg_ZNGeOwj95QUB@ep-withered-bonus-ad6coulm-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+  OPENAI_API_KEY: ""

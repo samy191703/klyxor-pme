@@ -1,0 +1,148 @@
+Parfait — **Rubrique : Avenants (Admin)**
+*(Pour chaque écran : **Contenu & composants** uniquement → puis **Actions disponibles sur cet écran**. Pas de tableaux de prose.)*
+
+---
+
+## Écran **AV‑1 — Avenants : Liste globale**
+
+### Contenu & composants
+
+* **Titre** : « Avenants ».
+* **Tuiles KPI** sous le titre : *Brouillons*, *À valider*, *Validés (30 j)*, *Rejetés*, *Annulés*.
+
+  > Rappel de règle : **aucun avenant n’est actif sans validation** ; un avenant peut être **annulé avant validation**.&#x20;
+* **Barre de filtres** (horizontale) :
+
+  * **Période** (création / date d’effet), **Statut** (*Brouillon / À valider / Validé / Rejeté / Annulé*),
+  * **Contrat** (N° + intitulé), **Type de modification** (*Durée / Montant / Clause*),
+  * **Demandeur**, **Valideur assigné**, **Recherche** (ID avenant, N° contrat, mot‑clé).&#x20;
+* **Liste (tableau)** — colonnes visibles :
+
+  * **ID avenant** (lien), **Contrat** (N° + intitulé), **Champs concernés** (ex. *Durée, Montant*),
+  * **Avant / Après** (valeurs clés), **Date d’effet**, **Statut**, **Valideur assigné**, **Dernière MàJ**.
+
+  > L’affichage et certaines colonnes sont **restreints par rôle** (RBAC).&#x20;
+* **Encart d’aide** (sous filtres) : mention que les **échéances d’avenant** alimentent aussi le module *Échéances* (fin d’avenant).&#x20;
+* **Pied de liste** : pagination 25/50/100 + compteur.
+
+### Actions disponibles sur cet écran
+
+* **Créer un avenant** (ouvre AV‑2).&#x20;
+* **Ouvrir le détail** d’un avenant (panneau AV‑3).&#x20;
+* **Valider / Rejeter** directement (si habilité) ou **Annuler** un brouillon.
+* **Ouvrir la fiche contrat** liée.
+
+---
+
+## Écran **AV‑2 — Nouvel avenant (Assistant pas‑à‑pas)**
+
+### Contenu & composants
+
+* **En‑tête** : « Nouvel avenant » + barre de **progression** (Étapes 1→4).
+* **Étape 1 — Sélection du contrat**
+
+  * **Recherche** (N°, intitulé), **résumé** du contrat choisi (statut, dates, montants).
+* **Étape 2 — Définition de l’avenant**
+
+  * **Type de modification** (*Durée / Montant / Clause autre*).
+  * **Champs concernés** (zones dynamiques selon le type).
+  * **Valeurs “Avant / Après”** (saisie guidée + contrôle de format).
+  * **Motif de l’avenant** (texte court, obligatoire).&#x20;
+* **Étape 3 — Date d’effet & périmètre**
+
+  * **Date d’effet** (jj‑mm‑aaaa), **période couverte** (si applicable).&#x20;
+* **Étape 4 — Pièces jointes (recommandé : avenant signé)**
+
+  * **Zone d’upload** (drag‑drop / parcourir), **formats autorisés** : PDF, DOCX, XLSX, JPG, PNG.
+  * **Métadonnées** visibles : type (*Avenant*), auteur, horodatage. **Fichier non modifiable** après upload ; **suppression** uniquement par **admin**.
+* **Récapitulatif** (lecture seule) avant soumission : *Contrat, champs modifiés, avant/après, date d’effet, PJ*.
+
+### Actions disponibles sur cet écran
+
+* **Suivant / Précédent**, **Enregistrer en brouillon**.
+* **Soumettre à validation** → statut **« À valider »** et déclenchement **workflow**.
+
+---
+
+## Écran **AV‑3 — Détail d’un avenant (panneau latéral)**
+
+### Contenu & composants
+
+* **En‑tête** : **ID avenant** + **Contrat** (N° + intitulé), **Statut** (badge), **Date d’effet**.&#x20;
+* **Bloc “Comparatif” (Avant / Après)** : liste des **champs impactés** avec **valeurs avant/après** (lecture seule).&#x20;
+* **Bloc “Workflow”** : **Valideur assigné**, **SLA / relances > 24 h** (si paramétré), **journal des décisions** (horodatages).&#x20;
+* **Bloc “Documents”** : pièces jointes **type : Avenant** (nom, format, auteur, date).&#x20;
+* **Bloc “Historisation”** : **timeline** *création → soumission → validation/rejet/annulation → application*, avec auteur et **Trace‑ID**. **Non modifiable**.&#x20;
+* **Lien contexte** : « Voir la **fiche contrat** » (ouvrir GC).
+
+### Actions disponibles sur cet écran
+
+* **Valider / Rejeter** (ouvre AV‑4) si rôle autorisé.&#x20;
+* **Annuler** (si *Brouillon* ou *À valider* et si permissions).&#x20;
+* **Télécharger / ouvrir** les pièces jointes.&#x20;
+* **Fermer** le panneau.
+
+---
+
+## Écran **AV‑4 — Modale “Valider / Rejeter l’avenant”**
+
+### Contenu & composants
+
+* **Résumé** : Contrat, **champs modifiés**, **Avant / Après**, **Date d’effet**, **Pièces jointes**.&#x20;
+* **Zone décision** : boutons radio **Valider** / **Rejeter**.
+* **Champ “Motif”** : **obligatoire si Rejet**, message d’aide.&#x20;
+* **Note** : *Après **validation**, la modification **impacte le contrat principal** et l’événement est **historisé**.*
+
+### Actions disponibles sur cet écran
+
+* **Valider** (application immédiate sur le contrat, log d’audit).
+* **Rejeter** (motif requis, notification, aucun impact).&#x20;
+* **Fermer**.
+
+---
+
+## Écran **AV‑5 — Historique des avenants (journal)**
+
+### Contenu & composants
+
+* **Titre** : « Historique des avenants ».
+* **Filtres** : Période, Contrat, **Type de modification** (*Durée / Montant / Clause*), **Décision** (*Validé / Rejeté / Annulé*), **Auteur / Valideur**, Recherche.&#x20;
+* **Liste** (lecture seule) : **Date/heure**, **ID avenant**, **Contrat**, **Champs concernés**, **Avant / Après**, **Décision** (badge), **Motif (si rejet)**, **Trace‑ID**.
+
+  > **Intégrité** : journaux **horodatés, non modifiables** et **filtrables** selon droits.
+* **Pied** : pagination (25/50/100), compteur.
+
+### Actions disponibles sur cet écran
+
+* **Ouvrir** le détail d’une occurrence (AV‑3).
+* **Ouvrir** la fiche contrat liée.
+
+---
+
+## Écran **AV‑6 — États vides & erreurs (Avenants)**
+
+### Contenu & composants
+
+* **État vide (liste AV‑1)** : « Aucun avenant ne correspond à vos filtres. »
+* **Bannière “Erreur de validation”** : *Décision non enregistrée — l’avenant reste **À valider***.&#x20;
+* **Bannière “Upload de document échoué”** : *Le fichier n’a pas été ajouté, réessayez ; aucune donnée n’a été perdue.*&#x20;
+* **Encart rappel** : *Un avenant **peut être annulé** avant validation.*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Réinitialiser les filtres** (retour liste).
+* **Retenter l’upload** (si erreur).&#x20;
+* **Notifier l’admin** (si incident persistant).
+
+---
+
+### Rappels visibles pour le designer (non‑comportemental)
+
+* **Validation obligatoire** : un avenant **validé** seul **impacte** le contrat ; sinon aucun effet.&#x20;
+* **Historisation complète** : toutes les étapes (création, soumission, décision, application) sont **loguées** avec *avant/après*.&#x20;
+* **RBAC partout** : visibilité des lignes, détails, actions et documents **selon rôle**.&#x20;
+* **Échéances d’avenant** : la “fin d’avenant” peut apparaître dans le **tableau des échéances**.&#x20;
+
+---
+
+Si ce format te convient, dis **« suivant »** et je passe à la rubrique de ton choix (ex. **Résiliations** ou **Extraction**), en gardant la même structure *Contenu & composants* → *Actions disponibles*.

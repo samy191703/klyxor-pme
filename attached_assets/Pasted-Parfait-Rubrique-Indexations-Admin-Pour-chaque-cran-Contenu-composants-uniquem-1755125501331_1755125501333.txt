@@ -1,0 +1,192 @@
+Parfait — **Rubrique : Indexations (Admin)**
+*(Pour chaque écran : **Contenu & composants** uniquement → puis **Actions disponibles sur cet écran**. Pas de tableaux de prose.)*
+
+---
+
+## Écran **IX‑1 — Indexations : Liste globale (tableau de bord)**
+
+### Contenu & composants
+
+* **Titre** : « Indexations ».
+* **Tuiles KPI** sous le titre : *À calculer aujourd’hui*, *À valider*, *Validées (30 j)*, *En erreur* (calcul ou récupération d’indice). Les indexations sont **détectées automatiquement** à la **date d’indexation** de chaque contrat ; aucune application n’a lieu sans **validation**.
+* **Barre de filtres** (horizontale) :
+
+  * **Période d’indexation** (intervalle de dates).
+  * **Statut** : *À calculer* / *Calculé — en attente de validation* / *Validé — appliqué* / *Rejeté* / *Erreur de calcul* / *En attente d’indice*.
+  * **Fréquence** (annuelle, trimestrielle, …), **Formule d’indexation** (libellé), **Indice** (clé), **Source** (INSEE/Eurostat…), **BU/Entité**, **Responsable**, **Recherche** (N°, titre).
+* **Liste (tableau)** — colonnes visibles :
+
+  * **Contrat** (N° + intitulé), **Date d’indexation**, **Fréquence**, **Formule** (synthèse), **Indice** (clé), **Date indice d’origine** / **Date de révision**, **Montant précédent**, **Montant proposé**, **Δ %**, **Statut**, **Valideur assigné**, **Dernière MàJ**.
+
+  > Les lignes affichées et certaines colonnes sont **restreintes par rôle** (RBAC).
+* **Encart d’aide** (sous filtres) : « Les **calculs utilisent des indices définitifs**. En cas d’indisponibilité ou d’échec d’API, l’indexation reste à l’état *En attente d’indice*. »&#x20;
+* **Pied de liste** : pagination 25/50/100 + compteur.
+
+### Actions disponibles sur cet écran
+
+* **Ouvrir le détail** (panneau latéral IX‑2).
+* **Recalculer** (rafraîchir les données d’indice et relancer le calcul sur une ligne).&#x20;
+* **Valider / Rejeter** une indexation (si habilité).
+* **Ouvrir l’historique** (IX‑5).&#x20;
+* **Télécharger le rapport** (après validation) ou **ouvrir** la liste des rapports (IX‑6).&#x20;
+
+---
+
+## Écran **IX‑2 — Détail d’une indexation (panneau latéral)**
+
+### Contenu & composants
+
+* **En‑tête** : **Contrat** (N° + titre), **Date d’indexation**, **Statut** (badge).
+* **Bloc “Paramètres contractuels”** : **Fréquence**, **Formule d’indexation**, **Périmètre** (fixe / variable / lignes concernées).&#x20;
+* **Bloc “Indices utilisés”** : **Clé d’indice** (ex. BT01, FM0A…), **Source** (INSEE/Eurostat), **Dernière valeur (définitive)** + **date de publication**, **Dates de référence** : *indice d’origine* / *indice révisé*.
+* **Bloc “Calcul”** (lecture seule) : **formule** affichée en clair (ex. `(Montant N‑1) × (Indice N / Indice N‑1)`), **Montant précédent**, **Montant calculé**, **Δ absolu**, **Δ %**, **Règle d’arrondi**.
+
+  * **Note** : *Aucune application sans décision de validation.*&#x20;
+* **Bloc “Workflow”** : **À valider par** (personne/équipe), **SLA** (si paramétré), **Relances auto > 24 h** (indicateur).&#x20;
+* **Bloc “Historisation”** : timeline des événements (*calcul, recalcul, validation/rejet, application*), avec **horodatage**, **auteur**, **valeurs avant/après**.&#x20;
+* **Lien** : « **Rapport d’indexation** » (visible **après validation**).&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Recalculer** (rafraîchir et rejouer le calcul).&#x20;
+* **Valider / Rejeter** (ouvre la modale IX‑4).
+* **Ouvrir l’historique complet** (IX‑5).&#x20;
+* **Ouvrir le rapport** (si existant) (IX‑7).&#x20;
+* **Fermer** le panneau.
+
+---
+
+## Écran **IX‑3 — Modale “Recalculer l’indexation”**
+
+### Contenu & composants
+
+* **Titre modale** : « Recalculer l’indexation ».
+* **Récapitulatif figé** : Contrat, Date d’indexation, Formule, Clé d’indice, Valeur utilisée actuellement.
+* **Bloc “Source des indices”** : information sur la **dernière valeur connue (définitive)** et sa **date de publication**.&#x20;
+* **Message** : « Le recalcul utilise automatiquement la **dernière valeur d’indice disponible et définitive**. »&#x20;
+* **Pied de modale** : **Annuler**, **Lancer le recalcul**.
+
+### Actions disponibles sur cet écran
+
+* **Lancer le recalcul** (mise à jour de la ligne : nouveaux montants calculés, statut : *Calculé — en attente de validation*).&#x20;
+* **Annuler**.
+
+---
+
+## Écran **IX‑4 — Modale “Valider / Rejeter l’indexation”**
+
+### Contenu & composants
+
+* **Résumé du calcul** : Montant précédent, Indices N‑1 / N (valeurs + dates + source), Montant calculé, Δ % / Δ €.&#x20;
+* **Zone décision** : boutons radio **Valider** / **Rejeter**.
+* **Champ “Motif”** : **obligatoire en cas de rejet** (contrôle bloquant).&#x20;
+* **Note** : *Après validation, le montant est appliqué au contrat et l’opération est historisée.*
+
+### Actions disponibles sur cet écran
+
+* **Valider** (application immédiate au contrat, génération du **rapport d’indexation**).
+* **Rejeter** (motif requis, aucune application, journalisation).
+* **Fermer**.
+
+---
+
+## Écran **IX‑5 — Historique des indexations (journal)**
+
+### Contenu & composants
+
+* **Titre** : « Historique des indexations ».
+* **Filtres** : Période, Contrat, Clé d’indice, Source, **Résultat** (Validé/Rejeté), **Type d’événement** (Calcul / Recalcul / Validation / Application), Recherche (ID/contrat).
+* **Liste** (lecture seule) : **Date/heure**, **Contrat**, **Indice N‑1 / N** (valeurs + dates + source), **Montant précédent**, **Montant proposé**, **Décision** (Validé/Rejeté), **Δ %**, **Auteur**, **Trace‑ID**.
+
+  > **Intégrité** : entrée horodatée, **non modifiable**, visible selon droits.
+* **Pied** : pagination + **Export** (Excel/CSV) si autorisé.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Exporter** le journal filtré (Excel/CSV).&#x20;
+* **Ouvrir** le contrat lié (fiche).
+* **Ouvrir** le détail d’une occurrence (IX‑2).
+
+---
+
+## Écran **IX‑6 — Rapports d’indexation (liste)**
+
+### Contenu & composants
+
+* **Titre** : « Rapports d’indexation ».
+* **Barre de filtres** : Période, Contrat, Clé d’indice, Source, **Statut indexation** (Validée), Recherche.
+* **Liste** : **Date du rapport**, **Contrat**, **Période** (N‑1 → N), **Indices utilisés** (valeurs + sources), **Montant précédent / nouveau**, **Δ % / Δ €**, **Liens export** (**PDF**, **Excel**).
+
+  > Chaque rapport est **généré automatiquement** après **validation** et **rattaché au contrat** (consultable depuis l’historique).&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Télécharger** le rapport au format **PDF** ou **Excel**.&#x20;
+* **Ouvrir** le rapport (IX‑7).
+* **Ouvrir** le contrat.
+
+---
+
+## Écran **IX‑7 — Visualisation d’un rapport d’indexation**
+
+### Contenu & composants
+
+* **Viewer intégré** (PDF) : barre (zoom, page, plein écran).
+* **En‑tête** : Contrat, Période (N‑1 → N), Formule appliquée, Clé d’indice + **source officielle**, Montants (avant/après), Δ % / Δ €.
+* **Note** : *Le rapport est également disponible en **Excel**.*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Télécharger** (PDF/Excel).&#x20;
+* **Fermer** (retour liste).
+
+---
+
+## Écran **IX‑8 — Paramétrage des indexations (Admin)**
+
+### Contenu & composants
+
+* **Titre** : « Paramétrage des indexations ».
+* **Section “Formules”** : bibliothèque des formules (création/édition), libellé + expression (variables : montants, indices N, N‑1, règles d’arrondi). **Historisation** des changements.
+* **Section “Fréquences & périmètres”** : définition par **contrat** (fréquence, lignes budgétaires concernées : fixe/variable).&#x20;
+* **Section “Indices & sources”** : **mapping** contrats ↔ **clés d’indices**, configuration des **sources officielles** (INSEE/Eurostat), rappel : utilisation des **valeurs définitives** et **historisation**.&#x20;
+* **Section “Routage de validation”** : règles de **workflow** pour les indexations (affectation, remplaçants, relances auto **> 24 h**).&#x20;
+* **Section “Notifications”** : préférences d’alertes (ex. *Δ montant > x %*), canaux (in‑app/email/Teams).&#x20;
+* **Encart RBAC** : **Accès Admin uniquement**.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Créer / Éditer / Supprimer** une formule d’indexation.&#x20;
+* **Associer** des **clés d’indices** et **sources** aux contrats.&#x20;
+* **Configurer** le **routage** et les **relances** du workflow.&#x20;
+* **Enregistrer** (toutes les modifications sont **journalisées**).&#x20;
+
+---
+
+## Écran **IX‑9 — États vides & erreurs (Indexations)**
+
+### Contenu & composants
+
+* **État vide** (liste IX‑1) : « Aucune indexation pour la période sélectionnée. »
+* **Bannière “Indice indisponible”** : *La valeur définitive de l’indice n’est pas encore publiée ; la ligne reste “En attente d’indice”.*&#x20;
+* **Bannière “Erreur de calcul”** : *Calcul suspendu — vérifiez la formule et/ou les valeurs d’indice.*&#x20;
+* **Bannière “Erreur d’API”** : *Échec de récupération des indices — incident loggué, relance automatique / alerte admin.*&#x20;
+* **Bannière “Échec de validation”** : *Décision non enregistrée — la ligne reste “Calculé — en attente de validation”.*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Réinitialiser les filtres** (retour liste).
+* **Relancer la récupération** des indices (si échec d’API).&#x20;
+* **Notifier l’admin** (si incident persistant).&#x20;
+
+---
+
+### Rappels visibles pour le designer (non‑comportemental)
+
+* **Automatisation + validation** : détection à la date d’indexation, calcul automatique, **application seulement après validation**, avec **journalisation** et **rapport** systématique.
+* **Sources officielles** : récupération **automatique**, valeurs **définitives**, **historisation** des indices.&#x20;
+* **RBAC partout** : listes, détails, actions et rapports **selon rôle**.&#x20;
+
+---
+
+Si c’est bon, dis **« suivant »** et je passe à la rubrique de ton choix (ex. **Avenants** ou **Résiliations**) avec la même structure *Contenu & composants* → *Actions disponibles*.

@@ -1,0 +1,131 @@
+Parfait — **Rubrique : Workflows / À valider**
+*(Pour chaque écran : **Contenu & composants** uniquement, puis **Actions disponibles sur cet écran**.)*
+
+---
+
+## Écran **WF‑1 — Boîte “À valider” (liste globale)**
+
+### Contenu & composants
+
+* **Titre de page** : « À valider ».
+* **Tuiles KPI** sous le titre : *En attente*, *> 24 h* (retard), *Rejetés (7 j)*, *Validés (7 j)*. Les retards alimentent les **relances automatiques > 24 h**.&#x20;
+* **Barre de filtres** (horizontale) :
+
+  * **Type de demande** : Création contrat, Avenant, Indexation, Résiliation, Mise à jour manuelle du montant.
+  * **Module** : Contrats, Indexations, Avenants, Résiliations.
+  * **Assigné à** (moi / équipe / personne), **Statut** (En attente / Validé / Rejeté), **Période** (soumission), **Recherche** (N° contrat, titre, ID demande).&#x20;
+* **Liste** (vue tableau dense) — colonnes visibles :
+
+  * **ID demande** (lien), **Type**, **Contrat** (N° + intitulé), **Soumis par**, **Soumis le** (date/heure), **SLA restant** (compteur), **État** (badge En attente / Validé / Rejeté), **Étiquettes** (ex. *> 24 h*).&#x20;
+* **Encart d’aide** (sous les filtres) : rappel **séparation des rôles pour les validations de contrats** : *le créateur ne peut pas être son propre valideur* (affiché uniquement pour le module « Contrats »).&#x20;
+* **Note RBAC** (texte discret en pied de page) : la liste affiche **uniquement** les demandes **visibles selon le rôle** et le périmètre de l’utilisateur.&#x20;
+* **Pagination** : 25 / 50 / 100 par page + compteur.
+
+### Actions disponibles sur cet écran
+
+* **Ouvrir le détail** d’une demande (panneau WF‑2).
+* **Approuver / Rejeter** directement depuis la ligne (si rôle autorisé).&#x20;
+* **Transférer** l’examen à un autre valideur (sélection d’un collègue).&#x20;
+* **Exporter** la liste filtrée (Excel / CSV).
+* **Actualiser** la vue.
+
+---
+
+## Écran **WF‑2 — Détail d’une demande (panneau latéral)**
+
+### Contenu & composants
+
+* **En‑tête** : **Type de demande** + **Contrat** (N° + intitulé, lien), **État** (badge), **SLA restant**.&#x20;
+* **Bloc “Résumé de la modification”** :
+
+  * **Comparatif Avant / Après** des champs impactés (valeurs textuelles ou numériques, surlignage des écarts).
+  * **Justification fournie** par le demandeur (texte).&#x20;
+* **Bloc “Pièces jointes”** : mini‑liste des documents appuyant la demande (icône format, nom, date).&#x20;
+* **Bloc “Traçabilité de la demande”** : horodatages *créée → affectée → relances > 24 h → décision*, **auteur** de chaque étape, **Trace‑ID**.
+* **Bloc “Règles & contrôles”** (lecture seule) :
+
+  * *Contrats* : rappel de la **séparation des rôles** (créateur ≠ valideur).&#x20;
+  * *Toutes demandes* : **motif obligatoire en cas de rejet**.&#x20;
+* **Zone “Décision”** (formulaire compact) : boutons radio **Approuver / Rejeter**, **champ Motif** (obligatoire si Rejeter), **liste “Transférer à”** (recherche de personne), champ **Commentaire interne**. *(Les commandes de décision elles‑mêmes sont listées plus bas en “Actions”.)*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Approuver** la demande (application immédiate de la modification si succès).&#x20;
+* **Rejeter** (saisie **motif obligatoire**, notification au demandeur).
+* **Transférer** à un autre valideur (réassignation).&#x20;
+* **Ouvrir la fiche contrat** liée.
+* **Fermer** le panneau.
+
+---
+
+## Écran **WF‑3 — Historique des validations (journal)**
+
+### Contenu & composants
+
+* **Titre** : « Historique des validations ».
+* **Filtres** : Période, Type de demande, Module, **Valideur**, **Auteur de la demande**, **Résultat** (Validé / Rejeté), Recherche (ID, contrat).
+* **Liste** en lecture seule : **Date/heure**, **ID demande**, **Type/Module**, **Contrat** (lien), **Demandeur**, **Valideur**, **Décision** (badge), **Motif (si rejet)**, **Durée de traitement**, **Trace‑ID**.&#x20;
+* **Bandeau info** : *“Les entrées sont horodatées et non modifiables.”*&#x20;
+* **Note RBAC** : visibilité filtrée par rôle/périmètre.&#x20;
+* **Pagination** + **Export** (si autorisé).
+
+### Actions disponibles sur cet écran
+
+* **Exporter** le journal filtré (Excel / CSV).
+* **Ouvrir** la demande correspondante (WF‑2).
+* **Ouvrir** la fiche contrat.
+
+---
+
+## Écran **WF‑4 — Paramétrage du workflow (routage & escalade)**
+
+### Contenu & composants
+
+* **Titre** : « Paramétrage Workflow ».
+* **Section “Routage par type d’événement”** :
+
+  * Sélection **Type de demande** (Création, Avenant, Indexation, Résiliation, Montant manuel).
+  * **Affectation** par **BU/Entité** et **Seuils** (ex. montant > x ⇒ Valideur Senior).
+  * **Définition des remplaçants** (transfert en cas d’absence).&#x20;
+* **Section “SLA & relances”** :
+
+  * Paramètre **Délai cible** (ex. 24 h), **fréquence de relance**, **message de relance**.
+  * Indicateur d’activation des **relances automatiques > 24 h**.&#x20;
+* **Section “Notifications”** : canaux (In‑app / Email / Teams), modèles de messages, variables disponibles (contrat, demandeur, motif).&#x20;
+* **Section “Journal & audit”** : rappel que **toute modification de règles** est **tracée** (qui/quand/quoi).&#x20;
+* **Encart RBAC** : accès **Admin** uniquement.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Créer / Modifier / Supprimer** une règle de routage.
+* **Définir** les SLA et **activer** les relances.
+* **Éditer** les modèles de notification.
+* **Enregistrer** le paramétrage.
+
+---
+
+## Écran **WF‑5 — États vides & erreurs (workflow)**
+
+### Contenu & composants
+
+* **État vide (liste WF‑1)** : illustration + texte : « Aucune demande à valider selon vos filtres. »
+* **État d’erreur d’affectation** : bannière rouge : « Aucun valideur disponible pour cette demande — l’administrateur a été alerté. »&#x20;
+* **État d’échec technique** (décision non enregistrée) : bannière : « Échec d’enregistrement, réessayez. » (la demande reste **En attente**).&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Réinitialiser** les filtres (WF‑1).
+* **Notifier** l’admin (lien rapide) en cas d’affectation impossible.&#x20;
+
+---
+
+### Rappels visibles dans la rubrique
+
+* **Contrats** : *séparation des rôles* — un créateur ne peut **pas** valider **son propre contrat** (message d’aide dans WF‑1/WF‑2).&#x20;
+* **Workflow générique** : toute **modification sensible** déclenche un **workflow**, **rejet motivé**, **historisation complète**, **relances auto > 24 h**.&#x20;
+* **RBAC** partout : visibilité des lignes, du détail et des commandes **conditionnée par le rôle**.&#x20;
+* **Logs d’audit** : décisions et paramétrages **horodatés / non modifiables**.&#x20;
+
+---
+
+Si ce format te convient, dis **« suivant »** et je passe à la rubrique suivante (**Exports**) avec la même structure *“Contenu & composants” → “Actions disponibles”* pour chaque écran.

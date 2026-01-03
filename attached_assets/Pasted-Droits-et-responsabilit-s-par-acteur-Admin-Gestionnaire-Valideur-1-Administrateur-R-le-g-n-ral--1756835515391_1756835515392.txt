@@ -1,0 +1,77 @@
+Droits et responsabilités par acteur (Admin, Gestionnaire, Valideur)
+1. Administrateur
+Rôle général
+
+L’administrateur configure et pilote la plateforme sans intervenir sur les décisions métier. Il paramètre les workflows, définit les droits des autres profils et s’assure que les données sont conformes aux exigences réglementaires. L’administrateur n’a pas de pouvoir de validation opérationnelle : il ne valide ni contrats ni opérations métier.
+
+Droits et pouvoirs
+
+Gestion des rôles et du périmètre : l’administrateur attribue ou révoque les droits des gestionnaires et des valideurs. Il contrôle la visibilité des modules (contrats, indexations, avenants, résiliations, GED, etc.) selon le profil
+screenshot
+. Il veille au respect strict du RBAC afin que les utilisateurs voient et fassent uniquement ce qui leur est autorisé.
+
+Paramétrage des workflows : il définit les étapes du cycle de vie (Brouillon → À valider → Actif → Résilié → Clôturé) et configure les relances automatiques pour les demandes en attente de validation au‑delà de 24 heures. Il impose l’obligation d’un motif lors du rejet et bloque l’auto‑validation (le créateur ne peut pas valider ses propres demandes)
+screenshot
+.
+
+Indexations : il crée et maintient la bibliothèque de formules d’indexation (types 2.A, 2.B, 3…). Il enregistre les indices économiques officiels (ICHT, CPI, FMOA…) et configure la récupération automatique des valeurs définitives. Il s’assure que les calculs automatiques sont déclenchés aux dates d’indexation et que les propositions ne sont pas appliquées tant qu’elles ne sont pas validées. Il organise l’édition et la conservation des rapports d’indexation (PDF/XLSX)
+screenshot
+.
+
+Gestion documentaire (GED) : il définit les typologies de pièces et impose la présence de la pièce jointe « contrat signé » avant qu’un contrat puisse être validé. L’admin est seul habilité à supprimer une pièce. Il contrôle les formats acceptés (PDF, DOCX, XLSX, JPG, PNG) et active la journalisation des uploads pour traçabilité.
+
+Import/export : il met à disposition des gabarits d’import pour les données historiques (Excel), gère l’exécution de ces imports et fournit des rapports d’erreur. Pour les exports, il s’assure que seules les données visibles selon les droits sont exportées et que le format CSV/XLSX est respecté.
+
+Alertes et notifications : il paramètre la génération d’alertes (échéances, blocages de workflow, erreurs d’intégration, validations acceptées/refusées) et définit les canaux et délais de rétention. L’historique des alertes est conservé au moins un an
+screenshot
+.
+
+Audit et conformité : il garantit l’intégrité des logs : chaque action (création, modification, validation, suppression) est horodatée et non modifiable. Il veille au respect du RGPD (export/suppression des données personnelles sur demande).
+
+Intégrations externes : il configure l’export automatique des données validées vers les systèmes tiers (par ex. SAP) et surveille les statuts de synchronisation.
+
+2. Gestionnaire (opérateur)
+Rôle général
+
+Le gestionnaire saisit et prépare toutes les données contractuelles sans pouvoir de décision. Il alimente la base de contrats et initie les processus de modification. Ses actions sont systématiquement soumises au workflow de validation.
+
+Droits et pouvoirs
+
+Création et modification de contrats : il renseigne toutes les informations nécessaires (type de contrat, dates, montants, périodicité, formule d’indexation, indices d’origine, pièces jointes, etc.). À l’enregistrement, le contrat passe au statut À valider et ne peut être activé sans validation. Il ne peut pas modifier un contrat « clôturé ».
+
+Indexations : il visualise les contrats arrivant à échéance d’indexation grâce à la détection automatique. Il vérifie la formule et les indices utilisés et soumet la proposition de revalorisation à la validation. Il ne peut pas appliquer lui‑même le nouveau montant et ne dispose pas des fonctions de paramétrage des formules. Les rapports d’indexation sont consultés après validation.
+
+Avenants : il crée des avenants (montants, durées, clauses), indique les valeurs avant/après et joint les justificatifs requis. L’avenant est soumis au workflow et n’impacte pas le contrat principal tant qu’il n’est pas validé.
+
+Résiliations : il initie une demande de résiliation en indiquant la date d’effet et le motif (obligatoire). La demande est envoyée pour validation et n’est appliquée qu’après décision.
+
+Mises à jour manuelles : il peut modifier exceptionnellement un montant ou un paramètre du contrat, mais il doit fournir une justification. Le changement est bloqué jusqu’à validation.
+
+Échéances et alertes : il consulte le tableau des échéances (J‑30/J‑7/J‑1) et gère ses relances. Il reçoit les alertes et peut marquer comme lue une notification, mais il ne peut pas ajuster les paramètres de génération.
+
+Gestion des pièces jointes : il ajoute et consulte des documents selon les types autorisés. L’ajout est tracé ; la suppression nécessite une intervention admin. Pour la validation, il doit s’assurer que le contrat signé est bien présent.
+
+Extraction des données : il peut générer des exports CSV/XLSX filtrés selon son périmètre et ses droits. Les données extraites respectent la visibilité définie par l’Admin.
+
+Import : dans certains cas, il peut importer des historiques via un modèle Excel, mais toujours sous contrôle d’admin (paramétrage et gabarit). Chaque import génère un rapport.
+
+3. Valideur (décideur)
+Rôle général
+
+Le valideur prend des décisions (approbation ou rejet) sur les éléments soumis par les gestionnaires : contrats, indexations, avenants, résiliations, mises à jour manuelles. Il n’applique aucune modification directe : sa décision déclenche l’application automatique et met à jour le statut. Il doit fournir un motif pour chaque refus et ne peut pas valider ses propres créations.
+
+Droits et pouvoirs
+
+Décision sur les contrats : il examine les informations, les pièces jointes et l’historique puis choisit d’accepter ou de rejeter. En cas d’acceptation, le contrat passe à Actif ; en cas de rejet, il doit expliciter son motif. Il ne peut pas modifier les données lui‑même.
+
+Décision sur les indexations : il vérifie le calcul, les indices utilisés et la cohérence du nouveau montant. Il accepte ou rejette la proposition. L’application du montant et la génération du rapport se font automatiquement après son approbation. Il peut consulter, mais pas paramétrer, les formules ou les indices.
+
+Décision sur les avenants : il compare les valeurs avant/après, analyse l’impact financier et juridique et valide ou refuse. Aucun avenant ne modifie le contrat sans sa validation.
+
+Décision sur les résiliations : il s’assure que le motif est justifié, que la date est cohérente et décide d’accepter ou de rejeter. Une résiliation validée fait passer le contrat à Résilié et met fin aux échéances futures.
+
+Consultation des échéances : il a une vue décisionnelle des échéances (J‑30/7/1) pour identifier celles associées à des demandes en attente et prioriser son traitement. Il peut accéder à la demande correspondante directement.
+
+Alertes et notifications : il consulte les alertes (échéances, blocages, erreurs SAP, décisions) et peut marquer comme lue, ou demander la relance d’un workflow > 24 h. Il configure ses propres préférences de réception (in‑app, email, Teams). Il ne gère pas les paramètres généraux des alertes.
+
+Historique & audit : il accède à ses propres décisions (journal personnel) et aux journaux filtrés sur les dossiers qu’il traite. Il ne peut pas modifier les logs ni accéder aux paramètres de conservation.

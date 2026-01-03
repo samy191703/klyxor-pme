@@ -1,0 +1,158 @@
+Parfait — **Rubrique : Extraction des données (Admin)**
+*(Pour chaque écran : **Contenu & composants** uniquement → puis **Actions disponibles sur cet écran**. Pas de tableaux de prose.)*
+
+---
+
+## Écran **EX‑1 — Extraction : Sélection du périmètre**
+
+### Contenu & composants
+
+* **Titre** : « Extraction des données ».
+* **Alerte d’information** (bandeau discret) : *« Seules les données accessibles selon vos droits seront extraites. »*
+* **Bloc “Domaine de données”** (boutons radio ou cartes) :
+  *Contrats*, *Montants*, *États / cycle de vie*, *Indexations*, *Paiements*, *Autres (si activés)*. *(La liste est indicative et dépend des données disponibles.)*&#x20;
+* **Bloc “Période”** (sélecteurs de date) : *Du* / *Au* (contrats, écritures, indexations).&#x20;
+* **Bloc “Filtres rapides”** (pills multi‑sélection) :
+  *Type de contrat*, *Statut* (*Brouillon/À valider/Actif/Résilié/Clôturé*), *Entité/BU*, *Devise*, *Valideur* (si pertinent).
+* **Bloc “Format de sortie”** (boutons radio) : **Excel (.xlsx)** ou **CSV (.csv)**.&#x20;
+* **Encart “Conformité & sécurité”** (encadré en bas) : rappel **RGPD / audit** (*accès selon profil, traçabilité de l’action d’export*).
+
+### Actions disponibles sur cet écran
+
+* **Continuer** (ouvre EX‑2 — Affinage & colonnes).
+* **Réinitialiser** les sélections.
+
+---
+
+## Écran **EX‑2 — Affinage & choix des champs**
+
+### Contenu & composants
+
+* **Titre de section** : « Affiner l’extraction ».
+* **Constructeur de filtres avancés** (builder en lignes) :
+  Chaque ligne = **Champ** (liste dépendant du domaine) + **Opérateur** (=, contient, entre…) + **Valeur** (input/date/listes). Possibilité d’ajouter **ET/OU**. *(Filtres dynamiques appliqués avant export.)*&#x20;
+* **Sous‑bloc “Colonnes à inclure”** (cases à cocher) : *pré‑cochées sur un set par défaut du domaine*. *(Optionnel : décocher pour ne prendre “que” certains champs.)*
+
+  > Remarque affichée sous la liste : *« Les colonnes et lignes visibles respectent vos **droits d’accès**. »*&#x20;
+* **Bouton “Aperçu (50 premières lignes)”** — ouvrira EX‑3. *(Option non obligatoire mais utile pour vérifier les filtres.)*
+* **Rappel format** (ligne de pied) : Excel/CSV choisi précédemment, modifiable ici.&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Voir l’aperçu** (ouvre EX‑3).
+* **Lancer l’export** directement (ouvre EX‑4).
+* **Retour** (EX‑1).
+
+---
+
+## Écran **EX‑3 — Aperçu (lecture seule)**
+
+### Contenu & composants
+
+* **En‑tête** : résumé des **filtres** actifs + **compteur** estimé de lignes.
+* **Table de prévisualisation** (max 50 lignes) : colonnes sélectionnées, **tri** sur en‑tête, **scroll** horizontal si besoin.
+* **Bannière “Aperçu vide”** (si aucun résultat) : *« Aucun enregistrement ne correspond à vos filtres. Un **fichier vide** (entêtes uniquement) sera tout de même généré si vous exportez. »*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Modifier les filtres** (retour EX‑2).
+* **Lancer l’export** (ouvre EX‑4).
+
+---
+
+## Écran **EX‑4 — Génération & suivi de l’export (job)**
+
+### Contenu & composants
+
+* **En‑tête** : *« Génération de votre export… »*
+* **Carte “Tâche en cours”** :
+  **Nom du job**, **Format** (Excel/CSV), **Horodatage de demande**, **Statut** (*En cours / Terminé / Échec*), **Progression** (%).
+
+  > **Message d’état** en cas d’échec : *« La génération a échoué — aucune donnée partielle n’a été produite. »*&#x20;
+* **Encart “Ce que contient le fichier”** : *domaine, période, filtres, nb. de colonnes*. (lecture seule)
+
+### Actions disponibles sur cet écran
+
+* **Télécharger** (si *Terminé*).
+* **Voir l’historique** (EX‑5).
+* **Relancer** (rejoue avec les mêmes paramètres, si disponible).
+
+---
+
+## Écran **EX‑5 — Historique des exports**
+
+### Contenu & composants
+
+* **Titre** : « Historique des exports ».
+* **Barre de filtres historique** : *Période*, *Demandeur*, *Domaine*, *Format*, *Statut* (*Terminé/Échec*), **Recherche** (par nom de job).
+* **Liste (tableau)** — colonnes : **Date/heure**, **Domaine**, **Filtres (extrait)**, **Format**, **Taille**, **Statut**, **Demandeur**.
+
+  > **Rappel** en sous‑titre : *« Vous pouvez re‑télécharger les fichiers déjà générés. »*&#x20;
+* **Encart conformité** en pied : *“L’accès aux exports et leur contenu restent soumis à vos **droits** ; toutes les actions sont **journalisées**.”*
+
+### Actions disponibles sur cet écran
+
+* **Télécharger** un export passé.&#x20;
+* **Ouvrir le détail** (EX‑6).
+* **Filtrer** / **Effacer les filtres**.
+
+---
+
+## Écran **EX‑6 — Détail d’un export (panneau latéral)**
+
+### Contenu & composants
+
+* **En‑tête** : **Nom du job** + **Statut** (badge) + **Format**.
+* **Bloc “Paramètres appliqués”** : domaine, période, liste de filtres, colonnes sélectionnées (extrait).
+* **Bloc “Traçabilité”** : **Demandeur**, **Horodatage**, **Trace‑ID**, **Résultat** (succès/échec, message), **Journal** (événements du job). *(Historisation non modifiable, consultable selon droits.)*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Télécharger**.
+* **Copier les paramètres** (pré‑remplit EX‑2).
+* **Fermer** le panneau.
+
+---
+
+## Écran **EX‑7 — États vides & erreurs (Extraction)**
+
+### Contenu & composants
+
+* **État vide (EX‑1/EX‑5)** : *« Aucun export pour la période sélectionnée. »*
+* **Bannière “Export vide”** (EX‑3/EX‑4) : fichier **structure‑seule** généré si aucun enregistrement ne matche.&#x20;
+* **Bannière “Échec de génération”** : *“Erreur technique lors de la génération (base injoignable / timeout). Aucune donnée n’a été exportée.”*&#x20;
+* **Bannière “Accès restreint”** : *“Certaines colonnes/lignes sont masquées selon vos droits.”*&#x20;
+
+### Actions disponibles sur cet écran
+
+* **Réessayer** la génération.&#x20;
+* **Ajuster les filtres**.
+* **Contacter l’admin** si l’erreur persiste.
+
+---
+
+## Écran **EX‑8 — Paramétrage (lecture/admin)**
+
+### Contenu & composants
+
+* **Encart “Règles d’extraction”** (lecture pour tous, édition Admin) : *« Extraction limitée aux données visibles par l’utilisateur. Formats disponibles : .xlsx, .csv. »*&#x20;
+* **Encart “Gouvernance & conformité”** : rappel **RBAC** (qui voit quoi) + **audit des actions d’export** (horodatage, auteur, résultat), rétention conforme.
+
+### Actions disponibles sur cet écran
+
+* **(Admin)** : consulter les **logs d’export** (lecture seule), ajuster les **droits** via l’UI dédiée.&#x20;
+
+---
+
+### Rappels visibles pour le designer (non‑comportemental)
+
+* **Périmètre & filtres avant export** : l’utilisateur **doit pouvoir filtrer** (période, type, statut…) **avant** de lancer l’export.&#x20;
+* **Formats** : **Excel (.xlsx)** et **CSV (.csv)** au choix.&#x20;
+* **Droits d’accès** : **seules les données visibles selon le profil** partent dans le fichier ; l’UI doit le rappeler explicitement.
+* **Historique & re‑téléchargement** : l’utilisateur **retrouve** ses exports et peut **re‑télécharger** un fichier déjà généré.&#x20;
+* **Erreurs** : en cas d’échec technique, **aucune donnée partielle** ; afficher un message clair et **ne pas** livrer de fichier corrompu.&#x20;
+* **Traçabilité** : l’action d’export est **journalisée** (horodatage, auteur, résultat) et **non modifiable**.&#x20;
+
+---
+
+Si ce format te convient, dis **« suivant »** et je passe à la rubrique de ton choix (ex. **Échéances** ou **Indexations**) en gardant exactement cette structure *Contenu & composants* → *Actions disponibles*.
