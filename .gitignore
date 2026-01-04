@@ -8,3 +8,6 @@ server/uploads
 
 # Local tooling (do not push)
 .config/.semgrep/
+# Environment variables (do not commit)
+.env
+.env.*
