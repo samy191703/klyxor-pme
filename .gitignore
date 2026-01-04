@@ -10,4 +10,4 @@ server/uploads
 .config/.semgrep/
 # Environment variables (do not commit)
 .env
-.env.*
+!.env.example
