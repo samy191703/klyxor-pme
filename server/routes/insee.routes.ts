@@ -1,56 +1,49 @@
+// server/routes/insee.routes.ts
+
 import { Router } from "express";
-import { getInseeAccessToken } from "../services/inseeAuth";
+import { getInseeAccessToken } from "../services/inseeAuth.ts";
+import {
+  getLatestIndexPoint,
+  getSeriesIndexPoints,
+} from "../services/insee/bdmProvider.ts";
 
 const router = Router();
 
+/**
+ * Récupère le dernier point d'une série BDM
+ */
+router.get("/insee/bdm/:code/latest", async (req, res) => {
+  const code = String(req.params.code || "").toUpperCase();
+  const latest = await getLatestIndexPoint(code);
+  return res.json({ ok: true, code, latest });
+});
+
+/**
+ * Récupère la série complète (historique) d'une série BDM
+ */
+router.get("/insee/bdm/:code/series", async (req, res) => {
+  const code = String(req.params.code || "").toUpperCase();
+  const series = await getSeriesIndexPoints(code);
+  return res.json({ ok: true, code, series });
+});
+
+/**
+ * Healthcheck INSEE OAuth
+ */
 router.get("/insee/health", async (_req, res) => {
   try {
-    const apiKey = process.env.INSEE_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ ok: false, error: "INSEE_API_KEY manquante" });
-    }
-
-    const baseUrl =
-      process.env.INSEE_SIRENE_BASE_URL ?? "https://api.insee.fr/api-sirene/3.11";
-
-    const url = `${baseUrl}/informations`;
-
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 10_000);
-
-    try {
-      const r = await fetch(url, {
-        method: "GET",
-        headers: {
-          "X-INSEE-Api-Key-Integration": apiKey,
-          Accept: "application/json",
-        },
-        signal: ctrl.signal,
-      });
-
-      const ct = r.headers.get("content-type") ?? "";
-      const body = await r.text();
-
-      if (!r.ok) {
-        return res.status(500).json({
-          ok: false,
-          error: `INSEE Sirene: HTTP ${r.status} ${r.statusText} content-type=${ct} body=${body}`,
-        });
-      }
-
-      if (!ct.toLowerCase().includes("application/json")) {
-        return res.status(500).json({
-          ok: false,
-          error: `INSEE Sirene: réponse non-JSON content-type=${ct} body=${body}`,
-        });
-      }
-
-      return res.json({ ok: true, data: JSON.parse(body) });
-    } finally {
-      clearTimeout(t);
-    }
+    const token = await getInseeAccessToken();
+    return res.json({
+      ok: true,
+      oauth: true,
+      tokenPreview: `${token.slice(0, 10)}...`,
+    });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e?.message ?? String(e) });
+    return res.status(500).json({
+      ok: false,
+      oauth: false,
+      error: e?.message ?? String(e),
+    });
   }
 });
 
